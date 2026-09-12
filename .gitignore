@@ -1,0 +1,8 @@
+.gradle/
+build/
+out/
+*.class
+*.log
+data/*.json
+data/*.db
+data/*.sqlite
