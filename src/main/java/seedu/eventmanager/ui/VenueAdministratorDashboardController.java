@@ -3,6 +3,7 @@ package seedu.eventmanager.ui;
 import seedu.eventmanager.common.Actor;
 import seedu.eventmanager.common.ApplicationException;
 import seedu.eventmanager.common.Role;
+import seedu.eventmanager.service.AuthorizationService;
 import seedu.eventmanager.venue.VenueRequest;
 import java.util.Objects;
 import java.util.UUID;
@@ -11,18 +12,19 @@ import java.util.function.Consumer;
 /** Presentation controller; business rules remain in the backend service. */
 public final class VenueAdministratorDashboardController {
     private final Actor actor;
+    private final AuthorizationService authorization;
     private final VenueAdministratorApiClient client;
     private final Consumer<VenueAdministratorDashboardState> stateListener;
     private VenueAdministratorDashboardState state = VenueAdministratorDashboardState.loading();
 
-    public VenueAdministratorDashboardController(Actor actor, VenueAdministratorApiClient client,
+    public VenueAdministratorDashboardController(Actor actor, AuthorizationService authorization,
+            VenueAdministratorApiClient client,
             Consumer<VenueAdministratorDashboardState> stateListener) {
         this.actor = Objects.requireNonNull(actor);
+        this.authorization = Objects.requireNonNull(authorization);
         this.client = Objects.requireNonNull(client);
         this.stateListener = Objects.requireNonNull(stateListener);
-        if (actor.role() != Role.VENUE_ADMINISTRATOR) {
-            throw new ApplicationException("FORBIDDEN", "This dashboard is restricted to Venue Administrators.");
-        }
+        authorization.requireRole(actor, Role.VENUE_ADMINISTRATOR);
     }
 
     public void load() {

@@ -46,6 +46,7 @@ public final class VenueAdministratorService {
         if (current == null) {
             throw new ApplicationException("REQUEST_NOT_FOUND", "Venue request was not found.");
         }
+        authorization.requireVenueRequestAccess(administrator, current);
         if (current.status() != VenueRequestStatus.SUBMITTED) {
             throw new ApplicationException("INVALID_STATE", "Only submitted requests can be decided.");
         }
