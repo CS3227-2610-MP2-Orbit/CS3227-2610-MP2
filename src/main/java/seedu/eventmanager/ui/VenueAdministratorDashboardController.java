@@ -2,6 +2,7 @@ package seedu.eventmanager.ui;
 
 import seedu.eventmanager.common.Actor;
 import seedu.eventmanager.common.ApplicationException;
+import seedu.eventmanager.common.ErrorResponseMapper;
 import seedu.eventmanager.common.Role;
 import seedu.eventmanager.service.AuthorizationService;
 import seedu.eventmanager.venue.VenueRequest;
@@ -67,6 +68,6 @@ public final class VenueAdministratorDashboardController {
     }
 
     private static String safeMessage(RuntimeException exception) {
-        return exception.getMessage() == null ? "The request could not be completed." : exception.getMessage();
+        return ErrorResponseMapper.map(exception, null).message();
     }
 }

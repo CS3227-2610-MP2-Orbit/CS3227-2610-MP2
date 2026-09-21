@@ -112,8 +112,15 @@ public final class VenueAdministratorService {
         }
         audit.record(administrator, approve ? "VENUE_REQUEST_APPROVED" : "VENUE_REQUEST_REJECTED",
                 "VENUE_REQUEST", requestId, current.status().name(), next.name(), reason);
-        notifications.notify(current.organizerId(), approve ? "VENUE_REQUEST_APPROVED" : "VENUE_REQUEST_REJECTED",
-                Map.of("requestId", requestId.toString()));
+        try {
+            notifications.notify(current.organizerId(), approve ? "VENUE_REQUEST_APPROVED" : "VENUE_REQUEST_REJECTED",
+                    Map.of("requestId", requestId.toString()));
+        } catch (RuntimeException notificationFailure) {
+            metrics.increment("venue_requests.notification_failures");
+            logger.error("venue_request_notification_failed", Map.of("correlationId", correlationId,
+                    "requestId", requestId.toString(), "action", approve ? "approve" : "reject"),
+                    notificationFailure);
+        }
         return updated;
     }
 
