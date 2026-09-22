@@ -8,6 +8,39 @@ description: Review a specified diff or implementation against requirements and 
 Find actionable defects and unsupported claims in a defined change. Base findings
 on reproducible behavior or a concrete code path, not generic best-practice advice.
 
+## Eight-step review workflow
+
+Apply the following workflow in order, adapting it to the change and available
+tooling. Record commands and outcomes; an unavailable check is a limitation, not
+evidence that the change passed it.
+
+1. **Run functional and automated checks first.** Run the build, relevant tests,
+   static analysis, and configured security checks before relying on code
+   inspection. Use CodeQL, Dependabot, or equivalent tooling when the project
+   provides it, and explicitly report checks that are unavailable.
+2. **Verify context and intent.** Compare the implementation with the accepted
+   requirements, user goal, architecture, and local conventions. Confirm that it
+   solves the intended problem rather than only matching the requested wording.
+3. **Assess code quality.** Check readability, naming, maintainability,
+   documentation, separation of responsibilities, and concrete duplication or
+   design problems. Do not request broad refactors without an observable impact.
+4. **Scrutinize dependencies.** Check that new packages exist, come from
+   reputable and appropriate sources, are maintained enough for the project, and
+   are used for a real need. Watch for hallucinated package names, typosquatting,
+   and slopsquatting risks.
+5. **Look for AI-specific pitfalls.** Check for hallucinated APIs, ignored
+   constraints, incorrect edge-case logic, weakened assertions, and tests that
+   were deleted, skipped, or rewritten to hide a failure.
+6. **Use collaborative review where needed.** For complex, security-sensitive,
+   or cross-role changes, request a teammate review with a focused checklist for
+   functionality, authorization, security, and maintainability.
+7. **Automate repeatable checks.** Recommend or use CI checks for build, tests,
+   style, lint, and security, plus dependency monitoring where appropriate. Do
+   not claim automation exists until its configuration and result are verified.
+8. **Improve the workflow from evidence.** Record recurring review mistakes,
+   useful prompts, and corrections. Update the project’s review or contribution
+   guidance only when an observed problem justifies the change.
+
 ## Establish the review scope
 
 Read repository instructions and identify the requested diff, base/head, files,
@@ -54,4 +87,7 @@ risks. Do not invent findings to fill a quota.
 Finish with checks actually performed and their outcomes, acceptance criteria not
 verified, and any material limits on confidence. If no actionable issue is found,
 say so without treating that as proof of complete correctness. Update an
-Update an interaction log for every meaningful review according to the repository convention. When no repository artifact is requested, return the review evidence as well; do not omit the log solely because the review makes no repository writes.
+interaction log for every meaningful review according to the repository
+convention. When no repository artifact is requested, return the review evidence
+as well; do not omit the log solely because the review makes no repository
+writes.
