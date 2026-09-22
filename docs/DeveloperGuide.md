@@ -6,6 +6,20 @@ The project is organized by responsibility. Event, venue, attendee,
 registration, notification, and volunteer packages contain domain features.
 Shared concerns are separated into common, storage, service, and UI packages.
 
+The event workflow keeps JavaFX and JDBC behind application/domain boundaries:
+
+- `EventService` validates commands and enforces club ownership.
+- `EventRepository` defines persistence plus atomic business-audit writes.
+- `JdbcEventRepository` stores events and audit records in one PostgreSQL
+  transaction and uses the event version for optimistic concurrency control.
+- `OrganizerEventView` is the JavaFX create/edit screen and does not contain
+  authorization or persistence rules.
+
+PostgreSQL connection settings come from `EVENT_MANAGER_DB_URL`,
+`EVENT_MANAGER_DB_USER`, and `EVENT_MANAGER_DB_PASSWORD`. The temporary
+development identity comes from `EVENT_MANAGER_ORGANIZER_ID` and
+`EVENT_MANAGER_CLUB_IDS`; shared authentication must replace this adapter.
+
 ## Team ownership
 
 - Club Organizer: events, volunteers, and announcements
@@ -17,9 +31,21 @@ Shared concerns are separated into common, storage, service, and UI packages.
 
 Run the tests before submitting changes:
 
+```sh
+./gradlew test
+```
+
+On Windows:
+
 ```powershell
 .\gradlew.bat test
 ```
+
+The PostgreSQL repository integration test runs when an isolated test database
+is supplied through `EVENT_MANAGER_TEST_DB_URL` and, if needed,
+`EVENT_MANAGER_TEST_DB_USER` and `EVENT_MANAGER_TEST_DB_PASSWORD`. The test
+truncates the organizer-event and organizer-event-audit tables, so never point it
+at a shared or production database.
 
 Update documentation, tests, and logs whenever behaviour or design changes.
 

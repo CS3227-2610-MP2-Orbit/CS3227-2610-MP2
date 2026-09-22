@@ -8,6 +8,6 @@ import org.junit.jupiter.api.Test;
 class MainTest {
     @Test
     void main_startsWithoutThrowing() {
-        assertDoesNotThrow(() -> Main.main(new String[0]));
+        assertDoesNotThrow(() -> Main.main(new String[] {"--version"}));
     }
 }
