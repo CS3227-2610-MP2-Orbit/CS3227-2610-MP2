@@ -53,8 +53,10 @@ public final class JdbcNotificationOutboxRepository implements NotificationOutbo
 
     @Override
     public void markSent(UUID notificationId) {
-        database.withConnection(connection -> updateStatus(connection, notificationId,
-                "SENT", null, null));
+        database.withConnection(connection -> {
+            updateStatus(connection, notificationId, "SENT", null, null);
+            return null;
+        });
     }
 
     @Override
