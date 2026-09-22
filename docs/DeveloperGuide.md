@@ -14,6 +14,9 @@ The event workflow keeps JavaFX and JDBC behind application/domain boundaries:
   transaction and uses the event version for optimistic concurrency control.
 - `OrganizerEventView` is the JavaFX create/edit screen and does not contain
   authorization or persistence rules.
+- `SingaporeDateTimes` converts date-picker and `HH:mm` values in
+  `Asia/Singapore` to UTC `Instant` values at the UI boundary. Domain and
+  PostgreSQL timestamps remain time-zone-neutral instants.
 
 PostgreSQL connection settings come from `EVENT_MANAGER_DB_URL`,
 `EVENT_MANAGER_DB_USER`, and `EVENT_MANAGER_DB_PASSWORD`. The temporary

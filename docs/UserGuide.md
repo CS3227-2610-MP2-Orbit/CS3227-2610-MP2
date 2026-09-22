@@ -46,15 +46,16 @@ showing connection credentials.
 ## Club Organizer: create and edit events
 
 1. Select **New event** and choose one of the organizer's clubs.
-2. Enter a title, optional description, UTC start and end timestamps, and a
-   positive capacity. Timestamps use ISO-8601 form, such as
-   `2026-10-01T10:00:00Z`.
+2. Enter a title, optional description, start and end dates, 24-hour Singapore
+   times such as `18:00`, and a positive capacity.
 3. Select **Save event**. The event is stored as a draft.
 4. Select a draft in **Your events**, change its details, and save again.
 
 The start must precede the end. An organizer can view and edit only events for
 clubs supplied by the authenticated-identity contract. Concurrent edits made
 from an outdated event version are rejected instead of overwriting newer data.
+The UI displays Singapore Time (SGT); timestamps are converted to UTC internally
+for consistent PostgreSQL storage.
 
 ## Current status
 

@@ -1,7 +1,7 @@
 package seedu.eventmanager.ui;
 
 import java.time.DateTimeException;
-import java.time.Instant;
+import java.time.LocalDate;
 import seedu.eventmanager.common.ValidationException;
 import seedu.eventmanager.event.EventDetails;
 
@@ -13,19 +13,22 @@ public final class EventFormParser {
     public static EventDetails parse(
             String title,
             String description,
-            String startsAt,
-            String endsAt,
+            LocalDate startDate,
+            String startTime,
+            LocalDate endDate,
+            String endTime,
             String capacity) {
         try {
             return new EventDetails(
                     title,
                     description,
-                    Instant.parse(startsAt.strip()),
-                    Instant.parse(endsAt.strip()),
+                    SingaporeDateTimes.toInstant(startDate, startTime),
+                    SingaporeDateTimes.toInstant(endDate, endTime),
                     Integer.parseInt(capacity.strip()));
         } catch (NullPointerException | DateTimeException | NumberFormatException exception) {
             throw new ValidationException(
-                    "Use ISO-8601 UTC times (for example 2026-10-01T10:00:00Z) and a whole-number capacity");
+                    "Choose both dates, enter times as HH:mm (for example 18:00), "
+                            + "and use a whole-number capacity");
         }
     }
 }

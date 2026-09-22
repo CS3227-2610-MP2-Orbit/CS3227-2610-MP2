@@ -1,17 +1,18 @@
 package seedu.eventmanager.ui;
 
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.UUID;
+import java.util.function.UnaryOperator;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TextFormatter;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
@@ -24,17 +25,16 @@ import seedu.eventmanager.event.OrganizerIdentity;
 
 /** JavaFX screen for an organizer to create and edit draft events. */
 public final class OrganizerEventView extends BorderPane {
-    private static final DateTimeFormatter DISPLAY_TIME =
-            DateTimeFormatter.ofPattern("dd MMM uuuu HH:mm 'UTC'").withZone(ZoneId.of("UTC"));
-
     private final EventService service;
     private final OrganizerIdentity actor;
     private final ListView<Event> events = new ListView<>();
     private final ComboBox<String> club = new ComboBox<>();
     private final TextField title = new TextField();
     private final TextArea description = new TextArea();
-    private final TextField startsAt = new TextField();
-    private final TextField endsAt = new TextField();
+    private final DatePicker startDate = new DatePicker();
+    private final TextField startTime = new TextField();
+    private final DatePicker endDate = new DatePicker();
+    private final TextField endTime = new TextField();
     private final TextField capacity = new TextField();
     private final Label feedback = new Label();
     private UUID editingEventId;
@@ -67,7 +67,7 @@ public final class OrganizerEventView extends BorderPane {
                 super.updateItem(event, empty);
                 setText(empty || event == null
                         ? null
-                        : event.title() + "\n" + DISPLAY_TIME.format(event.startsAt()));
+                        : event.title() + "\n" + SingaporeDateTimes.display(event.startsAt()));
             }
         });
         events.getSelectionModel().selectedItemProperty()
@@ -84,9 +84,18 @@ public final class OrganizerEventView extends BorderPane {
         title.setPromptText("Event title");
         description.setPromptText("Optional event description");
         description.setPrefRowCount(5);
-        startsAt.setPromptText("2026-10-01T10:00:00Z");
-        endsAt.setPromptText("2026-10-01T12:00:00Z");
+        startDate.setPromptText("Start date");
+        startTime.setPromptText("18:00");
+        endDate.setPromptText("End date");
+        endTime.setPromptText("20:00");
+        startTime.setTextFormatter(new TextFormatter<>(timeInputFilter()));
+        endTime.setTextFormatter(new TextFormatter<>(timeInputFilter()));
         capacity.setPromptText("80");
+
+        HBox startFields = new HBox(8, startDate, startTime);
+        HBox endFields = new HBox(8, endDate, endTime);
+        HBox.setHgrow(startDate, Priority.ALWAYS);
+        HBox.setHgrow(endDate, Priority.ALWAYS);
 
         GridPane form = new GridPane();
         form.setHgap(12);
@@ -94,14 +103,14 @@ public final class OrganizerEventView extends BorderPane {
         form.addRow(0, new Label("Club"), club);
         form.addRow(1, new Label("Title"), title);
         form.addRow(2, new Label("Description"), description);
-        form.addRow(3, new Label("Starts at (UTC)"), startsAt);
-        form.addRow(4, new Label("Ends at (UTC)"), endsAt);
+        form.addRow(3, new Label("Starts (Singapore time)"), startFields);
+        form.addRow(4, new Label("Ends (Singapore time)"), endFields);
         form.addRow(5, new Label("Capacity"), capacity);
         GridPane.setHgrow(club, Priority.ALWAYS);
         GridPane.setHgrow(title, Priority.ALWAYS);
         GridPane.setHgrow(description, Priority.ALWAYS);
-        GridPane.setHgrow(startsAt, Priority.ALWAYS);
-        GridPane.setHgrow(endsAt, Priority.ALWAYS);
+        GridPane.setHgrow(startFields, Priority.ALWAYS);
+        GridPane.setHgrow(endFields, Priority.ALWAYS);
         GridPane.setHgrow(capacity, Priority.ALWAYS);
 
         Button save = new Button("Save event");
@@ -123,8 +132,10 @@ public final class OrganizerEventView extends BorderPane {
             EventDetails details = EventFormParser.parse(
                     title.getText(),
                     description.getText(),
-                    startsAt.getText(),
-                    endsAt.getText(),
+                    startDate.getValue(),
+                    startTime.getText(),
+                    endDate.getValue(),
+                    endTime.getText(),
                     capacity.getText());
             Event saved;
             if (editingEventId == null) {
@@ -164,8 +175,10 @@ public final class OrganizerEventView extends BorderPane {
         club.setDisable(true);
         title.setText(event.title());
         description.setText(event.description());
-        startsAt.setText(event.startsAt().toString());
-        endsAt.setText(event.endsAt().toString());
+        startDate.setValue(SingaporeDateTimes.dateOf(event.startsAt()));
+        startTime.setText(SingaporeDateTimes.timeOf(event.startsAt()));
+        endDate.setValue(SingaporeDateTimes.dateOf(event.endsAt()));
+        endTime.setText(SingaporeDateTimes.timeOf(event.endsAt()));
         capacity.setText(Integer.toString(event.capacity()));
         feedback.setText("");
     }
@@ -188,8 +201,10 @@ public final class OrganizerEventView extends BorderPane {
         }
         title.clear();
         description.clear();
-        startsAt.clear();
-        endsAt.clear();
+        startDate.setValue(null);
+        startTime.clear();
+        endDate.setValue(null);
+        endTime.clear();
         capacity.clear();
         feedback.setText("");
         title.requestFocus();
@@ -198,5 +213,11 @@ public final class OrganizerEventView extends BorderPane {
     private void setFeedback(String message, boolean error) {
         feedback.setText(message == null ? "Operation failed" : message);
         feedback.setStyle(error ? "-fx-text-fill: #b00020;" : "-fx-text-fill: #1b5e20;");
+    }
+
+    private static UnaryOperator<TextFormatter.Change> timeInputFilter() {
+        return change -> change.getControlNewText().matches("[0-9]{0,2}:?[0-9]{0,2}")
+                ? change
+                : null;
     }
 }
