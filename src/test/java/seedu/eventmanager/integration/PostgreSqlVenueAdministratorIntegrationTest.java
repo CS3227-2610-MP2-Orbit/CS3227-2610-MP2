@@ -15,8 +15,11 @@ import seedu.eventmanager.storage.JdbcDatabase;
 import seedu.eventmanager.storage.JdbcVenueAvailabilityRepository;
 import seedu.eventmanager.storage.JdbcVenueBookingRepository;
 import seedu.eventmanager.storage.JdbcVenueRequestRepository;
+import seedu.eventmanager.storage.JdbcVenueRepository;
 import seedu.eventmanager.venue.VenueAvailability;
 import seedu.eventmanager.venue.VenueAvailabilityType;
+import seedu.eventmanager.venue.Venue;
+import seedu.eventmanager.venue.VenueStatus;
 import seedu.eventmanager.venue.VenueRequest;
 import seedu.eventmanager.venue.VenueRequestStatus;
 
@@ -74,6 +77,23 @@ class PostgreSqlVenueAdministratorIntegrationTest {
         availability.delete(availabilityId);
         assertFalse(availability.findAll().stream()
                 .anyMatch(value -> value.availabilityId().equals(availabilityId)));
+    }
+
+    @Test
+    void togglesVenueAvailabilityBetweenActiveAndInactive() {
+        UUID venueId = UUID.randomUUID();
+        insertVenue(venueId);
+        JdbcVenueRepository venues = new JdbcVenueRepository(database);
+        Venue venue = venues.findById(venueId);
+
+        venues.save(new Venue(venue.venueId(), venue.name(), venue.location(), venue.capacity(),
+                venue.description(), VenueStatus.INACTIVE));
+        assertEquals(VenueStatus.INACTIVE, venues.findById(venueId).status());
+
+        Venue inactive = venues.findById(venueId);
+        venues.save(new Venue(inactive.venueId(), inactive.name(), inactive.location(), inactive.capacity(),
+                inactive.description(), VenueStatus.ACTIVE));
+        assertEquals(VenueStatus.ACTIVE, venues.findById(venueId).status());
     }
 
     private void insertVenue(UUID venueId) {
