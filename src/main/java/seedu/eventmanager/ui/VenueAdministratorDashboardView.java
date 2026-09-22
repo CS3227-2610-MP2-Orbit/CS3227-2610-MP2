@@ -19,12 +19,14 @@ public final class VenueAdministratorDashboardView {
     private final Label contentTitle = new Label();
     private Label pendingRequestsValue;
     private final Runnable showRequests;
+    private final Runnable showVenues;
 
     public VenueAdministratorDashboardView(JdbcLocalSessionService.Session session,
-            Runnable onLogout, Runnable showRequests) {
+            Runnable onLogout, Runnable showRequests, Runnable showVenues) {
         Objects.requireNonNull(session);
         Objects.requireNonNull(onLogout);
         this.showRequests = Objects.requireNonNull(showRequests);
+        this.showVenues = Objects.requireNonNull(showVenues);
         root.setStyle("-fx-background-color: #f7f9fc;");
         root.setLeft(sidebar(onLogout));
         showOverview(session);
@@ -50,7 +52,7 @@ public final class VenueAdministratorDashboardView {
 
         addNavigation(sidebar, "Dashboard", () -> showOverview(null));
         addNavigation(sidebar, "Venue requests", showRequests);
-        addNavigation(sidebar, "Venues", () -> showPlaceholder("Venues"));
+        addNavigation(sidebar, "Venues", showVenues);
         addNavigation(sidebar, "Availability", () -> showPlaceholder("Availability and schedules"));
         addNavigation(sidebar, "Users and access", () -> showPlaceholder("Users and access"));
         addNavigation(sidebar, "Audit activity", () -> showPlaceholder("Audit activity"));

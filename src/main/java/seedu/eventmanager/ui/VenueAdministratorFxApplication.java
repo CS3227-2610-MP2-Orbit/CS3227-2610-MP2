@@ -18,6 +18,8 @@ import seedu.eventmanager.service.VenueAdministratorServiceFactory;
 import seedu.eventmanager.service.VenueRequestRepository;
 import seedu.eventmanager.storage.JdbcAuthorizationService;
 import seedu.eventmanager.storage.JdbcVenueRequestRepository;
+import seedu.eventmanager.storage.JdbcVenueRepository;
+import seedu.eventmanager.service.VenueRepository;
 
 /** Initial JavaFX shell for the Venue Administrator frontend. */
 public final class VenueAdministratorFxApplication extends Application {
@@ -62,6 +64,7 @@ public final class VenueAdministratorFxApplication extends Application {
                 workflow, requests, session.actor());
         VenueRequestManagementView[] requestView = new VenueRequestManagementView[1];
         VenueAdministratorDashboardView[] dashboardView = new VenueAdministratorDashboardView[1];
+        VenueManagementView[] venueView = new VenueManagementView[1];
         VenueAdministratorDashboardController controller = new VenueAdministratorDashboardController(
                 session.actor(), authorization, client, state -> {
                     if (requestView[0] != null) {
@@ -71,8 +74,12 @@ public final class VenueAdministratorFxApplication extends Application {
         requestView[0] = new VenueRequestManagementView(controller,
                 () -> root.setCenter(dashboardView[0].root()));
         requestView[0].update(controller.state());
+        VenueRepository venueRepository = new JdbcVenueRepository(database);
+        venueView[0] = new VenueManagementView(venueRepository,
+                () -> root.setCenter(dashboardView[0].root()));
         VenueAdministratorDashboardView dashboard = new VenueAdministratorDashboardView(
-                session, () -> showLogin(stage, root), () -> root.setCenter(requestView[0].root()));
+                session, () -> showLogin(stage, root), () -> root.setCenter(requestView[0].root()),
+                () -> root.setCenter(venueView[0].root()));
         dashboardView[0] = dashboard;
         dashboard.update(controller.state());
         root.setCenter(dashboard.root());
