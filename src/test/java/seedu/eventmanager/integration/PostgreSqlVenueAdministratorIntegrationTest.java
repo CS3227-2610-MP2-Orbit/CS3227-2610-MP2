@@ -3,8 +3,10 @@ package seedu.eventmanager.integration;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
@@ -16,10 +18,12 @@ import seedu.eventmanager.storage.JdbcVenueAvailabilityRepository;
 import seedu.eventmanager.storage.JdbcVenueBookingRepository;
 import seedu.eventmanager.storage.JdbcVenueRequestRepository;
 import seedu.eventmanager.storage.JdbcVenueRepository;
+import seedu.eventmanager.storage.JdbcVenueUtilizationRepository;
 import seedu.eventmanager.venue.VenueAvailability;
 import seedu.eventmanager.venue.VenueAvailabilityType;
 import seedu.eventmanager.venue.Venue;
 import seedu.eventmanager.venue.VenueStatus;
+import seedu.eventmanager.venue.VenueUtilization;
 import seedu.eventmanager.venue.VenueRequest;
 import seedu.eventmanager.venue.VenueRequestStatus;
 
@@ -53,6 +57,14 @@ class PostgreSqlVenueAdministratorIntegrationTest {
         assertFalse(bookings.hasConflict(venueId, start, start.plusHours(1)));
         bookings.createFromApprovedRequest(request, UUID.randomUUID());
         assertTrue(bookings.hasConflict(venueId, start, start.plusHours(1)));
+
+        List<VenueUtilization> utilization = new JdbcVenueUtilizationRepository(database)
+                .findForWindow(start.minusHours(1), start.plusHours(2));
+        VenueUtilization venueUtilization = utilization.stream()
+                .filter(value -> value.venueId().equals(venueId)).findFirst().orElseThrow();
+        assertEquals(1, venueUtilization.bookingCount());
+        assertEquals(1.0, venueUtilization.bookedHours(), 0.01);
+        assertEquals(33.33, venueUtilization.utilizationPercentage(), 0.01);
     }
 
     @Test
@@ -94,6 +106,29 @@ class PostgreSqlVenueAdministratorIntegrationTest {
         venues.save(new Venue(inactive.venueId(), inactive.name(), inactive.location(), inactive.capacity(),
                 inactive.description(), VenueStatus.ACTIVE));
         assertEquals(VenueStatus.ACTIVE, venues.findById(venueId).status());
+    }
+
+    @Test
+    void reportsZeroUtilizationForVenueWithoutBookings() {
+        UUID venueId = UUID.randomUUID();
+        insertVenue(venueId);
+        OffsetDateTime start = OffsetDateTime.now().minusDays(2).withNano(0);
+        VenueUtilization utilization = new JdbcVenueUtilizationRepository(database)
+                .findForWindow(start, start.plusDays(1)).stream()
+                .filter(value -> value.venueId().equals(venueId)).findFirst().orElseThrow();
+
+        assertEquals(0, utilization.bookingCount());
+        assertEquals(0.0, utilization.bookedHours(), 0.01);
+        assertEquals(0.0, utilization.utilizationPercentage(), 0.01);
+    }
+
+    @Test
+    void rejectsUtilizationWindowWithEndBeforeStart() {
+        OffsetDateTime start = OffsetDateTime.now().withNano(0);
+        JdbcVenueUtilizationRepository repository = new JdbcVenueUtilizationRepository(database);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> repository.findForWindow(start, start.minusHours(1)));
     }
 
     private void insertVenue(UUID venueId) {
