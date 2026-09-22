@@ -60,11 +60,20 @@ public final class VenueAdministratorFxApplication extends Application {
         VenueRequestRepository requests = new JdbcVenueRequestRepository(database);
         JdbcVenueAdministratorApiClient client = new JdbcVenueAdministratorApiClient(
                 workflow, requests, session.actor());
+        VenueRequestManagementView[] requestView = new VenueRequestManagementView[1];
+        VenueAdministratorDashboardView[] dashboardView = new VenueAdministratorDashboardView[1];
         VenueAdministratorDashboardController controller = new VenueAdministratorDashboardController(
-                session.actor(), authorization, client, ignored -> { });
+                session.actor(), authorization, client, state -> {
+                    if (requestView[0] != null) {
+                        requestView[0].update(state);
+                    }
+        });
+        requestView[0] = new VenueRequestManagementView(controller,
+                () -> root.setCenter(dashboardView[0].root()));
+        requestView[0].update(controller.state());
         VenueAdministratorDashboardView dashboard = new VenueAdministratorDashboardView(
-                session, () -> showLogin(stage, root));
-        controller.load();
+                session, () -> showLogin(stage, root), () -> root.setCenter(requestView[0].root()));
+        dashboardView[0] = dashboard;
         dashboard.update(controller.state());
         root.setCenter(dashboard.root());
     }
