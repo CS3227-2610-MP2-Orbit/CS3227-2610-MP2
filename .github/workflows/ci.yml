@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # No formatter/checkstyle/PMD/SpotBugs plugin exists yet. Compilation is
+      # the currently applicable type/static check and must pass before tests.
+      - name: Compile and static/type check
+        run: ./gradlew compileJava
+
+      - name: Lint check
+        run: |
+          if grep -Eq "(checkstyle|pmd|spotbugs|spotless|errorprone)" build.gradle; then
+            ./gradlew checkstyleMain pmdMain spotbugsMain spotlessCheck
+          else
+            echo "No lint plugin is configured; compileJava is the applicable static check."
+          fi
+
+      - name: Unit tests
+        run: ./gradlew test --tests 'seedu.eventmanager.common.*' --tests 'seedu.eventmanager.venue.*' --tests 'seedu.eventmanager.service.*' --tests 'seedu.eventmanager.MainTest'
+
+      - name: Integration tests
+        run: ./gradlew test --tests 'seedu.eventmanager.integration.*'
+
+      - name: E2E tests
+        run: ./gradlew test --tests 'seedu.eventmanager.e2e.*'
+
+      - name: Production build
+        run: ./gradlew build
