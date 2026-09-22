@@ -43,6 +43,23 @@ Use the actual comparison branch for a review. `main` is the baseline when these
 skills were added; the assignment's required submission branch is `master`.
 Changing the default branch remains a team coordination task.
 
+## Guardrails and skills
+
+Guardrails in [`AGENTS.md`](../AGENTS.md#guardrails) are mandatory input,
+output, tool-call, and loop boundaries that apply to every agent action. Skills
+are task-specific workflows for requirements, implementation, or review. A skill
+may make a workflow more repeatable, but it cannot relax a guardrail or turn an
+untrusted source into a requirement.
+
+Validate guardrails with adversarial, task-level cases as well as a document
+review: provide conflicting or embedded instructions, ambiguous business policy,
+sensitive values, an unsafe external request, a repeated tool failure, and an
+out-of-scope change suggestion. Check that the agent preserves source authority,
+marks policy gaps unresolved, redacts sensitive data, refuses unsafe work,
+changes its hypothesis or stops a repeated failure, and leaves unauthorized
+files and remote state unchanged. Record observed commands and results; do not
+treat the written rules alone as proof of compliance.
+
 ## Validating the skills
 
 Structural validation checks skill metadata, naming, and unfinished scaffolding.
@@ -67,6 +84,26 @@ The initial [validation record](skill-validation/2026-09-22.md) contains inputs,
 observations, and limits. These are same-agent smoke checks, not an independent
 benchmark or proof of reliability across real tasks. Automatic skill discovery in
 a fresh session has not been tested. Real MP2 application use remains necessary.
+
+### Grading skill traces
+
+Grade JSONL traces produced by `codex exec --json --full-auto` with the
+deterministic repository graders:
+
+```sh
+python3 tools/graders/grade_requirements_skill.py traces/r1-requirements.jsonl
+python3 tools/graders/grade_test_driven_skill.py traces/t1-test-driven.jsonl
+python3 tools/graders/grade_code_review_skill.py traces/c1-code-review.jsonl
+```
+
+The test-driven grader reports `TRACE_EXISTS`, `SKILL_INVOKED`,
+`BEHAVIORAL_RED`, `IMPLEMENTATION_CHANGED`, and `GREEN_VERIFIED`. The review
+grader reports `TRACE_EXISTS`, `SKILL_INVOKED`, `OWNERSHIP_DEFECT`, `STATE_LOSS`,
+`REPRODUCTION_SCOPED`, and `NO_IMPLEMENTATION`. The requirements grader retains
+its checks for unresolved decisions and Given/When/Then criteria. Each prints an
+overall result after its named checks. A non-zero exit status means at least one
+check failed; failure details identify the JSONL event or line to inspect. The
+graders use only Python's standard library and do not call an LLM.
 
 ## Logs and reflections
 
