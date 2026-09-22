@@ -6,3 +6,4 @@ out/
 data/*.json
 data/*.db
 data/*.sqlite
+.env

@@ -1,6 +1,7 @@
 plugins {
     id 'application'
     id 'java'
+    id 'org.openjfx.javafxplugin' version '0.1.0'
 }
 
 group = 'seedu.eventmanager'
@@ -17,12 +18,23 @@ repositories {
 }
 
 dependencies {
+    implementation 'org.postgresql:postgresql:42.7.7'
+    implementation 'org.flywaydb:flyway-core:11.11.2'
+    implementation 'org.flywaydb:flyway-database-postgresql:11.11.2'
+    implementation 'io.github.cdimascio:dotenv-java:3.2.0'
+
     testImplementation platform('org.junit:junit-bom:5.13.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 application {
-    mainClass = 'seedu.eventmanager.Main'
+    mainClass = 'seedu.eventmanager.ui.VenueAdministratorFxApplication'
+}
+
+javafx {
+    version = '25.0.1'
+    modules = [ 'javafx.controls' ]
 }
 
 tasks.named('test') {
