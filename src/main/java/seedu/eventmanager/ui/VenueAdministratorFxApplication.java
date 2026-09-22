@@ -95,7 +95,9 @@ public final class VenueAdministratorFxApplication extends Application {
                 () -> root.setCenter(availabilityView[0].root()),
                 () -> root.setCenter(usersView[0].root()));
         dashboardView[0] = dashboard;
-        dashboard.update(controller.state());
+        dashboard.update(controller.state(), (int) venueRepository.findAll().stream()
+                .filter(venue -> venue.status() == seedu.eventmanager.venue.VenueStatus.ACTIVE)
+                .count());
         root.setCenter(dashboard.root());
     }
 

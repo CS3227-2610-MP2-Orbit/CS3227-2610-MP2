@@ -18,6 +18,7 @@ public final class VenueAdministratorDashboardView {
     private final Label pageTitle = new Label();
     private final Label contentTitle = new Label();
     private Label pendingRequestsValue;
+    private Label availableVenuesValue;
     private final Runnable showRequests;
     private final Runnable showVenues;
     private final Runnable showAvailability;
@@ -43,6 +44,11 @@ public final class VenueAdministratorDashboardView {
 
     public void update(VenueAdministratorDashboardState state) {
         pendingRequestsValue.setText(String.valueOf(state.data().pendingRequests().size()));
+    }
+
+    public void update(VenueAdministratorDashboardState state, int availableVenues) {
+        update(state);
+        availableVenuesValue.setText(String.valueOf(availableVenues));
     }
 
     private VBox sidebar(Runnable onLogout) {
@@ -96,7 +102,8 @@ public final class VenueAdministratorDashboardView {
         pendingRequestsValue = new Label("0");
         cards.add(summaryCard("Pending requests", pendingRequestsValue, "Awaiting review"), 0, 0);
         cards.add(summaryCard("Upcoming bookings", "0", "Next 30 days"), 1, 0);
-        cards.add(summaryCard("Available venues", "0", "Ready to book"), 2, 0);
+        availableVenuesValue = new Label("0");
+        cards.add(summaryCard("Available venues", availableVenuesValue, "Ready to book"), 2, 0);
         cards.add(summaryCard("Warnings", "0", "Needs attention"), 0, 1);
 
         VBox content = content(pageTitle, contentTitle, cards,
