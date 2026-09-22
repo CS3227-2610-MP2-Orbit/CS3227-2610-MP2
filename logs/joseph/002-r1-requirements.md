@@ -89,13 +89,73 @@ before implementation.
 
 Suggested commit message: `docs: define attendee cancellation acceptance criteria`
 
-## Student review
 
-- [ ] I confirmed that the original prompts are accurate.
-- [ ] I confirmed that the changed-file list is accurate.
-- [ ] I confirmed that recorded commands were actually executed.
-- [ ] I confirmed that verification results and limitations are accurate.
-- [ ] I added any mistakes or disagreements omitted by the AI.
 
-Reviewed by:
-Review date:
+
+
+
+# Reflections on Agentic SE
+
+## 1. What we customized
+
+Our team uses a single engineering agent (Codex) with shared repository
+customization rather than three separate personal agents:
+
+- **Instructions / guardrails:** `AGENTS.md` (role ownership, shared services,
+  no invented requirements, logging rules, commit boundaries)
+- **Skills:** three reusable SWE skills under `.agents/skills/`
+  1. `requirements-and-acceptance`
+  2. `test-driven-implementation`
+  3. `code-review-and-verification`
+- **Workflow docs:** `docs/AgenticSE.md` (how to invoke skills + validation cases)
+- **Evidence:** per-contributor logs under `logs/<name>/`
+
+This matches the lecture idea of customizing one agent: durable rules live in the
+repo so Joseph, Jordan, and Johannsen get the same behavior on role-specific work.
+
+We treated lecture concepts as follows:
+- **Skills** = task playbooks (`SKILL.md`)
+- **Config** = Codex skill enable/path control when needed (`config.toml` style);
+  shared behavior still mainly comes from `AGENTS.md` + checked-in skills
+- **Graders / model-assisted testing** = how we check whether skills work
+- **Memory** = optional; we preferred repo instructions so knowledge is shareable
+
+## 2. Why “testing skills” matters (R1 / T1 / C1)
+
+Creating skill files is not proof that the agent follows them. So we defined
+fixed **skill test cases** (like unit tests for the agent process):
+
+| Case | Skill | Probe task | What “correct” means |
+| --- | --- | --- | --- |
+| **R1** | requirements-and-acceptance | “Attendees can cancel before the event.” | Expose missing policy; do not invent cutoff/ownership; write conditional Given/When/Then; do not implement |
+| **T1** | test-driven-implementation | Scratch registration book wrongly accepts duplicates | Show a real failing behavioral test first; minimal fix; green assertions; do not call compile failure “red” |
+| **C1** | code-review-and-verification | Cancel by registration ID without ownership check | Find the non-owner path + state loss; give reproduction; do not over-claim about production code |
+
+These cases are documented in `docs/AgenticSE.md` and first exercised in
+`docs/skill-validation/2026-09-22.md`.
+
+**How we know a run is “correct”:** not vibes — comparison against the rubric.
+Input is fixed; expected behaviors are listed; actual output/trace is compared;
+pass/fail is recorded. That is the same structure as ordinary testing, applied to
+agent workflow instead of app features.
+
+## 3. Interesting skill 1 — requirements-and-acceptance (R1)
+
+### Purpose
+Stop implementation from starting on invented product rules. For MP2 this matters
+because many workflows (cancellation, capacity, venue approval, check-in windows)
+look simple in a sentence but hide policy decisions.
+
+### What I ran
+I used the lecture-style reproducible Codex execution and logged it in
+`logs/joseph/002-r1-requirements.md`:
+
+```bash
+codex exec --json --full-auto "$(cat <<'EOF'
+Use $requirements-and-acceptance only.
+Do not implement code.
+Task (case R1): Define acceptance criteria for: "Attendees can cancel before the event."
+Read AGENTS.md and .agents/skills/requirements-and-acceptance/SKILL.md first.
+Output: sourced rules, open decisions, and Given/When/Then criteria only.
+EOF
+)" | tee traces/r1-requirements.jsonl

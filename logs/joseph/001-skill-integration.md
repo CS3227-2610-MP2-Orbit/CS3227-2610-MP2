@@ -151,5 +151,5 @@ Suggested commit message: `docs: extend AI-assisted testing and review skills`
 - [ ] I confirmed that verification results and limitations are accurate.
 - [ ] I added any mistakes or disagreements omitted by the AI.
 
-Reviewed by:
-Review date:
+Reviewed by: Joseph Kwok 
+Review date: 22/09
