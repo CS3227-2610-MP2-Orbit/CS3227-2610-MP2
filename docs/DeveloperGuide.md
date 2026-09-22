@@ -42,20 +42,26 @@ Implemented:
 - Venue request state types and validation
 - Backend Venue Administrator approval and rejection orchestration
 - Role enforcement through the authorization boundary
-- Notification and audit-log service boundaries
-- Transaction boundary abstraction
+- PostgreSQL configuration through environment variables and local `.env`
+- Flyway migration bootstrap
+- PostgreSQL request and booking repositories
+- JDBC transaction boundary with commit and rollback handling
+- Durable PostgreSQL audit logging for approval and rejection decisions
+- Transactional notification outbox with idempotency protection
+- Notification and authorization service boundaries
 - PostgreSQL schema migration for venues, availability, requests, bookings,
-  and audit logs
+  audit logs, and notification outbox
 - Venue Administrator dashboard presentation state and controller
 
 Not yet implemented:
 
-- Concrete PostgreSQL repositories and connection configuration
-- Authentication/session implementation
+- Authentication/session implementation and production object-scope authorization
+- Notification delivery worker and retry processor
 - HTTP routes or a concrete API client
 - Rendered JavaFX or web views
-- Full notification and audit-log persistence
-- End-to-end UI and database integration tests
+- Database-backed integration tests against PostgreSQL
+- Runtime startup wiring from `Main` to a user-facing application
+- Deployment configuration and production monitoring backend
 
 Until a frontend runtime is added, `gradlew.bat run` starts the application
 entry point and prints a readiness message; it does not open a dashboard.

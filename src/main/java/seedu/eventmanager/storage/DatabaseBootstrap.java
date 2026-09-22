@@ -28,7 +28,7 @@ public final class DatabaseBootstrap {
         return migrate(configuration);
     }
 
-    static int migrate(DatabaseConfiguration configuration) {
+    public static int migrate(DatabaseConfiguration configuration) {
         return Flyway.configure()
                 .dataSource(configuration.url(), configuration.username(), configuration.password())
                 .locations("classpath:db/migration")

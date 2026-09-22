@@ -30,10 +30,17 @@ The controller supports loading, empty, success, and error states, and allows
 approval or rejection of requests through the API client boundary. Rejections
 require a reason. Backend authorization and validation remain authoritative.
 
+The backend persistence foundation includes PostgreSQL repositories, transaction
+handling, audit logging, and a notification outbox. The outbox stores approval
+and rejection notifications for later delivery; it does not yet send email or
+in-app messages.
+
 ## Current limitations
 
 The project does not yet include a rendered frontend, HTTP server, concrete API
-client, authentication runtime, or PostgreSQL connection configuration.
+client, or authentication runtime. PostgreSQL repositories and migrations are
+present, but the application entry point is not yet wired to start the
+database-backed runtime.
 
 Running `gradlew.bat run` currently starts the Java entry point and prints a
 readiness message. It does not open a visual dashboard. A JavaFX or web view
