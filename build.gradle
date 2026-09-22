@@ -1,6 +1,7 @@
 plugins {
     id 'application'
     id 'java'
+    id 'org.openjfx.javafxplugin' version '0.1.0'
 }
 
 group = 'seedu.eventmanager'
@@ -28,7 +29,12 @@ dependencies {
 }
 
 application {
-    mainClass = 'seedu.eventmanager.Main'
+    mainClass = 'seedu.eventmanager.ui.VenueAdministratorFxApplication'
+}
+
+javafx {
+    version = '25.0.1'
+    modules = [ 'javafx.controls' ]
 }
 
 tasks.named('test') {
