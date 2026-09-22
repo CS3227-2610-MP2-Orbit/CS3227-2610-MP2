@@ -99,7 +99,7 @@ class VenueAdministratorWorkflowE2ETest {
 
         private VenueAdministratorDashboardController dashboard(
                 Consumer<VenueAdministratorDashboardState> listener, Actor actor) {
-            VenueAdministratorApiClient client = new Client(requests, this);
+            VenueAdministratorApiClient client = new Client(requests, this, actor);
             return new VenueAdministratorDashboardController(actor, requests, client, listener);
         }
     }
@@ -107,10 +107,12 @@ class VenueAdministratorWorkflowE2ETest {
     private static final class Client implements VenueAdministratorApiClient {
         private final Store store;
         private final Scenario scenario;
+        private final Actor actor;
 
-        private Client(Store store, Scenario scenario) {
+        private Client(Store store, Scenario scenario, Actor actor) {
             this.store = store;
             this.scenario = scenario;
+            this.actor = actor;
         }
 
         @Override public VenueAdministratorDashboardData loadDashboard() {
@@ -120,11 +122,11 @@ class VenueAdministratorWorkflowE2ETest {
         }
 
         @Override public VenueRequest approveRequest(UUID requestId) {
-            return store.workflow.approve(store.actor, requestId);
+            return store.workflow.approve(actor, requestId);
         }
 
         @Override public VenueRequest rejectRequest(UUID requestId, String reason) {
-            return store.workflow.reject(store.actor, requestId, reason);
+            return store.workflow.reject(actor, requestId, reason);
         }
     }
 
