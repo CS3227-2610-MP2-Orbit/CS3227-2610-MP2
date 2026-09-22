@@ -6,4 +6,9 @@ import java.util.UUID;
 public interface VenueRequestRepository {
     VenueRequest get(UUID requestId);
     void save(VenueRequest request);
+
+    /** Persists a decision while retaining the audit fields required by storage. */
+    default void save(VenueRequest request, UUID decidedBy, String decisionReason) {
+        save(request);
+    }
 }

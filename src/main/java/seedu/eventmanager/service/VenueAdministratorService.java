@@ -106,7 +106,7 @@ public final class VenueAdministratorService {
         VenueRequestStatus next = approve ? VenueRequestStatus.APPROVED : VenueRequestStatus.REJECTED;
         VenueRequest updated = new VenueRequest(current.requestId(), current.eventId(), current.venueId(),
                 current.organizerId(), current.startsAt(), current.endsAt(), current.expectedAttendance(), next);
-        requests.save(updated);
+        requests.save(updated, administrator.userId(), reason);
         if (approve) {
             bookings.createFromApprovedRequest(updated, administrator.userId());
         }
