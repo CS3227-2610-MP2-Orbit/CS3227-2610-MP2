@@ -49,15 +49,9 @@ public final class VenueAdministratorFxApplication extends Application {
 
     private void showDashboardPlaceholder(Stage stage, BorderPane root,
             JdbcLocalSessionService sessions, JdbcLocalSessionService.Session session) {
-        Label heading = new Label("Venue Administrator Dashboard");
-        heading.setStyle("-fx-font-size: 24px; -fx-font-weight: bold;");
-        Label welcome = new Label("Signed in as " + session.actor().userId()
-                + ". Dashboard modules will be added next.");
-        Button logout = new Button("Log out");
-        logout.setOnAction(event -> showLogin(stage, root));
-        VBox content = new VBox(12, heading, welcome, logout);
-        content.setPadding(new Insets(32));
-        root.setCenter(content);
+        VenueAdministratorDashboardView dashboard = new VenueAdministratorDashboardView(
+                session, () -> showLogin(stage, root));
+        root.setCenter(dashboard.root());
     }
 
     public static void main(String[] args) {
