@@ -12,6 +12,11 @@ jobs:
   validate:
     name: Validate
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: jdbc:postgresql://localhost:5432/CS3227
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+      DATABASE_INTEGRATION_TESTS: 'true'
     services:
       postgres:
         image: postgres:16
@@ -57,11 +62,6 @@ jobs:
 
       - name: Integration tests
         run: ./gradlew test --tests 'seedu.eventmanager.integration.*'
-        env:
-          DATABASE_URL: jdbc:postgresql://localhost:5432/CS3227
-          DATABASE_USER: postgres
-          DATABASE_PASSWORD: postgres
-          DATABASE_INTEGRATION_TESTS: 'true'
 
       - name: E2E tests
         run: ./gradlew test --tests 'seedu.eventmanager.e2e.*'
