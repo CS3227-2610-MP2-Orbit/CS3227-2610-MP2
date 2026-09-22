@@ -29,4 +29,13 @@ class VenueAdministratorServiceFactoryTest {
 
         assertNotNull(service);
     }
+
+    @Test
+    void createsWorkflowWithDatabaseBackedAuditAndNotificationServices() {
+        VenueAdministratorService service = VenueAdministratorServiceFactory.create(
+                new DatabaseConfiguration("jdbc:postgresql://localhost:5432/CS3227", "admin", "secret"),
+                (actor, request) -> { });
+
+        assertNotNull(service);
+    }
 }
