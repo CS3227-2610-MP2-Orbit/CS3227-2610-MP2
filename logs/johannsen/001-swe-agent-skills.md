@@ -128,9 +128,23 @@ to verify the MP2 runtime. No product source was changed to accommodate it.
 ## Outcome and limitations
 
 The three skills, shared instructions, usage guide, evaluation record, and log
-template are implemented. At the point this initial record was written,
-publication and final diff/link checks were still pending. Their actual outcomes
-will be recorded after execution.
+template are implemented. An inline Node check using `fs.existsSync` resolved all
+14 relative Markdown links across the nine changed files. The final
+`git diff --cached --check` passed, and `git diff --cached --stat` confirmed the
+intended nine-file scope.
+
+Publication commands, each completed with exit 0:
+
+```sh
+git commit -m "chore: add shared SWE agent skills and validation records"
+git push -u origin attendee
+gh pr create --base main --head attendee --title "Add shared SWE skills for requirements, TDD, and review" --body-file /tmp/mp2-skill-validation.9E0VG7/pr-body.md
+```
+
+Implementation commit: `48480ff`. Published branch: `origin/attendee`.
+Opened [PR #2](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/pull/2)
+against `main` and attached it to the Codex task. This publication-result update
+follows the implementation commit; the pull request remains for human review.
 
 The current branch lacks a Gradle wrapper. Application Gradle/JUnit checks were
 not run for this instruction/documentation-only change. Real feature use, fresh
