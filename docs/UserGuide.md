@@ -35,12 +35,21 @@ handling, audit logging, and a notification outbox. The outbox stores approval
 and rejection notifications for later delivery; it does not yet send email or
 in-app messages.
 
+The current JavaFX prototype provides:
+
+- A local Venue Administrator login screen.
+- A dashboard with sidebar navigation and summary cards.
+- A venue-request table with approve and reject actions.
+- A venue listing showing name, location, capacity, and status.
+
+Venue CRUD forms, availability management, user access management, and the
+organizer map are planned for later iterations.
+
 ## Current limitations
 
-The project does not yet include a rendered frontend, HTTP server, concrete API
-client, or authentication runtime. PostgreSQL repositories and migrations are
-present, but the application entry point is not yet wired to start the
-database-backed runtime.
+The project does not yet include an HTTP server or a production identity
+provider. The current JavaFX client uses the local session model and requires
+the PostgreSQL database to be available at startup.
 
 Running `gradlew.bat run` now loads the database configuration, applies pending
 Flyway migrations, and starts the database-backed Venue Administrator runtime.

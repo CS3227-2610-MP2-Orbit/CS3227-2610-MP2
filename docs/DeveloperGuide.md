@@ -15,8 +15,9 @@ The Venue Administrator presentation layer is framework-neutral. It consists
 of `VenueAdministratorDashboardController`,
 `VenueAdministratorDashboardState`, and `VenueAdministratorApiClient` under
 `ui`. These classes model the dashboard sections and UI states without
-duplicating backend validation or authorization. A concrete JavaFX or web view
-still needs to be connected to this layer.
+duplicating backend validation or authorization. The current JavaFX layer adds
+a local login view, dashboard shell, venue-request review screen, and venue
+management screen on top of these boundaries.
 
 ## Team ownership
 
@@ -52,13 +53,19 @@ Implemented:
 - PostgreSQL schema migration for venues, availability, requests, bookings,
   audit logs, and notification outbox
 - Venue Administrator dashboard presentation state and controller
+- JavaFX Venue Administrator login and dashboard shell
+- JavaFX venue request review with approval and rejection actions
+- JavaFX venue listing backed by PostgreSQL
 
 Not yet implemented:
 
 - Authentication/session implementation and production object-scope authorization
 - Notification delivery worker and retry processor
 - HTTP routes or a concrete API client
-- Rendered JavaFX or web views
+- Venue create, edit, activate/deactivate, and delete workflows
+- Availability and schedule management UI
+- Users and access management UI
+- Organizer map and venue discovery UI
 - Database-backed integration tests against PostgreSQL
 - Runtime startup wiring from `Main` to a user-facing application
 - Deployment configuration and production monitoring backend
