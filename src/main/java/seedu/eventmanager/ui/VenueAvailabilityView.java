@@ -38,9 +38,13 @@ public final class VenueAvailabilityView {
                 column("Reason", VenueAvailability::reason));
         Button block = new Button("Block time");
         block.setOnAction(event -> blockTime());
+        Button edit = new Button("Edit selected");
+        edit.setOnAction(event -> editSelected());
+        Button delete = new Button("Delete selected");
+        delete.setOnAction(event -> deleteSelected());
         Button refresh = new Button("Refresh");
         refresh.setOnAction(event -> reload());
-        HBox actions = new HBox(10, block, refresh);
+        HBox actions = new HBox(10, block, edit, delete, refresh);
         VBox content = new VBox(16, back, heading, actions, table);
         content.setPadding(new Insets(28));
         root.setCenter(content);
@@ -71,15 +75,58 @@ public final class VenueAvailabilityView {
         try {
             OffsetDateTime start = OffsetDateTime.parse(starts.get().trim());
             OffsetDateTime end = OffsetDateTime.parse(ends.get().trim());
-            if (!end.isAfter(start) || reason.get().isBlank()) {
-                throw new IllegalArgumentException("End must be after start and a reason is required.");
-            }
-            availability.save(new VenueAvailability(UUID.randomUUID(), UUID.fromString(venue.get().trim()),
-                    VenueAvailabilityType.BLOCKED, start, end, reason.get().trim()));
+            saveValidated(UUID.randomUUID(), UUID.fromString(venue.get().trim()), start, end, reason.get());
             reload();
         } catch (RuntimeException exception) {
             new Alert(Alert.AlertType.WARNING, "Invalid availability: " + exception.getMessage()).showAndWait();
         }
+    }
+
+    private void editSelected() {
+        VenueAvailability selected = table.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            showWarning("Select an availability record to edit.");
+            return;
+        }
+        Optional<String> starts = prompt("Edit availability", "Start (ISO-8601)", selected.startsAt().toString());
+        Optional<String> ends = prompt("Edit availability", "End (ISO-8601)", selected.endsAt().toString());
+        Optional<String> reason = prompt("Edit availability", "Reason", selected.reason());
+        if (starts.isEmpty() || ends.isEmpty() || reason.isEmpty()) return;
+        try {
+            saveValidated(selected.availabilityId(), selected.venueId(),
+                    OffsetDateTime.parse(starts.get().trim()), OffsetDateTime.parse(ends.get().trim()), reason.get());
+            reload();
+        } catch (RuntimeException exception) {
+            showWarning("Invalid availability: " + exception.getMessage());
+        }
+    }
+
+    private void deleteSelected() {
+        VenueAvailability selected = table.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            showWarning("Select an availability record to delete.");
+            return;
+        }
+        Alert confirmation = new Alert(Alert.AlertType.CONFIRMATION,
+                "Delete the selected availability record?", javafx.scene.control.ButtonType.OK,
+                javafx.scene.control.ButtonType.CANCEL);
+        confirmation.showAndWait().filter(javafx.scene.control.ButtonType.OK::equals).ifPresent(button -> {
+            availability.delete(selected.availabilityId());
+            reload();
+        });
+    }
+
+    private void saveValidated(UUID availabilityId, UUID venueId, OffsetDateTime start,
+            OffsetDateTime end, String reason) {
+        if (!end.isAfter(start) || reason == null || reason.isBlank()) {
+            throw new IllegalArgumentException("End must be after start and a reason is required.");
+        }
+        availability.save(new VenueAvailability(availabilityId, venueId, VenueAvailabilityType.BLOCKED,
+                start, end, reason.trim()));
+    }
+
+    private void showWarning(String message) {
+        new Alert(Alert.AlertType.WARNING, message).showAndWait();
     }
 
     private Optional<String> prompt(String title, String label, String value) {
