@@ -12,8 +12,11 @@ import org.junit.jupiter.api.Test;
 import seedu.eventmanager.storage.DatabaseBootstrap;
 import seedu.eventmanager.storage.DatabaseConfiguration;
 import seedu.eventmanager.storage.JdbcDatabase;
+import seedu.eventmanager.storage.JdbcVenueAvailabilityRepository;
 import seedu.eventmanager.storage.JdbcVenueBookingRepository;
 import seedu.eventmanager.storage.JdbcVenueRequestRepository;
+import seedu.eventmanager.venue.VenueAvailability;
+import seedu.eventmanager.venue.VenueAvailabilityType;
 import seedu.eventmanager.venue.VenueRequest;
 import seedu.eventmanager.venue.VenueRequestStatus;
 
@@ -47,6 +50,30 @@ class PostgreSqlVenueAdministratorIntegrationTest {
         assertFalse(bookings.hasConflict(venueId, start, start.plusHours(1)));
         bookings.createFromApprovedRequest(request, UUID.randomUUID());
         assertTrue(bookings.hasConflict(venueId, start, start.plusHours(1)));
+    }
+
+    @Test
+    void createsUpdatesAndDeletesAvailabilityRecord() {
+        UUID venueId = UUID.randomUUID();
+        UUID availabilityId = UUID.randomUUID();
+        OffsetDateTime start = OffsetDateTime.now().plusDays(4).withNano(0);
+        insertVenue(venueId);
+        JdbcVenueAvailabilityRepository availability = new JdbcVenueAvailabilityRepository(database);
+
+        VenueAvailability blocked = new VenueAvailability(availabilityId, venueId, VenueAvailabilityType.BLOCKED,
+                start, start.plusHours(2), "Maintenance");
+        availability.save(blocked);
+        assertTrue(availability.findAll().contains(blocked));
+
+        VenueAvailability updated = new VenueAvailability(availabilityId, venueId, VenueAvailabilityType.BLOCKED,
+                start.plusHours(1), start.plusHours(3), "Private event");
+        availability.save(updated);
+        assertTrue(availability.findAll().contains(updated));
+        assertFalse(availability.findAll().contains(blocked));
+
+        availability.delete(availabilityId);
+        assertFalse(availability.findAll().stream()
+                .anyMatch(value -> value.availabilityId().equals(availabilityId)));
     }
 
     private void insertVenue(UUID venueId) {

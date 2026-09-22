@@ -63,6 +63,20 @@ public final class JdbcVenueAvailabilityRepository implements VenueAvailabilityR
         });
     }
 
+    @Override
+    public void delete(UUID availabilityId) {
+        database.withConnection(connection -> {
+            try (var statement = connection.prepareStatement(
+                    "DELETE FROM venue_availability WHERE availability_id = ?")) {
+                statement.setObject(1, availabilityId);
+                statement.executeUpdate();
+                return null;
+            } catch (SQLException exception) {
+                throw new IllegalStateException("Could not delete venue availability.", exception);
+            }
+        });
+    }
+
     private static VenueAvailability map(ResultSet result) throws SQLException {
         return new VenueAvailability(result.getObject("availability_id", UUID.class),
                 result.getObject("venue_id", UUID.class),
