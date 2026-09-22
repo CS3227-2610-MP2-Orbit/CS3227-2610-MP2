@@ -1,18 +1,22 @@
 package seedu.eventmanager.ui;
 
 import java.util.Objects;
-import java.util.function.Consumer;
+import java.util.Optional;
+import java.util.UUID;
+import javafx.scene.control.Alert;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
 import seedu.eventmanager.service.VenueRepository;
 import seedu.eventmanager.venue.Venue;
+import seedu.eventmanager.venue.VenueStatus;
 
 /** Initial venue management view for the Venue Administrator. */
 public final class VenueManagementView {
@@ -29,7 +33,16 @@ public final class VenueManagementView {
         heading.setStyle("-fx-font-size: 24px; -fx-font-weight: bold;");
         table.getColumns().addAll(column("Name", "name"), column("Location", "location"),
                 column("Capacity", "capacity"), column("Status", "status"));
-        VBox content = new VBox(16, back, heading, table);
+        Button create = new Button("Create venue");
+        create.setOnAction(event -> createVenue());
+        Button edit = new Button("Edit selected");
+        edit.setOnAction(event -> editVenue());
+        Button deactivate = new Button("Deactivate selected");
+        deactivate.setOnAction(event -> deactivateVenue());
+        Button refresh = new Button("Refresh");
+        refresh.setOnAction(event -> reload());
+        javafx.scene.layout.HBox actions = new javafx.scene.layout.HBox(10, create, edit, deactivate, refresh);
+        VBox content = new VBox(16, back, heading, actions, table);
         content.setPadding(new Insets(28));
         root.setCenter(content);
         reload();
@@ -46,5 +59,75 @@ public final class VenueManagementView {
         column.setCellValueFactory(new PropertyValueFactory<>(property));
         column.setPrefWidth(180);
         return column;
+    }
+
+    private void createVenue() {
+        Optional<String> name = prompt("Create venue", "Venue name", "");
+        Optional<String> location = prompt("Create venue", "Location", "");
+        Optional<String> capacity = prompt("Create venue", "Capacity", "100");
+        if (name.isEmpty() || location.isEmpty() || capacity.isEmpty()) return;
+        try {
+            int parsedCapacity = Integer.parseInt(capacity.get().trim());
+            if (name.get().isBlank() || location.get().isBlank() || parsedCapacity <= 0) {
+                throw new IllegalArgumentException("Name, location, and positive capacity are required.");
+            }
+            venues.save(new Venue(UUID.randomUUID(), name.get().trim(), location.get().trim(),
+                    parsedCapacity, null, VenueStatus.ACTIVE));
+            reload();
+        } catch (RuntimeException exception) {
+            showError(exception.getMessage());
+        }
+    }
+
+    private void editVenue() {
+        Venue selected = table.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            showError("Select a venue first.");
+            return;
+        }
+        Optional<String> name = prompt("Edit venue", "Venue name", selected.name());
+        Optional<String> location = prompt("Edit venue", "Location", selected.location());
+        Optional<String> capacity = prompt("Edit venue", "Capacity", String.valueOf(selected.capacity()));
+        if (name.isEmpty() || location.isEmpty() || capacity.isEmpty()) return;
+        try {
+            int parsedCapacity = Integer.parseInt(capacity.get().trim());
+            if (name.get().isBlank() || location.get().isBlank() || parsedCapacity <= 0) {
+                throw new IllegalArgumentException("Name, location, and positive capacity are required.");
+            }
+            venues.save(new Venue(selected.venueId(), name.get().trim(), location.get().trim(),
+                    parsedCapacity, selected.description(), selected.status()));
+            reload();
+        } catch (RuntimeException exception) {
+            showError(exception.getMessage());
+        }
+    }
+
+    private void deactivateVenue() {
+        Venue selected = table.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            showError("Select a venue first.");
+            return;
+        }
+        Alert confirmation = new Alert(Alert.AlertType.CONFIRMATION,
+                "Deactivate " + selected.name() + "?");
+        confirmation.showAndWait().ifPresent(button -> {
+            if (button == javafx.scene.control.ButtonType.OK) {
+                venues.save(new Venue(selected.venueId(), selected.name(), selected.location(),
+                        selected.capacity(), selected.description(), VenueStatus.INACTIVE));
+                reload();
+            }
+        });
+    }
+
+    private Optional<String> prompt(String title, String label, String value) {
+        TextInputDialog dialog = new TextInputDialog(value);
+        dialog.setTitle(title);
+        dialog.setHeaderText(null);
+        dialog.setContentText(label + ":");
+        return dialog.showAndWait();
+    }
+
+    private void showError(String message) {
+        new Alert(Alert.AlertType.WARNING, message == null ? "Invalid venue details." : message).showAndWait();
     }
 }
