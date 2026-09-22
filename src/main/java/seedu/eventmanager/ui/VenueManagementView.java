@@ -11,7 +11,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextInputDialog;
-import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
 import seedu.eventmanager.service.VenueRepository;
@@ -31,8 +30,10 @@ public final class VenueManagementView {
         back.setOnAction(event -> showDashboard.run());
         Label heading = new Label("Venues");
         heading.setStyle("-fx-font-size: 24px; -fx-font-weight: bold;");
-        table.getColumns().addAll(column("Name", "name"), column("Location", "location"),
-                column("Capacity", "capacity"), column("Status", "status"));
+        table.getColumns().addAll(column("Name", venue -> venue.name()),
+                column("Location", venue -> venue.location()),
+                column("Capacity", venue -> String.valueOf(venue.capacity())),
+                column("Status", venue -> venue.status().name()));
         Button create = new Button("Create venue");
         create.setOnAction(event -> createVenue());
         Button edit = new Button("Edit selected");
@@ -54,9 +55,11 @@ public final class VenueManagementView {
         table.setItems(FXCollections.observableArrayList(venues.findAll()));
     }
 
-    private TableColumn<Venue, ?> column(String title, String property) {
-        TableColumn<Venue, Object> column = new TableColumn<>(title);
-        column.setCellValueFactory(new PropertyValueFactory<>(property));
+    private TableColumn<Venue, String> column(String title,
+            java.util.function.Function<Venue, String> value) {
+        TableColumn<Venue, String> column = new TableColumn<>(title);
+        column.setCellValueFactory(cell -> new javafx.beans.property.SimpleStringProperty(
+                value.apply(cell.getValue())));
         column.setPrefWidth(180);
         return column;
     }
