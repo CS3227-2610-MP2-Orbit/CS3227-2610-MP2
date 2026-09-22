@@ -54,5 +54,4 @@ risks. Do not invent findings to fill a quota.
 Finish with checks actually performed and their outcomes, acceptance criteria not
 verified, and any material limits on confidence. If no actionable issue is found,
 say so without treating that as proof of complete correctness. Update an
-interaction log only when repository writes are in scope; otherwise return the
-review evidence for the author to record.
+Update an interaction log for every meaningful review according to the repository convention. When no repository artifact is requested, return the review evidence as well; do not omit the log solely because the review makes no repository writes.
