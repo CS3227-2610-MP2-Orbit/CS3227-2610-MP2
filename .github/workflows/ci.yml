@@ -12,6 +12,20 @@ jobs:
   validate:
     name: Validate
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: CS3227
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d CS3227"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -43,6 +57,11 @@ jobs:
 
       - name: Integration tests
         run: ./gradlew test --tests 'seedu.eventmanager.integration.*'
+        env:
+          DATABASE_URL: jdbc:postgresql://localhost:5432/CS3227
+          DATABASE_USER: postgres
+          DATABASE_PASSWORD: postgres
+          DATABASE_INTEGRATION_TESTS: 'true'
 
       - name: E2E tests
         run: ./gradlew test --tests 'seedu.eventmanager.e2e.*'
