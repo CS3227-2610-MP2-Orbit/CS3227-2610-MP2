@@ -22,6 +22,8 @@ import seedu.eventmanager.storage.JdbcVenueRepository;
 import seedu.eventmanager.service.VenueRepository;
 import seedu.eventmanager.storage.JdbcVenueAvailabilityRepository;
 import seedu.eventmanager.service.VenueAvailabilityRepository;
+import seedu.eventmanager.service.UserAccessRepository;
+import seedu.eventmanager.storage.JdbcUserAccessRepository;
 
 /** Initial JavaFX shell for the Venue Administrator frontend. */
 public final class VenueAdministratorFxApplication extends Application {
@@ -68,6 +70,7 @@ public final class VenueAdministratorFxApplication extends Application {
         VenueAdministratorDashboardView[] dashboardView = new VenueAdministratorDashboardView[1];
         VenueManagementView[] venueView = new VenueManagementView[1];
         VenueAvailabilityView[] availabilityView = new VenueAvailabilityView[1];
+        UserAccessView[] usersView = new UserAccessView[1];
         VenueAdministratorDashboardController controller = new VenueAdministratorDashboardController(
                 session.actor(), authorization, client, state -> {
                     if (requestView[0] != null) {
@@ -83,10 +86,14 @@ public final class VenueAdministratorFxApplication extends Application {
         VenueAvailabilityRepository availabilityRepository = new JdbcVenueAvailabilityRepository(database);
         availabilityView[0] = new VenueAvailabilityView(availabilityRepository,
                 () -> root.setCenter(dashboardView[0].root()));
+        UserAccessRepository userRepository = new JdbcUserAccessRepository(database, new PasswordHasher());
+        usersView[0] = new UserAccessView(userRepository,
+                () -> root.setCenter(dashboardView[0].root()));
         VenueAdministratorDashboardView dashboard = new VenueAdministratorDashboardView(
                 session, () -> showLogin(stage, root), () -> root.setCenter(requestView[0].root()),
                 () -> root.setCenter(venueView[0].root()),
-                () -> root.setCenter(availabilityView[0].root()));
+                () -> root.setCenter(availabilityView[0].root()),
+                () -> root.setCenter(usersView[0].root()));
         dashboardView[0] = dashboard;
         dashboard.update(controller.state());
         root.setCenter(dashboard.root());

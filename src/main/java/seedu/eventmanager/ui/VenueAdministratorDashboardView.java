@@ -21,14 +21,17 @@ public final class VenueAdministratorDashboardView {
     private final Runnable showRequests;
     private final Runnable showVenues;
     private final Runnable showAvailability;
+    private final Runnable showUsers;
 
     public VenueAdministratorDashboardView(JdbcLocalSessionService.Session session,
-            Runnable onLogout, Runnable showRequests, Runnable showVenues, Runnable showAvailability) {
+            Runnable onLogout, Runnable showRequests, Runnable showVenues, Runnable showAvailability,
+            Runnable showUsers) {
         Objects.requireNonNull(session);
         Objects.requireNonNull(onLogout);
         this.showRequests = Objects.requireNonNull(showRequests);
         this.showVenues = Objects.requireNonNull(showVenues);
         this.showAvailability = Objects.requireNonNull(showAvailability);
+        this.showUsers = Objects.requireNonNull(showUsers);
         root.setStyle("-fx-background-color: #f7f9fc;");
         root.setLeft(sidebar(onLogout));
         showOverview(session);
@@ -56,7 +59,7 @@ public final class VenueAdministratorDashboardView {
         addNavigation(sidebar, "Venue requests", showRequests);
         addNavigation(sidebar, "Venues", showVenues);
         addNavigation(sidebar, "Availability", showAvailability);
-        addNavigation(sidebar, "Users and access", () -> showPlaceholder("Users and access"));
+        addNavigation(sidebar, "Users and access", showUsers);
         addNavigation(sidebar, "Audit activity", () -> showPlaceholder("Audit activity"));
 
         VBox spacer = new VBox();
