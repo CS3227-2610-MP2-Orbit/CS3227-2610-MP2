@@ -11,7 +11,7 @@ import javax.sql.DataSource;
 /** Applies the idempotent schema required by the current application. */
 public final class DatabaseMigration {
     private static final String MIGRATION_RESOURCE =
-            "/db/migration/V1__create_organizer_events.sql";
+            "/db/organizer/V1__create_organizer_events.sql";
 
     private final DataSource dataSource;
 

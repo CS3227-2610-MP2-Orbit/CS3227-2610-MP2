@@ -6,22 +6,29 @@ The project is organized by responsibility. Event, venue, attendee,
 registration, notification, and volunteer packages contain domain features.
 Shared concerns are separated into common, storage, service, and UI packages.
 
-The event workflow keeps JavaFX and JDBC behind application/domain boundaries:
+The Club Organizer event workflow keeps JavaFX and JDBC behind application and
+domain boundaries: `EventService` validates commands and ownership,
+`EventRepository` defines persistence plus business-audit writes, and
+`OrganizerEventView` contains presentation logic only. It stores events in the
+organizer-specific `organizer_event` tables.
 
-- `EventService` validates commands and enforces club ownership.
-- `EventRepository` defines persistence plus atomic business-audit writes.
-- `JdbcEventRepository` stores events and audit records in one PostgreSQL
-  transaction and uses the event version for optimistic concurrency control.
-- `OrganizerEventView` is the JavaFX create/edit screen and does not contain
-  authorization or persistence rules.
-- `SingaporeDateTimes` converts date-picker and `HH:mm` values in
-  `Asia/Singapore` to UTC `Instant` values at the UI boundary. Domain and
-  PostgreSQL timestamps remain time-zone-neutral instants.
+The Venue Administrator backend is split into domain types under `venue`,
+application orchestration under `service`, and PostgreSQL schema resources
+under `src/main/resources/db/migration`.
 
-PostgreSQL connection settings come from `EVENT_MANAGER_DB_URL`,
-`EVENT_MANAGER_DB_USER`, and `EVENT_MANAGER_DB_PASSWORD`. The temporary
-development identity comes from `EVENT_MANAGER_ORGANIZER_ID` and
-`EVENT_MANAGER_CLUB_IDS`; shared authentication must replace this adapter.
+The Venue Administrator presentation layer is framework-neutral. It consists
+of `VenueAdministratorDashboardController`,
+`VenueAdministratorDashboardState`, and `VenueAdministratorApiClient` under
+`ui`. These classes model the dashboard sections and UI states without
+duplicating backend validation or authorization. The current JavaFX layer adds
+a local login view, dashboard shell, venue-request review screen, and venue
+management screen on top of these boundaries.
+
+`Main` launches the shared JavaFX home screen. That screen routes to the Club
+Organizer and Venue Administrator workspaces, but it deliberately does not
+join their independent business workflows. The organizer schema resource lives
+outside Flyway's venue migration folder so the two modules do not define the
+same Flyway migration version.
 
 ## Team ownership
 
@@ -34,24 +41,48 @@ development identity comes from `EVENT_MANAGER_ORGANIZER_ID` and
 
 Run the tests before submitting changes:
 
-```sh
-./gradlew test
-```
-
-On Windows:
-
 ```powershell
 .\gradlew.bat test
 ```
 
-The PostgreSQL repository integration test runs when an isolated test database
-is supplied through `EVENT_MANAGER_TEST_DB_URL` and, if needed,
-`EVENT_MANAGER_TEST_DB_USER` and `EVENT_MANAGER_TEST_DB_PASSWORD`. The test
-truncates the organizer-event and organizer-event-audit tables, so never point it
-at a shared or production database.
-
 Update documentation, tests, and logs whenever behaviour or design changes.
 
+## Current implementation status
+
+Implemented:
+
+- Venue request state types and validation
+- Backend Venue Administrator approval and rejection orchestration
+- Role enforcement through the authorization boundary
+- PostgreSQL configuration through environment variables and local `.env`
+- Flyway migration bootstrap
+- PostgreSQL request and booking repositories
+- JDBC transaction boundary with commit and rollback handling
+- Durable PostgreSQL audit logging for approval and rejection decisions
+- Transactional notification outbox with idempotency protection
+- Notification and authorization service boundaries
+- PostgreSQL schema migration for venues, availability, requests, bookings,
+  audit logs, and notification outbox
+- Venue Administrator dashboard presentation state and controller
+- JavaFX Venue Administrator login and dashboard shell
+- JavaFX venue request review with approval and rejection actions
+- JavaFX venue listing backed by PostgreSQL
+
+Not yet implemented:
+
+- Authentication/session implementation and production object-scope authorization
+- Notification delivery worker and retry processor
+- HTTP routes or a concrete API client
+- Venue create, edit, activate/deactivate, and delete workflows
+- Availability and schedule management UI
+- Users and access management UI
+- Organizer map and venue discovery UI
+- Database-backed integration tests against PostgreSQL
+- Organizer-to-venue request integration
+- Deployment configuration and production monitoring backend
+
+Until a frontend runtime is added, `gradlew.bat run` starts the application
+entry point and prints a readiness message; it does not open a dashboard.
 ### Agentic SE workflow
 
 Project-wide agent instructions are in [`AGENTS.md`](../AGENTS.md). Three shared

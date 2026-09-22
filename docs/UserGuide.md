@@ -9,56 +9,62 @@ Detailed feature instructions will be added as features are implemented.
 
 ## Setup
 
-Install JDK 25 and PostgreSQL. Create a PostgreSQL database and application user,
-then provide the connection through environment variables. Do not put database
-credentials in the repository or interaction logs.
-
-```sh
-export EVENT_MANAGER_DB_URL='jdbc:postgresql://localhost:5432/event_manager'
-export EVENT_MANAGER_DB_USER='event_manager'
-export EVENT_MANAGER_DB_PASSWORD='<your local password>'
-```
-
-Until shared authentication is integrated, the development adapter uses
-`demo-organizer` and `demo-club`. Override those identifiers when needed:
-
-```sh
-export EVENT_MANAGER_ORGANIZER_ID='organizer-1'
-export EVENT_MANAGER_CLUB_IDS='club-1,club-2'
-```
-
-Run from the project root on macOS/Linux:
-
-```sh
-./gradlew run
-```
-
-Run on Windows:
+Install JDK 25 and run from the project root:
 
 ```powershell
 .\gradlew.bat run
 ```
 
-The application creates its event and business-audit tables if they do not
-exist. If PostgreSQL is unavailable, it displays a configuration message without
-showing connection credentials.
+The application opens a home screen. Select **Club Organizer** to create or
+edit events, or **Venue Administrator** to open Jordan's venue workspace.
 
 ## Club Organizer: create and edit events
 
-1. Select **New event** and choose one of the organizer's clubs.
-2. Enter a title, optional description, start and end dates, 24-hour Singapore
+1. Select **Club Organizer** on the home screen.
+2. Select **New event**, then choose one of the organizer's clubs.
+3. Enter a title, optional description, start and end dates, 24-hour Singapore
    times such as `18:00`, and a positive capacity.
-3. Select **Save event**. The event is stored as a draft.
-4. Select a draft in **Your events**, change its details, and save again.
+4. Select **Save event**. The event is stored as a draft.
 
-The start must precede the end. An organizer can view and edit only events for
-clubs supplied by the authenticated-identity contract. Concurrent edits made
-from an outdated event version are rejected instead of overwriting newer data.
-The UI displays Singapore Time (SGT); timestamps are converted to UTC internally
-for consistent PostgreSQL storage.
+The organizer screen currently uses development identity values supplied at
+startup (`EVENT_MANAGER_ORGANIZER_ID` and `EVENT_MANAGER_CLUB_IDS`). It stores
+event timestamps internally as UTC while displaying Singapore Time (SGT).
 
-## Current status
+## Venue Administrator dashboard
 
-Create/edit events is implemented for the Club Organizer role. Venue requests,
-publication, advanced capacity rules, volunteers, registration viewing,
-announcements, and shared login are not yet implemented.
+The Venue Administrator presentation layer currently defines the dashboard
+sections for:
+
+- Pending venue requests
+- Upcoming approved bookings
+- Venue availability
+- Conflict and validation warnings
+- Recent decisions and activity
+
+The controller supports loading, empty, success, and error states, and allows
+approval or rejection of requests through the API client boundary. Rejections
+require a reason. Backend authorization and validation remain authoritative.
+
+The backend persistence foundation includes PostgreSQL repositories, transaction
+handling, audit logging, and a notification outbox. The outbox stores approval
+and rejection notifications for later delivery; it does not yet send email or
+in-app messages.
+
+The current JavaFX prototype provides:
+
+- A local Venue Administrator login screen.
+- A dashboard with sidebar navigation and summary cards.
+- A venue-request table with approve and reject actions.
+- A venue listing showing name, location, capacity, and status.
+
+Venue CRUD forms, availability management, user access management, and the
+organizer map are planned for later iterations.
+
+## Current limitations
+
+The role home screen only routes between the two existing role workspaces. It
+does not yet create venue requests from organizer events, so a venue
+administrator cannot approve an event created through the organizer screen.
+The Venue Administrator workspace uses its own local-login and database setup;
+shared authentication and the organizer-to-venue workflow remain team
+integration work.
