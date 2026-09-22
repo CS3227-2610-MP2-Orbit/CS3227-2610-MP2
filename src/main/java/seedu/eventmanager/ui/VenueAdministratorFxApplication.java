@@ -13,6 +13,11 @@ import seedu.eventmanager.storage.DatabaseConfiguration;
 import seedu.eventmanager.storage.JdbcDatabase;
 import seedu.eventmanager.storage.JdbcLocalSessionService;
 import seedu.eventmanager.storage.PasswordHasher;
+import seedu.eventmanager.service.VenueAdministratorService;
+import seedu.eventmanager.service.VenueAdministratorServiceFactory;
+import seedu.eventmanager.service.VenueRequestRepository;
+import seedu.eventmanager.storage.JdbcAuthorizationService;
+import seedu.eventmanager.storage.JdbcVenueRequestRepository;
 
 /** Initial JavaFX shell for the Venue Administrator frontend. */
 public final class VenueAdministratorFxApplication extends Application {
@@ -37,7 +42,7 @@ public final class VenueAdministratorFxApplication extends Application {
             JdbcLocalSessionService sessions = new JdbcLocalSessionService(
                     new JdbcDatabase(configuration), new PasswordHasher());
             VenueAdministratorLoginView login = new VenueAdministratorLoginView(sessions,
-                    session -> showDashboardPlaceholder(stage, root, sessions, session));
+                    session -> showDashboardPlaceholder(stage, root, configuration, session));
             root.setCenter(login.root());
         } catch (RuntimeException exception) {
             Label error = new Label("Unable to start database-backed login: " + exception.getMessage());
@@ -48,9 +53,19 @@ public final class VenueAdministratorFxApplication extends Application {
     }
 
     private void showDashboardPlaceholder(Stage stage, BorderPane root,
-            JdbcLocalSessionService sessions, JdbcLocalSessionService.Session session) {
+            DatabaseConfiguration configuration, JdbcLocalSessionService.Session session) {
+        JdbcDatabase database = new JdbcDatabase(configuration);
+        JdbcAuthorizationService authorization = new JdbcAuthorizationService(database);
+        VenueAdministratorService workflow = VenueAdministratorServiceFactory.create(configuration, authorization);
+        VenueRequestRepository requests = new JdbcVenueRequestRepository(database);
+        JdbcVenueAdministratorApiClient client = new JdbcVenueAdministratorApiClient(
+                workflow, requests, session.actor());
+        VenueAdministratorDashboardController controller = new VenueAdministratorDashboardController(
+                session.actor(), authorization, client, ignored -> { });
         VenueAdministratorDashboardView dashboard = new VenueAdministratorDashboardView(
                 session, () -> showLogin(stage, root));
+        controller.load();
+        dashboard.update(controller.state());
         root.setCenter(dashboard.root());
     }
 

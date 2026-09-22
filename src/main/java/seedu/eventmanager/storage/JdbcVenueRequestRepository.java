@@ -6,6 +6,8 @@ import java.sql.Timestamp;
 import java.time.OffsetDateTime;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.List;
+import java.util.ArrayList;
 import seedu.eventmanager.service.VenueRequestRepository;
 import seedu.eventmanager.venue.VenueRequest;
 import seedu.eventmanager.venue.VenueRequestStatus;
@@ -33,6 +35,29 @@ public final class JdbcVenueRequestRepository implements VenueRequestRepository 
                 }
             } catch (SQLException exception) {
                 throw databaseFailure("Could not load venue request.", exception);
+            }
+        });
+    }
+
+    @Override
+    public List<VenueRequest> findSubmitted() {
+        return database.withConnection(connection -> {
+            try (var statement = connection.prepareStatement("""
+                    SELECT request_id, event_id, venue_id, organizer_id,
+                           requested_starts_at, requested_ends_at,
+                           expected_attendance, status
+                    FROM venue_requests
+                    WHERE status = 'SUBMITTED'
+                    ORDER BY submitted_at, created_at""")) {
+                try (ResultSet result = statement.executeQuery()) {
+                    List<VenueRequest> requests = new ArrayList<>();
+                    while (result.next()) {
+                        requests.add(map(result));
+                    }
+                    return requests;
+                }
+            } catch (SQLException exception) {
+                throw databaseFailure("Could not load submitted venue requests.", exception);
             }
         });
     }

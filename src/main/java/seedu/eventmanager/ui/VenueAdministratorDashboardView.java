@@ -10,12 +10,14 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import seedu.eventmanager.storage.JdbcLocalSessionService;
+import seedu.eventmanager.ui.VenueAdministratorDashboardState;
 
 /** Dashboard shell for the Venue Administrator role. */
 public final class VenueAdministratorDashboardView {
     private final BorderPane root = new BorderPane();
     private final Label pageTitle = new Label();
     private final Label contentTitle = new Label();
+    private Label pendingRequestsValue;
 
     public VenueAdministratorDashboardView(JdbcLocalSessionService.Session session,
             Runnable onLogout) {
@@ -28,6 +30,10 @@ public final class VenueAdministratorDashboardView {
 
     public BorderPane root() {
         return root;
+    }
+
+    public void update(VenueAdministratorDashboardState state) {
+        pendingRequestsValue.setText(String.valueOf(state.data().pendingRequests().size()));
     }
 
     private VBox sidebar(Runnable onLogout) {
@@ -78,7 +84,8 @@ public final class VenueAdministratorDashboardView {
         GridPane cards = new GridPane();
         cards.setHgap(16);
         cards.setVgap(16);
-        cards.add(summaryCard("Pending requests", "0", "Awaiting review"), 0, 0);
+        pendingRequestsValue = new Label("0");
+        cards.add(summaryCard("Pending requests", pendingRequestsValue, "Awaiting review"), 0, 0);
         cards.add(summaryCard("Upcoming bookings", "0", "Next 30 days"), 1, 0);
         cards.add(summaryCard("Available venues", "0", "Ready to book"), 2, 0);
         cards.add(summaryCard("Warnings", "0", "Needs attention"), 0, 1);
@@ -105,6 +112,20 @@ public final class VenueAdministratorDashboardView {
         Label titleLabel = new Label(title);
         titleLabel.setStyle("-fx-text-fill: #61708a; -fx-font-size: 13px;");
         Label valueLabel = new Label(value);
+        valueLabel.setStyle("-fx-text-fill: #172033; -fx-font-size: 28px; -fx-font-weight: bold;");
+        Label subtitleLabel = new Label(subtitle);
+        subtitleLabel.setStyle("-fx-text-fill: #61708a; -fx-font-size: 12px;");
+        VBox card = new VBox(8, titleLabel, valueLabel, subtitleLabel);
+        card.setPadding(new Insets(18));
+        card.setPrefWidth(210);
+        card.setStyle("-fx-background-color: white; -fx-background-radius: 8px;"
+                + " -fx-border-color: #e2e8f0; -fx-border-radius: 8px;");
+        return card;
+    }
+
+    private VBox summaryCard(String title, Label valueLabel, String subtitle) {
+        Label titleLabel = new Label(title);
+        titleLabel.setStyle("-fx-text-fill: #61708a; -fx-font-size: 13px;");
         valueLabel.setStyle("-fx-text-fill: #172033; -fx-font-size: 28px; -fx-font-weight: bold;");
         Label subtitleLabel = new Label(subtitle);
         subtitleLabel.setStyle("-fx-text-fill: #61708a; -fx-font-size: 12px;");
