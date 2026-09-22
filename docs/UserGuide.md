@@ -42,7 +42,8 @@ client, or authentication runtime. PostgreSQL repositories and migrations are
 present, but the application entry point is not yet wired to start the
 database-backed runtime.
 
-Running `gradlew.bat run` currently starts the Java entry point and prints a
-readiness message. It does not open a visual dashboard. A JavaFX or web view
-must be connected to the existing UI controller/state layer before the
-dashboard can be viewed interactively.
+Running `gradlew.bat run` now loads the database configuration, applies pending
+Flyway migrations, and starts the database-backed Venue Administrator runtime.
+It still does not open a visual dashboard. A JavaFX or web view must be
+connected to the existing UI controller/state layer before the dashboard can
+be viewed interactively.
