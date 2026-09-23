@@ -32,23 +32,27 @@ public final class VenueAdministratorFxApplication extends Application {
 
     @Override
     public void start(Stage stage) {
-        BorderPane root = new BorderPane();
-        root.setStyle("-fx-background-color: #f7f9fc;");
-
         stage.setTitle("Event Venue Manager");
-        stage.setScene(new Scene(root, WIDTH, HEIGHT));
-        showLogin(stage, root);
+        stage.setScene(new Scene(createRoot(), WIDTH, HEIGHT));
         stage.show();
     }
 
-    private void showLogin(Stage stage, BorderPane root) {
+    /** Creates an embeddable Venue Administrator workspace for the shared desktop shell. */
+    public BorderPane createRoot() {
+        BorderPane root = new BorderPane();
+        root.setStyle("-fx-background-color: #f7f9fc;");
+        showLogin(root);
+        return root;
+    }
+
+    private void showLogin(BorderPane root) {
         try {
             DatabaseConfiguration configuration = DatabaseBootstrap.configuration();
             DatabaseBootstrap.migrate(configuration);
             JdbcLocalSessionService sessions = new JdbcLocalSessionService(
                     new JdbcDatabase(configuration), new PasswordHasher());
             VenueAdministratorLoginView login = new VenueAdministratorLoginView(sessions,
-                    session -> showDashboardPlaceholder(stage, root, configuration, session));
+                    session -> showDashboardPlaceholder(root, configuration, session));
             root.setCenter(login.root());
         } catch (RuntimeException exception) {
             Label error = new Label("Unable to start database-backed login: " + exception.getMessage());
@@ -58,7 +62,7 @@ public final class VenueAdministratorFxApplication extends Application {
         }
     }
 
-    private void showDashboardPlaceholder(Stage stage, BorderPane root,
+    private void showDashboardPlaceholder(BorderPane root,
             DatabaseConfiguration configuration, JdbcLocalSessionService.Session session) {
         JdbcDatabase database = new JdbcDatabase(configuration);
         JdbcAuthorizationService authorization = new JdbcAuthorizationService(database);
@@ -90,7 +94,7 @@ public final class VenueAdministratorFxApplication extends Application {
         usersView[0] = new UserAccessView(userRepository,
                 () -> root.setCenter(dashboardView[0].root()));
         VenueAdministratorDashboardView dashboard = new VenueAdministratorDashboardView(
-                session, () -> showLogin(stage, root), () -> root.setCenter(requestView[0].root()),
+                session, () -> showLogin(root), () -> root.setCenter(requestView[0].root()),
                 () -> root.setCenter(venueView[0].root()),
                 () -> root.setCenter(availabilityView[0].root()),
                 () -> root.setCenter(usersView[0].root()));

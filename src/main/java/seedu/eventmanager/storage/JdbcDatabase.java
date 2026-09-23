@@ -3,6 +3,7 @@ package seedu.eventmanager.storage;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.Properties;
 import java.util.Objects;
 import java.util.function.Function;
 
@@ -51,6 +52,11 @@ public final class JdbcDatabase {
     }
 
     private Connection openConnection() throws SQLException {
-        return DriverManager.getConnection(configuration.url(), configuration.username(), configuration.password());
+        Properties properties = new Properties();
+        properties.setProperty("user", configuration.username());
+        if (configuration.password() != null && !configuration.password().isBlank()) {
+            properties.setProperty("password", configuration.password());
+        }
+        return DriverManager.getConnection(configuration.url(), properties);
     }
 }

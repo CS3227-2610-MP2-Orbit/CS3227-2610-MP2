@@ -9,11 +9,53 @@ Detailed feature instructions will be added as features are implemented.
 
 ## Setup
 
-Install JDK 25 and run from the project root:
+Install JDK 25 and a local PostgreSQL server (for example Postgres.app on macOS).
+Create a project-root `.env` (gitignored) with your database settings, for example:
+
+```env
+DATABASE_URL=jdbc:postgresql://localhost:5432/event_manager
+DATABASE_USER=your_postgres_username
+EVENT_MANAGER_DB_URL=jdbc:postgresql://localhost:5432/event_manager
+EVENT_MANAGER_DB_USER=your_postgres_username
+```
+
+Create the `event_manager` database once if it does not exist. Then run from the
+project root:
 
 ```powershell
 .\gradlew.bat run
 ```
+
+```sh
+./gradlew run
+```
+
+The application opens a home screen. Select **Club Organizer** to create or
+edit events, or **Venue Administrator** to open Jordan's venue workspace.
+Restart the app after changing `.env`.
+
+## Club Organizer: create and edit events
+
+1. Select **Club Organizer** on the home screen.
+2. Use **New event** in the left sidebar to start a blank draft (default times
+   `18:00` / `20:00` and capacity `80`). Use **← Home** in the same sidebar to
+   return to the role picker.
+3. Select **New event**, then choose one of the organizer's clubs.
+4. Enter a title, optional description, start and end dates, 24-hour Singapore
+   times such as `18:00`, and a positive capacity.
+5. Select **Save event**. The event is stored as a draft.
+
+The organizer screen currently uses development identity values supplied at
+startup (`EVENT_MANAGER_ORGANIZER_ID` and `EVENT_MANAGER_CLUB_IDS`). Clubs are
+not created through a UI button yet: set `EVENT_MANAGER_CLUB_IDS` in `.env` to a
+comma-separated list (for example `demo-club,chess-club`), then restart the app.
+It stores event timestamps internally as UTC while displaying Singapore Time
+(SGT).
+
+On the events screen, **Reset** clears a new draft form. While editing a saved
+event, the button becomes **Revert changes** and reloads the last saved draft
+from the database (discarding unsaved edits). The Organizer workspace uses a
+single sidebar chrome (no second outer Home bar) so the form can use full width.
 
 ## Venue Administrator dashboard
 
@@ -47,12 +89,11 @@ organizer map are planned for later iterations.
 
 ## Current limitations
 
-The project does not yet include an HTTP server or a production identity
-provider. The current JavaFX client uses the local session model and requires
-the PostgreSQL database to be available at startup.
-
-Running `gradlew.bat run` now loads the database configuration, applies pending
-Flyway migrations, and starts the database-backed Venue Administrator runtime.
-It still does not open a visual dashboard. A JavaFX or web view must be
-connected to the existing UI controller/state layer before the dashboard can
-be viewed interactively.
+The role home screen only routes between the two existing role workspaces. It
+does not yet create venue requests from organizer events, so a venue
+administrator cannot approve an event created through the organizer screen.
+The Venue Administrator workspace accepts the same `EVENT_MANAGER_DB_URL`,
+`EVENT_MANAGER_DB_USER`, and optional `EVENT_MANAGER_DB_PASSWORD` settings as
+the organizer workspace. It still uses its own local-login model; shared
+authentication and the organizer-to-venue workflow remain team integration
+work.

@@ -6,10 +6,15 @@ The project is organized by responsibility. Event, venue, attendee,
 registration, notification, and volunteer packages contain domain features.
 Shared concerns are separated into common, storage, service, and UI packages.
 
-The current implementation is a Java 25 Gradle skeleton. The Venue
-Administrator backend is split into domain types under `venue`, application
-orchestration under `service`, and PostgreSQL schema resources under
-`src/main/resources/db/migration`.
+The Club Organizer event workflow keeps JavaFX and JDBC behind application and
+domain boundaries: `EventService` validates commands and ownership,
+`EventRepository` defines persistence plus business-audit writes, and
+`OrganizerEventView` contains presentation logic only. It stores events in the
+organizer-specific `organizer_event` tables.
+
+The Venue Administrator backend is split into domain types under `venue`,
+application orchestration under `service`, and PostgreSQL schema resources
+under `src/main/resources/db/migration`.
 
 The Venue Administrator presentation layer is framework-neutral. It consists
 of `VenueAdministratorDashboardController`,
@@ -18,6 +23,18 @@ of `VenueAdministratorDashboardController`,
 duplicating backend validation or authorization. The current JavaFX layer adds
 a local login view, dashboard shell, venue-request review screen, and venue
 management screen on top of these boundaries.
+
+`Main` launches the shared JavaFX home screen. That screen routes to the Club
+Organizer and Venue Administrator workspaces, but it deliberately does not
+join their independent business workflows. The organizer schema resource lives
+outside Flyway's venue migration folder so the two modules do not define the
+same Flyway migration version.
+
+The Venue Administrator bootstrap accepts `DATABASE_*` settings first and
+falls back to the Organizer's `EVENT_MANAGER_DB_*` settings. This is a local
+configuration compatibility layer, not shared authentication. Flyway uses
+`baselineOnMigrate` at version `0` so existing Organizer tables (created
+outside Flyway) do not block Venue schema migrations on a shared database.
 
 ## Team ownership
 
@@ -67,18 +84,19 @@ Not yet implemented:
 - Users and access management UI
 - Organizer map and venue discovery UI
 - Database-backed integration tests against PostgreSQL
-- Runtime startup wiring from `Main` to a user-facing application
+- Organizer-to-venue request integration
 - Deployment configuration and production monitoring backend
 
 Until a frontend runtime is added, `gradlew.bat run` starts the application
 entry point and prints a readiness message; it does not open a dashboard.
 ### Agentic SE workflow
 
-Project-wide agent instructions are in [`AGENTS.md`](../AGENTS.md). Three shared
+Project-wide agent instructions are in [`AGENTS.md`](../AGENTS.md). Four shared
 SWE skills live under `.agents/skills/`: requirements and acceptance criteria,
-test-driven implementation, and code review and verification. These apply across
-all three roles. See [Agentic SE](AgenticSE.md) for invocation examples, validation
-scenarios, and the distinction between structural and behavioral validation.
+test-driven implementation, code review and verification, and desktop UI polish.
+These apply across all three roles. See [Agentic SE](AgenticSE.md) for invocation
+examples, validation scenarios, and the distinction between structural and
+behavioral validation.
 
 Record meaningful interactions under `logs/<contributor>/` using the
 [interaction template](../logs/templates/interaction.md). The student personally

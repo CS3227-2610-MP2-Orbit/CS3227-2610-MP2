@@ -24,6 +24,7 @@ they do not require delegation or additional agents.
 | Clarify feature behavior and define acceptance criteria | [requirements-and-acceptance](.agents/skills/requirements-and-acceptance/SKILL.md) |
 | Implement or fix agreed behavior using a red/green/refactor cycle | [test-driven-implementation](.agents/skills/test-driven-implementation/SKILL.md) |
 | Review a change and verify claims against evidence | [code-review-and-verification](.agents/skills/code-review-and-verification/SKILL.md) |
+| Polish JavaFX role screens for layout and shared shell look | [desktop-ui-polish](.agents/skills/desktop-ui-polish/SKILL.md) |
 
 See [Agentic SE](docs/AgenticSE.md) for invocation examples and validation cases.
 Use only the skills relevant to the task; a documentation edit does not require a
