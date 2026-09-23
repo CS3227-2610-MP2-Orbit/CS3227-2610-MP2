@@ -9,14 +9,30 @@ Detailed feature instructions will be added as features are implemented.
 
 ## Setup
 
-Install JDK 25 and run from the project root:
+Install JDK 25 and a local PostgreSQL server (for example Postgres.app on macOS).
+Create a project-root `.env` (gitignored) with your database settings, for example:
+
+```env
+DATABASE_URL=jdbc:postgresql://localhost:5432/event_manager
+DATABASE_USER=your_postgres_username
+EVENT_MANAGER_DB_URL=jdbc:postgresql://localhost:5432/event_manager
+EVENT_MANAGER_DB_USER=your_postgres_username
+```
+
+Create the `event_manager` database once if it does not exist. Then run from the
+project root:
 
 ```powershell
 .\gradlew.bat run
 ```
 
+```sh
+./gradlew run
+```
+
 The application opens a home screen. Select **Club Organizer** to create or
 edit events, or **Venue Administrator** to open Jordan's venue workspace.
+Restart the app after changing `.env`.
 
 ## Club Organizer: create and edit events
 
@@ -65,6 +81,8 @@ organizer map are planned for later iterations.
 The role home screen only routes between the two existing role workspaces. It
 does not yet create venue requests from organizer events, so a venue
 administrator cannot approve an event created through the organizer screen.
-The Venue Administrator workspace uses its own local-login and database setup;
-shared authentication and the organizer-to-venue workflow remain team
-integration work.
+The Venue Administrator workspace accepts the same `EVENT_MANAGER_DB_URL`,
+`EVENT_MANAGER_DB_USER`, and optional `EVENT_MANAGER_DB_PASSWORD` settings as
+the organizer workspace. It still uses its own local-login model; shared
+authentication and the organizer-to-venue workflow remain team integration
+work.

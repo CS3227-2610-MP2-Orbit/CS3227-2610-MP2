@@ -1,7 +1,9 @@
 package seedu.eventmanager.ui;
 
+import io.github.cdimascio.dotenv.Dotenv;
 import java.time.Clock;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -20,7 +22,9 @@ import javafx.stage.Stage;
 import seedu.eventmanager.event.EventService;
 import seedu.eventmanager.event.JdbcEventRepository;
 import seedu.eventmanager.event.OrganizerIdentity;
+import seedu.eventmanager.storage.DatabaseBootstrap;
 import seedu.eventmanager.storage.DatabaseConfig;
+import seedu.eventmanager.storage.DatabaseConfiguration;
 import seedu.eventmanager.storage.DatabaseMigration;
 import seedu.eventmanager.storage.DriverManagerDataSource;
 
@@ -59,17 +63,18 @@ public final class EventManagerApplication extends Application {
 
     private void showOrganizer(BorderPane root) {
         try {
-            Map<String, String> environment = System.getenv();
-            DatabaseConfig databaseConfig = DatabaseConfig.fromEnvironment(environment);
+            DatabaseConfiguration configuration = DatabaseBootstrap.configuration();
+            DatabaseConfig databaseConfig = new DatabaseConfig(
+                    configuration.url(), configuration.username(), configuration.password());
             DriverManagerDataSource dataSource = new DriverManagerDataSource(databaseConfig);
             new DatabaseMigration(dataSource).migrate();
 
-            OrganizerIdentity organizer = organizerFrom(environment);
+            OrganizerIdentity organizer = organizerFrom(localSettings());
             EventService service = new EventService(
                     new JdbcEventRepository(dataSource), UUID::randomUUID, Clock.systemUTC());
             showWorkspace(root, "Club Organizer", new OrganizerEventView(service, organizer));
         } catch (RuntimeException | java.sql.SQLException exception) {
-            showWorkspace(root, "Club Organizer", databaseErrorView());
+            showWorkspace(root, "Club Organizer", databaseErrorView(exception));
         }
     }
 
@@ -113,14 +118,32 @@ public final class EventManagerApplication extends Application {
         return new OrganizerIdentity(organizerId, clubIds);
     }
 
-    private static VBox databaseErrorView() {
+    /** Process env vars override values from the project-root {@code .env} file. */
+    private static Map<String, String> localSettings() {
+        Map<String, String> values = new HashMap<>();
+        Dotenv dotenv = Dotenv.configure()
+                .ignoreIfMissing()
+                .ignoreIfMalformed()
+                .load();
+        dotenv.entries().forEach(entry -> values.put(entry.getKey(), entry.getValue()));
+        values.putAll(System.getenv());
+        return values;
+    }
+
+    private static VBox databaseErrorView(Exception exception) {
         Label heading = new Label("Unable to connect to the event database");
         heading.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
         Label help = new Label("""
-                Start PostgreSQL and configure EVENT_MANAGER_DB_URL, EVENT_MANAGER_DB_USER,
-                and EVENT_MANAGER_DB_PASSWORD. Connection details and credentials are not displayed.""");
+                Start Postgres.app (or another local PostgreSQL), then create a project-root .env
+                with DATABASE_URL / DATABASE_USER (or EVENT_MANAGER_DB_*). Restart the app after
+                changing .env. Passwords and full connection strings are not shown here.""");
         help.setWrapText(true);
-        VBox view = new VBox(12, heading, help);
+        Label detail = new Label(exception.getClass().getSimpleName()
+                + ": "
+                + (exception.getMessage() == null ? "no message" : exception.getMessage()));
+        detail.setWrapText(true);
+        detail.setStyle("-fx-text-fill: #6b7280;");
+        VBox view = new VBox(12, heading, help, detail);
         view.setPadding(new Insets(24));
         return view;
     }

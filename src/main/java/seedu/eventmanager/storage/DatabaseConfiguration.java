@@ -8,7 +8,6 @@ public record DatabaseConfiguration(String url, String username, String password
     public DatabaseConfiguration {
         requireNonBlank("DATABASE_URL", url);
         requireNonBlank("DATABASE_USER", username);
-        requireNonBlank("DATABASE_PASSWORD", password);
     }
 
     public static DatabaseConfiguration fromEnvironment() {

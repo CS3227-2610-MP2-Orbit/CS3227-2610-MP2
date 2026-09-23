@@ -30,6 +30,12 @@ join their independent business workflows. The organizer schema resource lives
 outside Flyway's venue migration folder so the two modules do not define the
 same Flyway migration version.
 
+The Venue Administrator bootstrap accepts `DATABASE_*` settings first and
+falls back to the Organizer's `EVENT_MANAGER_DB_*` settings. This is a local
+configuration compatibility layer, not shared authentication. Flyway uses
+`baselineOnMigrate` at version `0` so existing Organizer tables (created
+outside Flyway) do not block Venue schema migrations on a shared database.
+
 ## Team ownership
 
 - Club Organizer: events, volunteers, and announcements
