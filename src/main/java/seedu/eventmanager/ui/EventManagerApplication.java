@@ -35,13 +35,15 @@ public final class EventManagerApplication extends Application {
         stage.setTitle("Event Venue Manager");
         BorderPane root = new BorderPane();
         root.setStyle("-fx-background-color: #f7f9fc;");
-        root.setPadding(new Insets(24));
         showHome(root);
-        stage.setScene(new Scene(root, 1_100, 700));
+        stage.setScene(new Scene(root, 1_280, 800));
+        stage.setMinWidth(1_000);
+        stage.setMinHeight(640);
         stage.show();
     }
 
     private void showHome(BorderPane root) {
+        root.setPadding(new Insets(24));
         Label heading = new Label("Event Venue Manager");
         heading.setStyle("-fx-font-size: 28px; -fx-font-weight: bold;");
         Label message = new Label("Choose a workspace to continue.");
@@ -72,24 +74,30 @@ public final class EventManagerApplication extends Application {
             OrganizerIdentity organizer = organizerFrom(localSettings());
             EventService service = new EventService(
                     new JdbcEventRepository(dataSource), UUID::randomUUID, Clock.systemUTC());
-            showWorkspace(root, "Club Organizer", new OrganizerEventView(service, organizer));
+            // Edge-to-edge role shell: Home lives in the Organizer sidebar (no dual chrome).
+            root.setPadding(Insets.EMPTY);
+            root.setTop(null);
+            root.setCenter(new OrganizerEventView(service, organizer, () -> showHome(root)));
         } catch (RuntimeException | java.sql.SQLException exception) {
+            root.setPadding(new Insets(24));
             showWorkspace(root, "Club Organizer", databaseErrorView(exception));
         }
     }
 
     private void showVenueAdministrator(BorderPane root) {
+        root.setPadding(Insets.EMPTY);
         showWorkspace(root, "Venue Administrator", new VenueAdministratorFxApplication().createRoot());
     }
 
     private void showWorkspace(BorderPane root, String title, Node workspace) {
+        root.setPadding(new Insets(16, 16, 16, 16));
         Button home = new Button("← Home");
         home.setOnAction(ignored -> showHome(root));
         Label workspaceTitle = new Label(title);
         workspaceTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
         HBox header = new HBox(12, home, workspaceTitle);
         header.setAlignment(Pos.CENTER_LEFT);
-        header.setPadding(new Insets(0, 0, 16, 0));
+        header.setPadding(new Insets(0, 0, 12, 0));
         root.setTop(header);
         root.setCenter(workspace);
     }

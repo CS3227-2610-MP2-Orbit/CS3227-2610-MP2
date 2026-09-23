@@ -37,14 +37,25 @@ Restart the app after changing `.env`.
 ## Club Organizer: create and edit events
 
 1. Select **Club Organizer** on the home screen.
-2. Select **New event**, then choose one of the organizer's clubs.
-3. Enter a title, optional description, start and end dates, 24-hour Singapore
+2. Use **New event** in the left sidebar to start a blank draft (default times
+   `18:00` / `20:00` and capacity `80`). Use **← Home** in the same sidebar to
+   return to the role picker.
+3. Select **New event**, then choose one of the organizer's clubs.
+4. Enter a title, optional description, start and end dates, 24-hour Singapore
    times such as `18:00`, and a positive capacity.
-4. Select **Save event**. The event is stored as a draft.
+5. Select **Save event**. The event is stored as a draft.
 
 The organizer screen currently uses development identity values supplied at
-startup (`EVENT_MANAGER_ORGANIZER_ID` and `EVENT_MANAGER_CLUB_IDS`). It stores
-event timestamps internally as UTC while displaying Singapore Time (SGT).
+startup (`EVENT_MANAGER_ORGANIZER_ID` and `EVENT_MANAGER_CLUB_IDS`). Clubs are
+not created through a UI button yet: set `EVENT_MANAGER_CLUB_IDS` in `.env` to a
+comma-separated list (for example `demo-club,chess-club`), then restart the app.
+It stores event timestamps internally as UTC while displaying Singapore Time
+(SGT).
+
+On the events screen, **Reset** clears a new draft form. While editing a saved
+event, the button becomes **Revert changes** and reloads the last saved draft
+from the database (discarding unsaved edits). The Organizer workspace uses a
+single sidebar chrome (no second outer Home bar) so the form can use full width.
 
 ## Venue Administrator dashboard
 

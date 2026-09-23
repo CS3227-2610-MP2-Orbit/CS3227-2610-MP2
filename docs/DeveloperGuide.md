@@ -91,11 +91,12 @@ Until a frontend runtime is added, `gradlew.bat run` starts the application
 entry point and prints a readiness message; it does not open a dashboard.
 ### Agentic SE workflow
 
-Project-wide agent instructions are in [`AGENTS.md`](../AGENTS.md). Three shared
+Project-wide agent instructions are in [`AGENTS.md`](../AGENTS.md). Four shared
 SWE skills live under `.agents/skills/`: requirements and acceptance criteria,
-test-driven implementation, and code review and verification. These apply across
-all three roles. See [Agentic SE](AgenticSE.md) for invocation examples, validation
-scenarios, and the distinction between structural and behavioral validation.
+test-driven implementation, code review and verification, and desktop UI polish.
+These apply across all three roles. See [Agentic SE](AgenticSE.md) for invocation
+examples, validation scenarios, and the distinction between structural and
+behavioral validation.
 
 Record meaningful interactions under `logs/<contributor>/` using the
 [interaction template](../logs/templates/interaction.md). The student personally
