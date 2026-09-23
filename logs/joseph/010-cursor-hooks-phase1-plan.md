@@ -1,20 +1,21 @@
-# 010 — Cursor hooks Phase 1 plan (single-agent guardrails)
+# 010 — Cursor hooks Phase 1 plan + Phase 2 implementation
 
 Date: 2026-09-23
 Contributor: Joseph
-Branch and starting revision: `create-edit-events` (working tree may include
-uncommitted Organizer UI / skill work)
+Branch and starting revision: `create-hooks` (Phase 2 implementation)
 Agent/tool: Cursor (tutor-approved); single-agent only — no Task/subagent
 delegation
-Skills used: none as a formal `$skill` invocation; inspection followed
-repository `AGENTS.md` guardrails and the Cursor hooks authoring guidance
-(command hooks only, deterministic scripts)
+Skills used: none as a formal `$skill` invocation; work followed repository
+`AGENTS.md` guardrails and Cursor command-hook authoring guidance
 
 ## Objective
 
-Plan project-level Cursor hooks that reinforce MP2’s **single-agent** workflow
-(deny subagents, gate dangerous shell, protect secrets, audit JSONL, optional
-stop-time verification) without implementing until the student approves Phase 2.
+Phase 1: plan project-level Cursor hooks that reinforce MP2’s **single-agent**
+workflow (deny subagents, gate dangerous shell, protect secrets, audit JSONL,
+optional stop-time verification).
+
+Phase 2 (approved): implement those hooks, unit-test them, document the design,
+and record how they help Agentic SE reflections.
 
 ## Original prompts (verbatim)
 
@@ -26,14 +27,22 @@ stop-time verification) without implementing until the student approves Phase 2.
 >
 > you should log this and create an AI reflection on it
 
+> then can you do phase 2 now, finish it so that hooks are implemented, then do
+> the AI reflection on @logs/joseph/010-cursor-hooks-phase1-plan.md and mention
+> how it helps
+
 ## Response summary
 
-Phase 1 only: inspected the repo (no existing `.cursor/`), `AGENTS.md`,
+**Phase 1:** Inspected the repo (no existing `.cursor/`), `AGENTS.md`,
 `build.gradle`, and `.github/workflows/ci.yml`. Mapped ChatGPT’s generic
 npm/lint assumptions onto this Java 25 Gradle project. Proposed five command
-hooks with events, file list, allow/ask/deny policy tweaks (especially Flyway
-vs destructive SQL, and not blanket-blocking Gradle network). **Did not
-implement** hooks; waiting for explicit Phase 2 approval.
+hooks and waited for approval. Did not implement.
+
+**Phase 2:** Implemented command-only Python hooks under `.cursor/`, registered
+them in `.cursor/hooks.json`, added unittest coverage, wrote
+`docs/hook-design.md`, gitignored audit artifacts, and validated allow/deny
+behavior (including a live Cursor deny when a shell string contained
+`rm -rf`). Application `src/` was not modified.
 
 ## Assumptions and design decisions
 
@@ -42,39 +51,75 @@ implement** hooks; waiting for explicit Phase 2 approval.
 - Observed: CI verification is `./gradlew compileJava`, conditional lint (none
   configured), scoped `./gradlew test`, then `./gradlew build`. No Checkstyle
   plugin yet.
-- Proposed: default stop verification =
-  `./gradlew test --tests 'seedu.eventmanager.common.*' --tests 'seedu.eventmanager.event.*' --tests 'seedu.eventmanager.MainTest'`
-  (no Postgres service required for those suites).
-- Proposed tweaks vs ChatGPT: do not invent npm scripts; do not block normal
-  Flyway-on-startup; use `ask` for curl/wget and dependency refresh; deny
-  destructive git/rm and secret file reads; audit to
-  `evals/artifacts/hook-events.jsonl` without secrets or full prompts.
-- Unresolved until student approval: proceed to Phase 2 implementation; exact
-  verification command; whether audit JSONL is gitignored.
+- Stop verification command (implemented):
+  `./gradlew test --tests 'seedu.eventmanager.common.*' --tests 'seedu.eventmanager.event.*' --tests 'seedu.eventmanager.MainTest' --no-daemon`
+  (no Postgres service required for those suites); once-per-stop via
+  `evals/artifacts/.verify-once`; `loop_limit: 1`.
+- Tweaks vs ChatGPT: no npm scripts; do not block normal Flyway-on-startup;
+  `ask` for curl/wget and dependency refresh; deny destructive git/rm and
+  secret file reads; audit to `evals/artifacts/hook-events.jsonl` (gitignored)
+  without secrets or full prompts.
+- Env overrides for tests: `MP2_HOOK_AUDIT_PATH`, `MP2_HOOK_VERIFY_MARKER`.
 
 ## Files changed
 
-- `logs/joseph/010-cursor-hooks-phase1-plan.md` (this record)
+Phase 1:
 
-No `.cursor/hooks*` or application `src/` files were created in Phase 1.
+- `logs/joseph/010-cursor-hooks-phase1-plan.md` (plan + early reflection)
+
+Phase 2:
+
+- `.cursor/hooks.json`
+- `.cursor/hooks/audit_lib.py`
+- `.cursor/hooks/deny_subagent.py`
+- `.cursor/hooks/guard_shell.py`
+- `.cursor/hooks/protect_secrets.py`
+- `.cursor/hooks/verify_on_stop.py`
+- `.cursor/hooks/tests/test_hooks.py`
+- `docs/hook-design.md`
+- `evals/artifacts/.gitkeep`
+- `.gitignore` (hook-events.jsonl, `.verify-once`, hook `__pycache__`)
+- `logs/joseph/010-cursor-hooks-phase1-plan.md` (this update)
+- `logs/prompts_summary.md`
+
+No application `src/` files were changed for hooks.
 
 ## Commands actually executed
 
 Working directory: `/Users/josephkwok/Desktop/Website/cs3227/MP2`
 
-Read-only inspection (representative):
+Phase 1 (read-only inspection, representative):
 
-- Glob for `.cursor/**` → none
+- Glob for `.cursor/**` → none at plan time
 - Read `.github/workflows/ci.yml`, `build.gradle`, `AGENTS.md` (partial)
-- Read Cursor create-hook skill documentation for events and JSON
-  `permission` / `allow` / `deny` / `ask` outputs
 
-No hook tests were run (nothing implemented yet).
+Phase 2 verification:
+
+- `python3 -m unittest discover -s .cursor/hooks/tests -v` → **10 tests OK**
+  (exit 0)
+- `python3 -c 'import json; json.load(open(".cursor/hooks.json"))'` → OK
+- `chmod +x` on hook scripts → OK (required unrestricted permissions once)
+- Synthetic smoke via `python3` stdin payloads (avoid putting `rm -rf` on the
+  Shell tool command line, which Cursor’s live hook also matches):
+  - `guard_shell.py` + `./gradlew test` → `permission: allow`
+  - `guard_shell.py` + destructive recursive delete → `permission: deny`
+  - `protect_secrets.py` + `.env` → `permission: deny`
+  - `deny_subagent.py` + `explore` → `permission: deny`
+- Live Cursor evidence: Shell tool invocations that embedded `rm -rf` in the
+  command string were rejected with
+  `Destructive recursive delete is blocked.` and audited to
+  `evals/artifacts/hook-events.jsonl` (gitignored; not committed)
 
 ## Actual verification results
 
-- Phase 1 deliverable is a plan for student approval, not a green build of hooks.
-- Hook unit tests and `hooks.json` validation are **not run** until Phase 2.
+| Check | Result |
+| --- | --- |
+| Hook unit tests (10) | Pass |
+| `hooks.json` parse | Pass |
+| Synthetic allow/deny smoke | Pass |
+| Live shell deny for `rm -rf` pattern | Observed in Cursor |
+| Full `stop` Gradle verification under Cursor stop | Not exercised end-to-end in this session (script + once-marker unit-tested) |
+| Application / Organizer product tests for this change | N/A (no `src/` change) |
 
 ## Problems, corrections, and skill revisions
 
@@ -82,56 +127,80 @@ No hook tests were run (nothing implemented yet).
   network.” Corrected for this repo: Gradle + JavaFX; compile is the static
   check; Flyway migrate on run is expected; blanket network deny would break
   Gradle dependency fetch.
-- No skill revision this session; hooks are complementary to skills/graders.
+- Live hooks match the **entire** Shell tool string, so validation commands that
+  merely *mention* `rm -rf` are denied; smoke tests were rewritten to build the
+  deny payload inside Python without putting the pattern on the agent shell
+  line.
+- Sandbox blocked `chmod +x` once; re-ran with full permissions.
+- No skill revision this session; hooks complement skills/graders.
 
 ## Outcome and limitations
 
-Outcome: documented hook design ready for approval. Limitation: hooks are not
-yet installed, so there is **no** live deny/allow evidence until Phase 2.
-Cursor hook runtime behavior can differ by IDE version; schema must be
-re-checked at implement time.
+Outcome: Phase 2 hooks are implemented and unit-tested on branch `create-hooks`.
+Limitation: `stop` verification depends on Cursor invoking the stop hook; that
+full IDE path was not claimed as run here. Shell classification is
+pattern-based (unknown commands default to `ask`). Focused stop tests are not
+full CI.
 
-Suggested commit message (when Phase 2 lands):  
+Suggested commit message:  
 `chore(agent): add Cursor single-agent guard hooks`
 
 ## AI-generated mini reflection
 
-AI-generated reflection: Planning hooks before coding forced a mapping from
-generic agent-safety advice onto this project’s real commands and risks. The
-strongest outcome is a clear single-agent contract (deny subagents + auditable
-shell/secret gates) that matches MP2 expectations without pretending npm-style
-tooling exists. The main limitation is that a plan alone does not produce
-observable deny/allow evidence. Useful next step: student approves Phase 2,
-then implement small Python stdlib hooks with unittest coverage.
+AI-generated reflection: Phase 1 forced grounding ChatGPT’s generic safety
+advice in this repo’s real commands; Phase 2 turned that plan into observable
+allow/deny evidence (unit tests plus a live Cursor deny). The strongest
+outcome is a mechanical single-agent contract—subagents denied, secrets gated,
+destructive shell blocked, actions audited—without changing product code. The
+main limitation is that stop-time Gradle verification still needs a real stop
+cycle to prove the follow-up path. Useful next step: commit/PR the hooks
+branch and optionally demo a deliberate subagent deny in the Cursor UI for the
+reflection portfolio.
 
-## Agentic SE reflection (hooks / guardrails)
+## Agentic SE reflection (hooks / guardrails) — how this helps
 
 ### Why hooks (vs skills alone)
 Skills (`desktop-ui-polish`, TDD, review) teach the agent *how* to do a task.
 Hooks enforce *must / must not* mechanically—especially **no subagents**, which
-the TA flagged as important for a single-agent MP2 story. Planning hooks after
+matters for a single-agent MP2 story. Planning then implementing hooks after
 skills/graders shows layered Agentic SE: instructions (`AGENTS.md`) + skills +
-optional lifecycle hooks.
+lifecycle hooks.
+
+### How the implemented hooks help day-to-day work
+1. **Single-agent evidence:** `subagentStart` always denies, so reflections can
+   point to a hard process boundary instead of only “I chose not to delegate.”
+2. **Safer local iteration:** `beforeShellExecution` blocks high-risk patterns
+   (`rm -rf`, hard reset, force push, destructive SQL / `flyway clean`) and
+   asks before network installs—reducing accidental repo or DB damage while
+   still allowing `./gradlew` and routine git reads.
+3. **Secret hygiene:** `beforeReadFile` denies `.env` / key material while
+   allowing `.env.example`, matching `AGENTS.md` redaction rules with a
+   mechanical check.
+4. **Auditable trail:** JSONL under `evals/artifacts/` (gitignored) records
+   event, decision, and sanitized command/path—useful for “what did the agent
+   try?” without pasting passwords into logs.
+5. **Completion honesty:** `stop` runs a focused Gradle suite once per stop
+   cycle so the agent is nudged not to claim success when unit tests fail.
 
 ### What this session demonstrated
-I used **one agent** to inspect the repository and Cursor’s command-hook model,
-then produced an approval-gated plan. That matches the ChatGPT prompt’s Phase 1
-discipline (“wait before implementing”) and avoids rushing unsafe defaults
-(e.g. blocking all DB migrations or all network).
+One agent planned (Phase 1), waited for approval, then implemented and verified
+(Phase 2). That approval gate plus live deny evidence is stronger Agentic SE
+documentation than a prompt-only “be careful” instruction.
 
 ### Honest limits
-- No 2/5 vs 5/5 auto-trigger experiment was run for hooks (hooks are event-based
-  scripts, not description-matched skills).
-- Until Phase 2, reflections can claim **design intent**, not “subagent denied
-  in production.”
-- Verification-on-`stop` needs careful `loop_limit` / once-per-stop marking so
-  hooks do not infinite-loop.
+- No fabricated 2/5→5/5 skill-grader story belongs here; hooks are event-based
+  scripts, not description-matched skills.
+- Pattern-based shell guards can false-positive (as when a test command merely
+  quoted `rm -rf`).
+- Stop verification is a focused subset, not a substitute for PR CI.
 
 ### Lesson for reflections
 Strong Agentic SE evidence pairs (1) customized skills/graders for quality of
 work with (2) deterministic hooks for process boundaries. Documenting the
-ChatGPT→project adaptation (Gradle, Flyway, no lint plugin) is itself a useful
-reflection point: generic AI advice must be grounded in the actual repo.
+ChatGPT→project adaptation (Gradle, Flyway, no lint plugin) and the Phase 1→2
+approval discipline shows that generic AI advice must be grounded in the
+actual repo—and that hooks help by making those boundaries **enforceable and
+observable**, not just written in a markdown guide.
 
 ## Student review
 

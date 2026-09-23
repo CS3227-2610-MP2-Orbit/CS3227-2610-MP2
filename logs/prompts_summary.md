@@ -8,13 +8,15 @@
 - Added placeholders for source packages, tests, documentation, logs,
   releases, and a GitHub Pages website.
 
-## 2026-09-23 — Cursor hooks Phase 1 plan
+## 2026-09-23 — Cursor hooks Phase 1 plan + Phase 2 implementation
 
-- Inspected repo for hook placement; no `.cursor/` hooks existed yet.
-- Adapted a ChatGPT hooks prompt to Java/Gradle MP2 (single-agent, deny
-  subagents, shell/secret guards, JSONL audit, stop verification).
-- Presented Phase 1 plan and waited for approval before implementing.
+- Phase 1: inspected repo; adapted a ChatGPT hooks prompt to Java/Gradle MP2;
+  planned and waited for approval.
+- Phase 2: implemented `.cursor/hooks.json` + Python command hooks (deny
+  subagents, shell guard, secret-file guard, JSONL audit, stop verification),
+  unit tests (10 OK), and `docs/hook-design.md`. No `src/` changes.
 - Logged under `logs/joseph/010-cursor-hooks-phase1-plan.md` with Agentic SE
-  reflection.
+  reflection on how hooks help (mechanical single-agent evidence, safer shell,
+  secret hygiene, audit trail, stop-time honesty).
 
 These summaries should be reviewed and updated after future AI interactions.
