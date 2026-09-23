@@ -1,6 +1,7 @@
 package seedu.eventmanager.service;
 
 import seedu.eventmanager.venue.VenueRequest;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.List;
 
@@ -10,6 +11,11 @@ public interface VenueRequestRepository {
 
     default List<VenueRequest> findSubmitted() {
         return List.of();
+    }
+
+    /** Open request for an event (`DRAFT` or `SUBMITTED`), if any. */
+    default Optional<VenueRequest> findOpenByEventId(UUID eventId) {
+        return Optional.empty();
     }
 
     /** Persists a decision while retaining the audit fields required by storage. */

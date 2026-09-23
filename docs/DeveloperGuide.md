@@ -10,7 +10,11 @@ The Club Organizer event workflow keeps JavaFX and JDBC behind application and
 domain boundaries: `EventService` validates commands and ownership,
 `EventRepository` defines persistence plus business-audit writes, and
 `OrganizerEventView` contains presentation logic only. It stores events in the
-organizer-specific `organizer_event` tables.
+organizer-specific `organizer_event` tables. Organizer venue booking requests
+go through `OrganizerVenueRequestService`, which writes Jordan's
+`VenueRequest` (`SUBMITTED`) via `VenueRequestRepository` so the Venue
+Administrator pending queue can decide them. Organizer string identities are
+mapped to UUIDs by `OrganizerIds` (transitional until shared users auth).
 
 The Venue Administrator backend is split into domain types under `venue`,
 application orchestration under `service`, and PostgreSQL schema resources
@@ -73,6 +77,9 @@ Implemented:
 - JavaFX Venue Administrator login and dashboard shell
 - JavaFX venue request review with approval and rejection actions
 - JavaFX venue listing backed by PostgreSQL
+- Club Organizer create/edit draft events (`EventService` / `OrganizerEventView`)
+- Club Organizer submit venue requests into `venue_requests` as `SUBMITTED`
+  (`OrganizerVenueRequestService`) for Admin review
 
 Not yet implemented:
 
@@ -84,8 +91,10 @@ Not yet implemented:
 - Users and access management UI
 - Organizer map and venue discovery UI
 - Database-backed integration tests against PostgreSQL
-- Organizer-to-venue request integration
 - Deployment configuration and production monitoring backend
+- Unified shared authentication (Organizer env identity vs Admin local login)
+- Organizer supersede/withdraw and submit-time conflict alternatives
+- Clubs CRUD UI
 
 Until a frontend runtime is added, `gradlew.bat run` starts the application
 entry point and prints a readiness message; it does not open a dashboard.

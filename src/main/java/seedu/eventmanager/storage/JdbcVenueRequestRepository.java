@@ -2,9 +2,9 @@ package seedu.eventmanager.storage;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.time.OffsetDateTime;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.List;
 import java.util.ArrayList;
@@ -58,6 +58,30 @@ public final class JdbcVenueRequestRepository implements VenueRequestRepository 
                 }
             } catch (SQLException exception) {
                 throw databaseFailure("Could not load submitted venue requests.", exception);
+            }
+        });
+    }
+
+    @Override
+    public java.util.Optional<VenueRequest> findOpenByEventId(UUID eventId) {
+        return database.withConnection(connection -> {
+            try (var statement = connection.prepareStatement("""
+                    SELECT request_id, event_id, venue_id, organizer_id,
+                           requested_starts_at, requested_ends_at,
+                           expected_attendance, status
+                    FROM venue_requests
+                    WHERE event_id = ?
+                      AND status IN ('DRAFT', 'SUBMITTED')
+                    ORDER BY created_at
+                    LIMIT 1""")) {
+                statement.setObject(1, eventId);
+                try (ResultSet result = statement.executeQuery()) {
+                    return result.next()
+                            ? Optional.of(map(result))
+                            : Optional.empty();
+                }
+            } catch (SQLException exception) {
+                throw databaseFailure("Could not load open venue request for event.", exception);
             }
         });
     }

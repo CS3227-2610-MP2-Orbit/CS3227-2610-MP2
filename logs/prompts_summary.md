@@ -19,4 +19,12 @@
   reflection on how hooks help (mechanical single-agent evidence, safer shell,
   secret hygiene, audit trail, stop-time honesty).
 
+## 2026-09-23 — Request venues (Organizer submit)
+
+- Implemented `OrganizerVenueRequestService` + `OrganizerIds` against Jordan’s
+  `VenueRequest`/`SUBMITTED` contract; duplicate open-request guard.
+- Wired JDBC venue/request repos into Organizer app path; Request venue UI in
+  Organizer sidebar; updated UG/DG.
+- Logged under `logs/joseph/012-request-venues-implement.md`.
+
 These summaries should be reviewed and updated after future AI interactions.

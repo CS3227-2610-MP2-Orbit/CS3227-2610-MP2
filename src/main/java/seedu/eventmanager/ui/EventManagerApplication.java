@@ -22,11 +22,15 @@ import javafx.stage.Stage;
 import seedu.eventmanager.event.EventService;
 import seedu.eventmanager.event.JdbcEventRepository;
 import seedu.eventmanager.event.OrganizerIdentity;
+import seedu.eventmanager.event.OrganizerVenueRequestService;
 import seedu.eventmanager.storage.DatabaseBootstrap;
 import seedu.eventmanager.storage.DatabaseConfig;
 import seedu.eventmanager.storage.DatabaseConfiguration;
 import seedu.eventmanager.storage.DatabaseMigration;
 import seedu.eventmanager.storage.DriverManagerDataSource;
+import seedu.eventmanager.storage.JdbcDatabase;
+import seedu.eventmanager.storage.JdbcVenueRepository;
+import seedu.eventmanager.storage.JdbcVenueRequestRepository;
 
 /** Desktop application shell that routes users to the available role workspaces. */
 public final class EventManagerApplication extends Application {
@@ -66,18 +70,31 @@ public final class EventManagerApplication extends Application {
     private void showOrganizer(BorderPane root) {
         try {
             DatabaseConfiguration configuration = DatabaseBootstrap.configuration();
+            DatabaseBootstrap.migrate(configuration);
             DatabaseConfig databaseConfig = new DatabaseConfig(
                     configuration.url(), configuration.username(), configuration.password());
             DriverManagerDataSource dataSource = new DriverManagerDataSource(databaseConfig);
             new DatabaseMigration(dataSource).migrate();
 
             OrganizerIdentity organizer = organizerFrom(localSettings());
-            EventService service = new EventService(
+            EventService eventService = new EventService(
                     new JdbcEventRepository(dataSource), UUID::randomUUID, Clock.systemUTC());
+            JdbcDatabase jdbcDatabase = new JdbcDatabase(configuration);
+            JdbcVenueRepository venueRepository = new JdbcVenueRepository(jdbcDatabase);
+            OrganizerVenueRequestService venueRequestService = new OrganizerVenueRequestService(
+                    eventService,
+                    venueRepository,
+                    new JdbcVenueRequestRepository(jdbcDatabase),
+                    UUID::randomUUID);
             // Edge-to-edge role shell: Home lives in the Organizer sidebar (no dual chrome).
             root.setPadding(Insets.EMPTY);
             root.setTop(null);
-            root.setCenter(new OrganizerEventView(service, organizer, () -> showHome(root)));
+            root.setCenter(new OrganizerEventView(
+                    eventService,
+                    venueRequestService,
+                    venueRepository,
+                    organizer,
+                    () -> showHome(root)));
         } catch (RuntimeException | java.sql.SQLException exception) {
             root.setPadding(new Insets(24));
             showWorkspace(root, "Club Organizer", databaseErrorView(exception));

@@ -57,6 +57,22 @@ event, the button becomes **Revert changes** and reloads the last saved draft
 from the database (discarding unsaved edits). The Organizer workspace uses a
 single sidebar chrome (no second outer Home bar) so the form can use full width.
 
+## Club Organizer: request a venue
+
+1. Create or select an owned event under **Events** / **New event**.
+2. Open **Request venue** in the sidebar.
+3. Select the event and an **ACTIVE** venue from the list.
+4. Select **Submit request**. The request is stored as `SUBMITTED` using the
+   event's schedule and capacity as expected attendance.
+5. Open **Venue Administrator** (same database) to review pending requests and
+   approve or reject them.
+
+Organizer identity is still development-configured (`EVENT_MANAGER_ORGANIZER_ID`).
+Non-UUID organizer ids are mapped to a stable UUID for the venue pipeline
+(temporary until shared auth is unified). An event may have only one open
+(`DRAFT`/`SUBMITTED`) venue request at a time. Booking conflicts are still
+checked when the Venue Administrator approves, not at submit time.
+
 ## Venue Administrator dashboard
 
 The Venue Administrator presentation layer currently defines the dashboard
@@ -89,11 +105,12 @@ organizer map are planned for later iterations.
 
 ## Current limitations
 
-The role home screen only routes between the two existing role workspaces. It
-does not yet create venue requests from organizer events, so a venue
-administrator cannot approve an event created through the organizer screen.
-The Venue Administrator workspace accepts the same `EVENT_MANAGER_DB_URL`,
-`EVENT_MANAGER_DB_USER`, and optional `EVENT_MANAGER_DB_PASSWORD` settings as
-the organizer workspace. It still uses its own local-login model; shared
-authentication and the organizer-to-venue workflow remain team integration
-work.
+Organizer can submit venue requests into the shared `venue_requests` table so
+Venue Administrators can approve or reject them. Shared authentication is not
+unified yet: Organizer still uses env identity, while Venue Admin uses local
+login. Organizer string ids are mapped to UUIDs for `organizer_id` (name-based
+when not already a UUID). Supersede/withdraw and submit-time conflict checks
+are not implemented. Clubs are still configured via `EVENT_MANAGER_CLUB_IDS`
+(no Clubs CRUD UI). The Venue Administrator workspace accepts the same
+`EVENT_MANAGER_DB_URL`, `EVENT_MANAGER_DB_USER`, and optional
+`EVENT_MANAGER_DB_PASSWORD` settings as the organizer workspace.
