@@ -22,9 +22,18 @@ public final class VenueManagementView {
     private final BorderPane root = new BorderPane();
     private final TableView<Venue> table = new TableView<>();
     private final VenueRepository venues;
+    private final java.util.function.Consumer<UUID> onVenueCreated;
 
     public VenueManagementView(VenueRepository venues, Runnable showDashboard) {
+        this(venues, showDashboard, venueId -> { });
+    }
+
+    public VenueManagementView(
+            VenueRepository venues,
+            Runnable showDashboard,
+            java.util.function.Consumer<UUID> onVenueCreated) {
         this.venues = Objects.requireNonNull(venues);
+        this.onVenueCreated = Objects.requireNonNull(onVenueCreated);
         Objects.requireNonNull(showDashboard);
         Button back = new Button("← Dashboard");
         back.setOnAction(event -> showDashboard.run());
@@ -40,9 +49,12 @@ public final class VenueManagementView {
         edit.setOnAction(event -> editVenue());
         Button deactivate = new Button("Deactivate selected");
         deactivate.setOnAction(event -> deactivateVenue());
+        Button claimAccess = new Button("Claim access");
+        claimAccess.setOnAction(event -> claimAccess());
         Button refresh = new Button("Refresh");
         refresh.setOnAction(event -> reload());
-        javafx.scene.layout.HBox actions = new javafx.scene.layout.HBox(10, create, edit, deactivate, refresh);
+        javafx.scene.layout.HBox actions = new javafx.scene.layout.HBox(
+                10, create, edit, deactivate, claimAccess, refresh);
         VBox content = new VBox(16, back, heading, actions, table);
         content.setPadding(new Insets(28));
         root.setCenter(content);
@@ -74,8 +86,10 @@ public final class VenueManagementView {
             if (name.get().isBlank() || location.get().isBlank() || parsedCapacity <= 0) {
                 throw new IllegalArgumentException("Name, location, and positive capacity are required.");
             }
-            venues.save(new Venue(UUID.randomUUID(), name.get().trim(), location.get().trim(),
+            UUID venueId = UUID.randomUUID();
+            venues.save(new Venue(venueId, name.get().trim(), location.get().trim(),
                     parsedCapacity, null, VenueStatus.ACTIVE));
+            onVenueCreated.accept(venueId);
             reload();
         } catch (RuntimeException exception) {
             showError(exception.getMessage());
@@ -120,6 +134,21 @@ public final class VenueManagementView {
                 reload();
             }
         });
+    }
+
+    private void claimAccess() {
+        Venue selected = table.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            showError("Select a venue first.");
+            return;
+        }
+        try {
+            onVenueCreated.accept(selected.venueId());
+            new Alert(Alert.AlertType.INFORMATION,
+                    "Access granted for " + selected.name() + ".").showAndWait();
+        } catch (RuntimeException exception) {
+            showError(exception.getMessage());
+        }
     }
 
     private Optional<String> prompt(String title, String label, String value) {

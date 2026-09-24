@@ -59,13 +59,16 @@ single sidebar chrome (no second outer Home bar) so the form can use full width.
 
 ## Club Organizer: request a venue
 
-1. Create or select an owned event under **Events** / **New event**.
-2. Open **Request venue** in the sidebar.
-3. Select the event and an **ACTIVE** venue from the list.
-4. Select **Submit request**. The request is stored as `SUBMITTED` using the
+1. In **Venue Administrator**, create at least one **ACTIVE** venue under
+   **Venues** (creating a venue also grants you access to approve requests for
+   it). For older venues, select the row and use **Claim access**.
+2. Create or select an owned event under **Events** / **New event**.
+3. Open **Request venue** in the sidebar.
+4. Select the event and an **ACTIVE** venue from the list.
+5. Select **Submit request**. The request is stored as `SUBMITTED` using the
    event's schedule and capacity as expected attendance.
-5. Open **Venue Administrator** (same database) to review pending requests and
-   approve or reject them.
+6. Open **Venue Administrator** → **Venue requests** (the list reloads when you
+   open that screen) and approve or reject the pending request.
 
 Organizer identity is still development-configured (`EVENT_MANAGER_ORGANIZER_ID`).
 Non-UUID organizer ids are mapped to a stable UUID for the venue pipeline
@@ -99,9 +102,13 @@ The current JavaFX prototype provides:
 - A dashboard with sidebar navigation and summary cards.
 - A venue-request table with approve and reject actions.
 - A venue listing showing name, location, capacity, and status.
+- Creating a venue grants the logged-in administrator access to that venue;
+  **Claim access** covers venues created earlier.
+- **Venue requests** reloads pending `SUBMITTED` rows each time you open it.
 
-Venue CRUD forms, availability management, user access management, and the
-organizer map are planned for later iterations.
+Venue availability management, user access management, and the organizer map
+continue to evolve; shared authentication with Club Organizer remains future
+work.
 
 ## Current limitations
 
