@@ -18,6 +18,11 @@ public interface VenueRequestRepository {
         return Optional.empty();
     }
 
+    /** Latest request for an event in any status (most recently updated/created). */
+    default Optional<VenueRequest> findLatestByEventId(UUID eventId) {
+        return Optional.empty();
+    }
+
     /** Persists a decision while retaining the audit fields required by storage. */
     default void save(VenueRequest request, UUID decidedBy, String decisionReason) {
         save(request);

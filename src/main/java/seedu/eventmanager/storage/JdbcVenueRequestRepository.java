@@ -63,7 +63,7 @@ public final class JdbcVenueRequestRepository implements VenueRequestRepository 
     }
 
     @Override
-    public java.util.Optional<VenueRequest> findOpenByEventId(UUID eventId) {
+    public Optional<VenueRequest> findOpenByEventId(UUID eventId) {
         return database.withConnection(connection -> {
             try (var statement = connection.prepareStatement("""
                     SELECT request_id, event_id, venue_id, organizer_id,
@@ -82,6 +82,29 @@ public final class JdbcVenueRequestRepository implements VenueRequestRepository 
                 }
             } catch (SQLException exception) {
                 throw databaseFailure("Could not load open venue request for event.", exception);
+            }
+        });
+    }
+
+    @Override
+    public Optional<VenueRequest> findLatestByEventId(UUID eventId) {
+        return database.withConnection(connection -> {
+            try (var statement = connection.prepareStatement("""
+                    SELECT request_id, event_id, venue_id, organizer_id,
+                           requested_starts_at, requested_ends_at,
+                           expected_attendance, status
+                    FROM venue_requests
+                    WHERE event_id = ?
+                    ORDER BY COALESCE(updated_at, created_at) DESC, created_at DESC
+                    LIMIT 1""")) {
+                statement.setObject(1, eventId);
+                try (ResultSet result = statement.executeQuery()) {
+                    return result.next()
+                            ? Optional.of(map(result))
+                            : Optional.empty();
+                }
+            } catch (SQLException exception) {
+                throw databaseFailure("Could not load latest venue request for event.", exception);
             }
         });
     }

@@ -181,6 +181,13 @@ class OrganizerToAdminVenuePipelineE2ETest {
         }
 
         @Override
+        public Optional<VenueRequest> findLatestByEventId(UUID eventId) {
+            return byId.values().stream()
+                    .filter(request -> request.eventId().equals(eventId))
+                    .reduce((first, second) -> second);
+        }
+
+        @Override
         public boolean hasConflict(UUID venueId, OffsetDateTime startsAt, OffsetDateTime endsAt) {
             return false;
         }

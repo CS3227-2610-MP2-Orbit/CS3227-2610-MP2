@@ -151,7 +151,7 @@ Creates a new draft event owned by one of your configured clubs.
 
 ### Requesting a venue
 
-Submits a `SUBMITTED` venue booking request so a Venue Administrator can approve or reject it.
+Submits a `SUBMITTED` venue booking request so a Venue Administrator can approve or reject it, and shows the latest request status on the Organizer side.
 
 **Prerequisite:** At least one **ACTIVE** venue exists (create it under Venue Administrator → **Venues** first).
 
@@ -161,12 +161,14 @@ Submits a `SUBMITTED` venue booking request so a Venue Administrator can approve
 2. Open **Request venue**.
 3. Select the event and an **ACTIVE** venue.
 4. Select **Submit request**.
+5. Check **Request status** (`NONE`, `SUBMITTED` / pending, `APPROVED`, or `REJECTED`). Reselect the event or reopen the screen after Admin decides to refresh.
+6. Open **Venue Administrator** → **Venue requests** and approve or reject.
 
-**Expected result:** Success message includes a request id. The request uses the event’s schedule and capacity as expected attendance.
+**Expected result:** Success message includes a request id. Attendance comes from the event capacity. Submit stays disabled while status is pending (`SUBMITTED`/`DRAFT`) or `APPROVED`; after `REJECTED` you may submit again.
 
-> **Caution:** An event may have only **one open** request (`DRAFT` or `SUBMITTED`) at a time. Booking conflicts are checked when the administrator **approves**, not at submit time.
+> **Caution:** An event may have only **one open** request (`DRAFT` or `SUBMITTED`) at a time. Booking conflicts are checked when the administrator **approves**, not at submit time. Events are **not** auto-published when a venue is approved.
 
-> **Tip:** After submitting, open Venue Administrator → **Venue requests** (that screen reloads pending rows when opened).
+> **Tip:** After Admin decides, return to **Request venue** and select the event again to see the updated status.
 
 ---
 

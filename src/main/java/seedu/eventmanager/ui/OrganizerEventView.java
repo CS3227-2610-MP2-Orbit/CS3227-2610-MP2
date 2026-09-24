@@ -32,6 +32,7 @@ import seedu.eventmanager.event.OrganizerVenueRequestService;
 import seedu.eventmanager.service.VenueRepository;
 import seedu.eventmanager.venue.Venue;
 import seedu.eventmanager.venue.VenueRequest;
+import seedu.eventmanager.venue.VenueRequestStatus;
 import seedu.eventmanager.venue.VenueStatus;
 
 /**
@@ -77,6 +78,8 @@ public final class OrganizerEventView extends BorderPane {
     private final ComboBox<Venue> venuePicker = new ComboBox<>();
     private final Label requestFeedback = new Label();
     private final Label requestSummary = new Label();
+    private final Label requestStatus = new Label();
+    private final Button submitRequest = new Button("Submit request");
 
     private final VBox eventsContent;
     private final VBox requestContent;
@@ -284,7 +287,7 @@ public final class OrganizerEventView extends BorderPane {
         requestEvents.setMaxWidth(360);
         requestEvents.setPlaceholder(new Label("No events yet"));
         requestEvents.setStyle(CARD_STYLE);
-        requestEvents.setCellFactory(ignored -> eventCell());
+        requestEvents.setCellFactory(ignored -> requestEventCell());
         requestEvents.getSelectionModel().selectedItemProperty()
                 .addListener((ignored, previous, selected) -> updateRequestSummary(selected));
 
@@ -303,18 +306,20 @@ public final class OrganizerEventView extends BorderPane {
 
         requestSummary.setWrapText(true);
         requestSummary.setStyle("-fx-text-fill: #526075;");
+        requestStatus.setWrapText(true);
+        requestStatus.setStyle("-fx-text-fill: #172033; -fx-font-weight: bold;");
         requestFeedback.setWrapText(true);
 
-        Button submit = new Button("Submit request");
-        submit.setStyle(PRIMARY_BUTTON_STYLE);
-        submit.setOnAction(ignored -> submitVenueRequest());
-        HBox actions = new HBox(submit);
+        submitRequest.setStyle(PRIMARY_BUTTON_STYLE);
+        submitRequest.setOnAction(ignored -> submitVenueRequest());
+        HBox actions = new HBox(submitRequest);
         actions.setAlignment(Pos.CENTER_RIGHT);
 
         Label heading = new Label("Submit venue booking request");
         heading.setStyle("-fx-text-fill: #172033; -fx-font-size: 16px; -fx-font-weight: bold;");
         Label help = new Label(
-                "Uses the event's schedule and capacity. Venue Admin reviews SUBMITTED requests.");
+                "Uses the event's schedule and capacity. Status updates after Venue Admin decides "
+                        + "(pending / approved / rejected). This screen does not auto-publish events.");
         help.setWrapText(true);
         help.setStyle("-fx-text-fill: #61708a;");
 
@@ -334,6 +339,8 @@ public final class OrganizerEventView extends BorderPane {
         form.add(venuePicker, 1, 0);
         form.add(fieldLabel("From event"), 0, 1);
         form.add(requestSummary, 1, 1);
+        form.add(fieldLabel("Request status"), 0, 2);
+        form.add(requestStatus, 1, 2);
 
         VBox formCard = new VBox(16, heading, help, form, requestFeedback, actions);
         formCard.setPadding(new Insets(22));
@@ -362,6 +369,27 @@ public final class OrganizerEventView extends BorderPane {
                 setText(empty || event == null
                         ? null
                         : event.title() + "\n" + SingaporeDateTimes.display(event.startsAt()));
+            }
+        };
+    }
+
+    private ListCell<Event> requestEventCell() {
+        return new ListCell<>() {
+            @Override
+            protected void updateItem(Event event, boolean empty) {
+                super.updateItem(event, empty);
+                if (empty || event == null) {
+                    setText(null);
+                    return;
+                }
+                String status = venueRequestService.latestRequest(actor, event.id())
+                        .map(request -> request.status().name())
+                        .orElse("NONE");
+                setText(event.title()
+                        + "\n"
+                        + SingaporeDateTimes.display(event.startsAt())
+                        + "\nVenue request: "
+                        + status);
             }
         };
     }
@@ -435,6 +463,8 @@ public final class OrganizerEventView extends BorderPane {
     private void updateRequestSummary(Event event) {
         if (event == null) {
             requestSummary.setText("Select an event from the list.");
+            requestStatus.setText("—");
+            submitRequest.setDisable(true);
             return;
         }
         requestSummary.setText(
@@ -445,6 +475,29 @@ public final class OrganizerEventView extends BorderPane {
                         + SingaporeDateTimes.display(event.endsAt())
                         + "\nCapacity / expected attendance: "
                         + event.capacity());
+        try {
+            var latest = venueRequestService.latestRequest(actor, event.id());
+            if (latest.isEmpty()) {
+                requestStatus.setText("NONE — no venue request yet.");
+                submitRequest.setDisable(false);
+                return;
+            }
+            VenueRequest request = latest.get();
+            requestStatus.setText(
+                    request.status().name()
+                            + "\nRequest id: "
+                            + request.requestId()
+                            + "\nVenue id: "
+                            + request.venueId());
+            // Block another submit while pending or already approved; allow after reject/withdraw.
+            boolean blockSubmit = request.status() == VenueRequestStatus.SUBMITTED
+                    || request.status() == VenueRequestStatus.DRAFT
+                    || request.status() == VenueRequestStatus.APPROVED;
+            submitRequest.setDisable(blockSubmit);
+        } catch (RuntimeException exception) {
+            requestStatus.setText("Could not load status: " + exception.getMessage());
+            submitRequest.setDisable(true);
+        }
     }
 
     private void submitVenueRequest() {
@@ -461,10 +514,13 @@ public final class OrganizerEventView extends BorderPane {
         try {
             VenueRequest request = venueRequestService.submit(actor, event.id(), venue.venueId());
             setRequestFeedback(
-                    "Request submitted (" + request.requestId() + "). Venue Admin can review it.",
+                    "Request submitted (" + request.requestId() + "). Status is SUBMITTED (pending Admin).",
                     false);
+            requestEvents.refresh();
+            updateRequestSummary(event);
         } catch (RuntimeException exception) {
             setRequestFeedback(exception.getMessage(), true);
+            updateRequestSummary(event);
         }
     }
 

@@ -122,6 +122,43 @@ class OrganizerVenueRequestServiceTest {
         assertEquals(first, requests.saved.getFirst());
     }
 
+    @Test
+    void latestRequest_none_returnsEmpty() {
+        assertTrue(service.latestRequest(ORGANIZER, EVENT_ID).isEmpty());
+    }
+
+    @Test
+    void latestRequest_afterSubmit_returnsSubmitted() {
+        service.submit(ORGANIZER, EVENT_ID, VENUE_ID);
+        VenueRequest latest = service.latestRequest(ORGANIZER, EVENT_ID).orElseThrow();
+        assertEquals(VenueRequestStatus.SUBMITTED, latest.status());
+        assertEquals(REQUEST_ID, latest.requestId());
+    }
+
+    @Test
+    void latestRequest_afterDecision_returnsDecidedStatus() {
+        service.submit(ORGANIZER, EVENT_ID, VENUE_ID);
+        VenueRequest submitted = requests.saved.getFirst();
+        requests.save(new VenueRequest(
+                submitted.requestId(),
+                submitted.eventId(),
+                submitted.venueId(),
+                submitted.organizerId(),
+                submitted.startsAt(),
+                submitted.endsAt(),
+                submitted.expectedAttendance(),
+                VenueRequestStatus.APPROVED));
+
+        VenueRequest latest = service.latestRequest(ORGANIZER, EVENT_ID).orElseThrow();
+        assertEquals(VenueRequestStatus.APPROVED, latest.status());
+    }
+
+    @Test
+    void latestRequest_unownedEvent_rejected() {
+        assertThrows(AccessDeniedException.class,
+                () -> service.latestRequest(OTHER, EVENT_ID));
+    }
+
     private static final class InMemoryEventRepository implements EventRepository {
         private final Map<UUID, Event> store = new HashMap<>();
         private final List<EventAuditRecord> auditRecords = new ArrayList<>();
@@ -192,6 +229,17 @@ class OrganizerVenueRequestServiceTest {
                     .filter(request -> request.status() == VenueRequestStatus.SUBMITTED
                             || request.status() == VenueRequestStatus.DRAFT)
                     .findFirst();
+        }
+
+        @Override
+        public Optional<VenueRequest> findLatestByEventId(UUID eventId) {
+            for (int index = saved.size() - 1; index >= 0; index--) {
+                VenueRequest request = saved.get(index);
+                if (request.eventId().equals(eventId)) {
+                    return Optional.of(request);
+                }
+            }
+            return Optional.empty();
         }
     }
 }

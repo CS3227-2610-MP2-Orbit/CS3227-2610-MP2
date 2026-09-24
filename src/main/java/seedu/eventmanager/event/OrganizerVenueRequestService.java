@@ -3,6 +3,7 @@ package seedu.eventmanager.event;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import seedu.eventmanager.common.EntityNotFoundException;
 import seedu.eventmanager.common.ValidationException;
@@ -61,5 +62,16 @@ public final class OrganizerVenueRequestService {
         VenueRequestValidator.validate(request);
         requests.save(request);
         return request;
+    }
+
+    /**
+     * Latest venue-request status for an owned event, if any.
+     * Read-only; does not invent publish/lifecycle side effects.
+     */
+    public Optional<VenueRequest> latestRequest(OrganizerIdentity actor, UUID eventId) {
+        Objects.requireNonNull(actor, "actor");
+        Objects.requireNonNull(eventId, "eventId");
+        eventService.getEvent(actor, eventId);
+        return requests.findLatestByEventId(eventId);
     }
 }
