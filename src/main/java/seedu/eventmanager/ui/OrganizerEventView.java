@@ -24,6 +24,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import seedu.eventmanager.event.CapacityUpdateResult;
 import seedu.eventmanager.event.Event;
 import seedu.eventmanager.event.EventDetails;
 import seedu.eventmanager.event.EventService;
@@ -159,7 +160,8 @@ public final class OrganizerEventView extends BorderPane {
         home.setOnAction(ignored -> onHome.run());
 
         sidebar.getChildren().addAll(
-                brand, role, eventsNav, newEventNav, requestVenueNav, spacer, clubsHint, identity, home);
+                brand, role, eventsNav, newEventNav, requestVenueNav,
+                spacer, clubsHint, identity, home);
         return sidebar;
     }
 
@@ -544,8 +546,17 @@ public final class OrganizerEventView extends BorderPane {
                 saved = service.createEvent(actor, club.getValue(), details);
                 setFeedback("Event created as a draft.", false);
             } else {
-                saved = service.editEvent(actor, editingEventId, editingVersion, details);
-                setFeedback("Draft event updated.", false);
+                CapacityUpdateResult result =
+                        service.editEvent(actor, editingEventId, editingVersion, details);
+                saved = result.event();
+                String message = switch (result.syncStatus()) {
+                    case PENDING_REQUEST_SYNCED ->
+                            "Draft event updated. Pending venue request attendance synced.";
+                    case DECIDED_REQUEST_UNCHANGED ->
+                            "Draft event updated. Venue request already decided — attendance left unchanged.";
+                    case NO_OPEN_REQUEST -> "Draft event updated.";
+                };
+                setFeedback(message, false);
             }
             refreshEvents(saved.id());
         } catch (RuntimeException exception) {

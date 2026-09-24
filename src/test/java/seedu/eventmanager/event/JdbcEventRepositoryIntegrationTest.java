@@ -68,7 +68,7 @@ class JdbcEventRepositoryIntegrationTest {
                         "Edited",
                         original.startsAt(),
                         original.endsAt(),
-                        100));
+                        100)).event();
 
         assertEquals(edited, repository.findById(EVENT_ID).orElseThrow());
         assertEquals(1, edited.version());

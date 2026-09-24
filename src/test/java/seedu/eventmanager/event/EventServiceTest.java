@@ -2,9 +2,11 @@ package seedu.eventmanager.event;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -18,10 +20,15 @@ import org.junit.jupiter.api.Test;
 import seedu.eventmanager.common.AccessDeniedException;
 import seedu.eventmanager.common.EntityNotFoundException;
 import seedu.eventmanager.common.ValidationException;
+import seedu.eventmanager.service.VenueRequestRepository;
+import seedu.eventmanager.venue.VenueRequest;
+import seedu.eventmanager.venue.VenueRequestStatus;
 
 class EventServiceTest {
     private static final Instant NOW = Instant.parse("2026-09-22T10:00:00Z");
     private static final UUID EVENT_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    private static final UUID REQUEST_ID = UUID.fromString("00000000-0000-0000-0000-0000000000c1");
+    private static final UUID VENUE_ID = UUID.fromString("00000000-0000-0000-0000-0000000000b1");
     private static final OrganizerIdentity ORGANIZER =
             new OrganizerIdentity("organizer-1", Set.of("club-1"));
     private static final EventDetails VALID_DETAILS = new EventDetails(
@@ -32,12 +39,15 @@ class EventServiceTest {
             80);
 
     private InMemoryEventRepository repository;
+    private FakeVenueRequestRepository requests;
     private EventService service;
 
     @BeforeEach
     void setUp() {
         repository = new InMemoryEventRepository();
-        service = new EventService(repository, () -> EVENT_ID, Clock.fixed(NOW, ZoneOffset.UTC));
+        requests = new FakeVenueRequestRepository();
+        service = new EventService(
+                repository, () -> EVENT_ID, Clock.fixed(NOW, ZoneOffset.UTC), requests);
     }
 
     @Test
@@ -100,7 +110,7 @@ class EventServiceTest {
                 Instant.parse("2026-10-02T13:00:00Z"),
                 100);
 
-        Event edited = service.editEvent(ORGANIZER, EVENT_ID, 0, editedDetails);
+        Event edited = service.editEvent(ORGANIZER, EVENT_ID, 0, editedDetails).event();
 
         assertEquals("Updated Campus Night", edited.title());
         assertEquals("Updated description", edited.description());
@@ -111,6 +121,211 @@ class EventServiceTest {
         assertEquals(edited, repository.findById(EVENT_ID).orElseThrow());
         assertEquals(EventAuditRecord.Action.EDIT_EVENT, repository.auditRecords.getLast().action());
         assertEquals(1, repository.auditRecords.getLast().resultingVersion());
+    }
+
+    @Test
+    void editEvent_capacityChange_withOpenSubmitted_syncsAttendance() {
+        service.createEvent(ORGANIZER, "club-1", VALID_DETAILS);
+        OffsetDateTime start = OffsetDateTime.parse("2026-10-01T10:00:00Z");
+        requests.save(new VenueRequest(
+                REQUEST_ID,
+                EVENT_ID,
+                VENUE_ID,
+                OrganizerIds.toUuid("organizer-1"),
+                start,
+                start.plusHours(2),
+                80,
+                VenueRequestStatus.SUBMITTED));
+
+        CapacityUpdateResult result = service.editEvent(
+                ORGANIZER,
+                EVENT_ID,
+                0,
+                new EventDetails(
+                        VALID_DETAILS.title(),
+                        VALID_DETAILS.description(),
+                        VALID_DETAILS.startsAt(),
+                        VALID_DETAILS.endsAt(),
+                        95));
+
+        assertEquals(95, result.event().capacity());
+        assertEquals(CapacityUpdateResult.SyncStatus.PENDING_REQUEST_SYNCED, result.syncStatus());
+        assertEquals(95, requests.get(REQUEST_ID).expectedAttendance());
+        assertEquals(VenueRequestStatus.SUBMITTED, requests.get(REQUEST_ID).status());
+    }
+
+    @Test
+    void editEvent_capacityChange_whenApproved_doesNotChangeRequestAttendance() {
+        service.createEvent(ORGANIZER, "club-1", VALID_DETAILS);
+        OffsetDateTime start = OffsetDateTime.parse("2026-10-01T10:00:00Z");
+        requests.save(new VenueRequest(
+                REQUEST_ID,
+                EVENT_ID,
+                VENUE_ID,
+                OrganizerIds.toUuid("organizer-1"),
+                start,
+                start.plusHours(2),
+                80,
+                VenueRequestStatus.APPROVED));
+
+        CapacityUpdateResult result = service.editEvent(
+                ORGANIZER,
+                EVENT_ID,
+                0,
+                new EventDetails(
+                        VALID_DETAILS.title(),
+                        VALID_DETAILS.description(),
+                        VALID_DETAILS.startsAt(),
+                        VALID_DETAILS.endsAt(),
+                        50));
+
+        assertEquals(50, result.event().capacity());
+        assertEquals(CapacityUpdateResult.SyncStatus.DECIDED_REQUEST_UNCHANGED, result.syncStatus());
+        assertEquals(80, requests.get(REQUEST_ID).expectedAttendance());
+    }
+
+    @Test
+    void editEvent_capacityChange_withOpenDraft_syncsAttendance() {
+        service.createEvent(ORGANIZER, "club-1", VALID_DETAILS);
+        OffsetDateTime start = OffsetDateTime.parse("2026-10-01T10:00:00Z");
+        requests.save(new VenueRequest(
+                REQUEST_ID,
+                EVENT_ID,
+                VENUE_ID,
+                OrganizerIds.toUuid("organizer-1"),
+                start,
+                start.plusHours(2),
+                80,
+                VenueRequestStatus.DRAFT));
+
+        CapacityUpdateResult result = service.editEvent(
+                ORGANIZER,
+                EVENT_ID,
+                0,
+                new EventDetails(
+                        VALID_DETAILS.title(),
+                        VALID_DETAILS.description(),
+                        VALID_DETAILS.startsAt(),
+                        VALID_DETAILS.endsAt(),
+                        110));
+
+        assertEquals(CapacityUpdateResult.SyncStatus.PENDING_REQUEST_SYNCED, result.syncStatus());
+        assertEquals(110, requests.get(REQUEST_ID).expectedAttendance());
+        assertEquals(VenueRequestStatus.DRAFT, requests.get(REQUEST_ID).status());
+    }
+
+    @Test
+    void editEvent_capacityChange_whenRejected_doesNotChangeRequestAttendance() {
+        service.createEvent(ORGANIZER, "club-1", VALID_DETAILS);
+        OffsetDateTime start = OffsetDateTime.parse("2026-10-01T10:00:00Z");
+        requests.save(new VenueRequest(
+                REQUEST_ID,
+                EVENT_ID,
+                VENUE_ID,
+                OrganizerIds.toUuid("organizer-1"),
+                start,
+                start.plusHours(2),
+                80,
+                VenueRequestStatus.REJECTED));
+
+        CapacityUpdateResult result = service.editEvent(
+                ORGANIZER,
+                EVENT_ID,
+                0,
+                new EventDetails(
+                        VALID_DETAILS.title(),
+                        VALID_DETAILS.description(),
+                        VALID_DETAILS.startsAt(),
+                        VALID_DETAILS.endsAt(),
+                        40));
+
+        assertEquals(40, result.event().capacity());
+        assertEquals(CapacityUpdateResult.SyncStatus.DECIDED_REQUEST_UNCHANGED, result.syncStatus());
+        assertEquals(80, requests.get(REQUEST_ID).expectedAttendance());
+        assertTrue(requests.attendanceUpdates.isEmpty());
+    }
+
+    @Test
+    void editEvent_capacityChange_withNoRequest_reportsNoOpenRequest() {
+        service.createEvent(ORGANIZER, "club-1", VALID_DETAILS);
+
+        CapacityUpdateResult result = service.editEvent(
+                ORGANIZER,
+                EVENT_ID,
+                0,
+                new EventDetails(
+                        VALID_DETAILS.title(),
+                        VALID_DETAILS.description(),
+                        VALID_DETAILS.startsAt(),
+                        VALID_DETAILS.endsAt(),
+                        60));
+
+        assertEquals(60, result.event().capacity());
+        assertEquals(CapacityUpdateResult.SyncStatus.NO_OPEN_REQUEST, result.syncStatus());
+        assertTrue(requests.attendanceUpdates.isEmpty());
+    }
+
+    @Test
+    void editEvent_staleVersion_withOpenRequest_leavesAttendanceUnchanged() {
+        service.createEvent(ORGANIZER, "club-1", VALID_DETAILS);
+        OffsetDateTime start = OffsetDateTime.parse("2026-10-01T10:00:00Z");
+        requests.save(new VenueRequest(
+                REQUEST_ID,
+                EVENT_ID,
+                VENUE_ID,
+                OrganizerIds.toUuid("organizer-1"),
+                start,
+                start.plusHours(2),
+                80,
+                VenueRequestStatus.SUBMITTED));
+
+        assertThrows(
+                EventVersionConflictException.class,
+                () -> service.editEvent(
+                        ORGANIZER,
+                        EVENT_ID,
+                        9,
+                        new EventDetails(
+                                VALID_DETAILS.title(),
+                                VALID_DETAILS.description(),
+                                VALID_DETAILS.startsAt(),
+                                VALID_DETAILS.endsAt(),
+                                95)));
+
+        assertEquals(80, repository.findById(EVENT_ID).orElseThrow().capacity());
+        assertEquals(80, requests.get(REQUEST_ID).expectedAttendance());
+        assertTrue(requests.attendanceUpdates.isEmpty());
+    }
+
+    @Test
+    void editEvent_capacityUnchanged_doesNotTouchVenueRequest() {
+        service.createEvent(ORGANIZER, "club-1", VALID_DETAILS);
+        OffsetDateTime start = OffsetDateTime.parse("2026-10-01T10:00:00Z");
+        requests.save(new VenueRequest(
+                REQUEST_ID,
+                EVENT_ID,
+                VENUE_ID,
+                OrganizerIds.toUuid("organizer-1"),
+                start,
+                start.plusHours(2),
+                80,
+                VenueRequestStatus.SUBMITTED));
+
+        CapacityUpdateResult result = service.editEvent(
+                ORGANIZER,
+                EVENT_ID,
+                0,
+                new EventDetails(
+                        "Renamed only",
+                        VALID_DETAILS.description(),
+                        VALID_DETAILS.startsAt(),
+                        VALID_DETAILS.endsAt(),
+                        80));
+
+        assertEquals("Renamed only", result.event().title());
+        assertEquals(CapacityUpdateResult.SyncStatus.NO_OPEN_REQUEST, result.syncStatus());
+        assertEquals(80, requests.get(REQUEST_ID).expectedAttendance());
+        assertTrue(requests.attendanceUpdates.isEmpty());
     }
 
     @Test
@@ -197,6 +412,67 @@ class EventServiceTest {
             }
             events.put(event.id(), event);
             auditRecords.add(auditRecord);
+        }
+    }
+
+    private static final class FakeVenueRequestRepository implements VenueRequestRepository {
+        private final List<VenueRequest> saved = new ArrayList<>();
+        private final Map<UUID, VenueRequest> byId = new HashMap<>();
+        private final List<Integer> attendanceUpdates = new ArrayList<>();
+
+        @Override
+        public VenueRequest get(UUID requestId) {
+            return byId.get(requestId);
+        }
+
+        @Override
+        public void save(VenueRequest request) {
+            saved.add(request);
+            byId.put(request.requestId(), request);
+        }
+
+        @Override
+        public Optional<VenueRequest> findOpenByEventId(UUID eventId) {
+            return saved.stream()
+                    .filter(r -> r.eventId().equals(eventId))
+                    .filter(r -> r.status() == VenueRequestStatus.SUBMITTED
+                            || r.status() == VenueRequestStatus.DRAFT)
+                    .findFirst();
+        }
+
+        @Override
+        public Optional<VenueRequest> findLatestByEventId(UUID eventId) {
+            for (int i = saved.size() - 1; i >= 0; i--) {
+                if (saved.get(i).eventId().equals(eventId)) {
+                    return Optional.of(saved.get(i));
+                }
+            }
+            return Optional.empty();
+        }
+
+        @Override
+        public boolean updateExpectedAttendance(UUID requestId, int expectedAttendance) {
+            VenueRequest current = byId.get(requestId);
+            if (current == null) {
+                return false;
+            }
+            if (current.status() != VenueRequestStatus.SUBMITTED
+                    && current.status() != VenueRequestStatus.DRAFT) {
+                return false;
+            }
+            attendanceUpdates.add(expectedAttendance);
+            VenueRequest updated = new VenueRequest(
+                    current.requestId(),
+                    current.eventId(),
+                    current.venueId(),
+                    current.organizerId(),
+                    current.startsAt(),
+                    current.endsAt(),
+                    expectedAttendance,
+                    current.status());
+            byId.put(requestId, updated);
+            saved.add(updated);
+            return true;
         }
     }
 }

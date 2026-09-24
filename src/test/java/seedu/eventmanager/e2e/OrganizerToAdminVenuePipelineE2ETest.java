@@ -18,6 +18,7 @@ import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 import seedu.eventmanager.common.Actor;
 import seedu.eventmanager.common.Role;
+import seedu.eventmanager.event.CapacityUpdateResult;
 import seedu.eventmanager.event.Event;
 import seedu.eventmanager.event.EventAuditRecord;
 import seedu.eventmanager.event.EventDetails;
@@ -57,7 +58,8 @@ class OrganizerToAdminVenuePipelineE2ETest {
         FakeEvents events = new FakeEvents();
         FakeVenues venues = new FakeVenues();
         FakeRequests requests = new FakeRequests();
-        EventService eventService = new EventService(events, () -> EVENT_ID, Clock.fixed(NOW, ZoneOffset.UTC));
+        EventService eventService = new EventService(
+                events, () -> EVENT_ID, Clock.fixed(NOW, ZoneOffset.UTC), requests);
         eventService.createEvent(
                 organizer,
                 "club-1",
@@ -73,6 +75,20 @@ class OrganizerToAdminVenuePipelineE2ETest {
                 eventService, venues, requests, () -> REQUEST_ID);
         VenueRequest submitted = submit.submit(organizer, EVENT_ID, VENUE_ID);
         assertEquals(VenueRequestStatus.SUBMITTED, submitted.status());
+        assertEquals(80, submitted.expectedAttendance());
+
+        CapacityUpdateResult capacity = eventService.editEvent(
+                organizer,
+                EVENT_ID,
+                0,
+                new EventDetails(
+                        "Campus Night",
+                        "Demo",
+                        Instant.parse("2026-10-01T10:00:00Z"),
+                        Instant.parse("2026-10-01T12:00:00Z"),
+                        95));
+        assertEquals(CapacityUpdateResult.SyncStatus.PENDING_REQUEST_SYNCED, capacity.syncStatus());
+        assertEquals(95, requests.get(REQUEST_ID).expectedAttendance());
 
         requests.grant(ADMIN_ID, VENUE_ID);
         List<VenueAdministratorDashboardState> states = new ArrayList<>();
@@ -86,6 +102,7 @@ class OrganizerToAdminVenuePipelineE2ETest {
         dashboard.load();
         assertEquals(1, dashboard.state().data().pendingRequests().size());
         assertEquals(REQUEST_ID, dashboard.state().data().pendingRequests().getFirst().requestId());
+        assertEquals(95, dashboard.state().data().pendingRequests().getFirst().expectedAttendance());
 
         dashboard.approve(REQUEST_ID);
         assertEquals(VenueRequestStatus.APPROVED, requests.get(REQUEST_ID).status());
@@ -185,6 +202,29 @@ class OrganizerToAdminVenuePipelineE2ETest {
             return byId.values().stream()
                     .filter(request -> request.eventId().equals(eventId))
                     .reduce((first, second) -> second);
+        }
+
+        @Override
+        public boolean updateExpectedAttendance(UUID requestId, int expectedAttendance) {
+            VenueRequest current = byId.get(requestId);
+            if (current == null) {
+                return false;
+            }
+            if (current.status() != VenueRequestStatus.SUBMITTED
+                    && current.status() != VenueRequestStatus.DRAFT) {
+                return false;
+            }
+            VenueRequest updated = new VenueRequest(
+                    current.requestId(),
+                    current.eventId(),
+                    current.venueId(),
+                    current.organizerId(),
+                    current.startsAt(),
+                    current.endsAt(),
+                    expectedAttendance,
+                    current.status());
+            byId.put(requestId, updated);
+            return true;
         }
 
         @Override

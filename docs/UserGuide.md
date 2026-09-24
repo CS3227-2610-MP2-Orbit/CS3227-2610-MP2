@@ -140,7 +140,10 @@ Creates a new draft event owned by one of your configured clubs.
 2. Change fields as needed.
 3. Select **Save event**.
 
-**Expected result:** Feedback confirms the draft was updated.
+**Expected result:** Feedback confirms the draft was updated. If you change
+**Capacity** and the event still has a pending venue request (`SUBMITTED` /
+`DRAFT`), that request’s expected attendance is updated to match. Already
+approved/rejected requests are left alone.
 
 > **Caution:** Only **draft** events can be edited in this workflow. Concurrent edits use optimistic versioning; a stale save is rejected.
 
