@@ -50,9 +50,8 @@ public final class JdbcUserAccessRepository implements UserAccessRepository {
         if (password == null || password.length() < 8) {
             throw new IllegalArgumentException("Password must contain at least 8 characters.");
         }
-        if (role == null || role == Role.VENUE_ADMINISTRATOR) {
-            throw new ApplicationException("FORBIDDEN",
-                    "Venue Administrator accounts must be provisioned separately.");
+        if (role == null) {
+            throw new IllegalArgumentException("Role is required.");
         }
         database.withConnection(connection -> {
             try (var statement = connection.prepareStatement("""

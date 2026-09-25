@@ -72,10 +72,15 @@ public final class UserAccessView {
     private void createUser() {
         Optional<String> username = prompt("Create user", "Username", "");
         Optional<String> password = prompt("Create user", "Password", "");
-        Optional<String> role = prompt("Create user", "Role", "ATTENDEE");
+        ChoiceDialog<Role> roleDialog = new ChoiceDialog<>(Role.ATTENDEE,
+                java.util.List.of(Role.ATTENDEE, Role.CLUB_ORGANIZER, Role.VENUE_ADMINISTRATOR));
+        roleDialog.setTitle("Create user");
+        roleDialog.setHeaderText("Select account role");
+        roleDialog.setContentText("Role:");
+        Optional<Role> role = roleDialog.showAndWait();
         if (username.isEmpty() || password.isEmpty() || role.isEmpty()) return;
         try {
-            users.createUser(actor, username.get().trim(), password.get(), Role.valueOf(role.get().trim()));
+            users.createUser(actor, username.get().trim(), password.get(), role.get());
             reload();
         } catch (RuntimeException exception) {
             showError(exception.getMessage());
