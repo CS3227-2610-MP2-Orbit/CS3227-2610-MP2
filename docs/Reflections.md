@@ -3,6 +3,13 @@
 This document records reflections on basic Agentic SE, including interesting
 skills, prompts, outcomes, and lessons learned.
 
+## Account-management scope
+
+The current Venue Administrator account-management flow supports editing a
+normal user's username, role, and active status. It intentionally does not
+provide a change-password or password-reset function yet. That capability is a
+future enhancement requiring a dedicated secure and audited workflow.
+
 ## Agent skill: Venue Workflow Review Agent
 
 The Venue Workflow Review Agent is used to review venue-related pull requests

@@ -119,6 +119,14 @@ library and do not call an LLM.
 
 ## Logs and reflections
 
+### Current account-management limitation
+
+The Venue Administrator `Users and access` screen supports creating normal-user
+accounts, editing their username, role, and active status, and granting venue
+scope to administrators. It does not currently provide a change-password or
+password-reset function. Password changes are planned for a later iteration
+through a dedicated, audited workflow.
+
 Use `logs/<contributor>/NNN-description.md`, starting with the
 [interaction template](../logs/templates/interaction.md). Each contributor has
 their own sequence to avoid collisions. Keep engineering verification records

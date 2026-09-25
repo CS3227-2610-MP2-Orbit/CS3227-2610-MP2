@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import seedu.eventmanager.common.Actor;
+import seedu.eventmanager.common.ApplicationException;
 import seedu.eventmanager.common.Role;
 import seedu.eventmanager.service.UserAccessRepository;
 
@@ -40,7 +42,18 @@ public final class JdbcUserAccessRepository implements UserAccessRepository {
     }
 
     @Override
-    public void createUser(String username, String password, Role role) {
+    public void createUser(Actor actor, String username, String password, Role role) {
+        requireAdministrator(actor);
+        if (username == null || username.isBlank()) {
+            throw new IllegalArgumentException("Username must not be blank.");
+        }
+        if (password == null || password.length() < 8) {
+            throw new IllegalArgumentException("Password must contain at least 8 characters.");
+        }
+        if (role == null || role == Role.VENUE_ADMINISTRATOR) {
+            throw new ApplicationException("FORBIDDEN",
+                    "Venue Administrator accounts must be provisioned separately.");
+        }
         database.withConnection(connection -> {
             try (var statement = connection.prepareStatement("""
                     INSERT INTO users (user_id, username, password_hash, role, active, created_at, updated_at)
@@ -56,13 +69,20 @@ public final class JdbcUserAccessRepository implements UserAccessRepository {
                 statement.executeUpdate();
                 return null;
             } catch (SQLException exception) {
+                if ("23505".equals(exception.getSQLState())) {
+                    throw new IllegalArgumentException("That username is already in use.");
+                }
                 throw new IllegalStateException("Could not create user.", exception);
             }
         });
     }
 
     @Override
-    public void grantVenueAccess(UUID userId, UUID venueId) {
+    public void grantVenueAccess(Actor actor, UUID userId, UUID venueId) {
+        requireAdministrator(actor);
+        if (userId == null || venueId == null) {
+            throw new IllegalArgumentException("User ID and venue ID are required.");
+        }
         database.withConnection(connection -> {
             try (var statement = connection.prepareStatement("""
                     INSERT INTO venue_administrator_venues (user_id, venue_id, created_at)
@@ -76,5 +96,46 @@ public final class JdbcUserAccessRepository implements UserAccessRepository {
                 throw new IllegalStateException("Could not grant venue access.", exception);
             }
         });
+    }
+
+    @Override
+    public void updateUser(Actor actor, UUID userId, String username, Role role, boolean active) {
+        requireAdministrator(actor);
+        if (userId == null || username == null || username.isBlank()) {
+            throw new IllegalArgumentException("User ID and username are required.");
+        }
+        if (role == null || role == Role.VENUE_ADMINISTRATOR) {
+            throw new ApplicationException("FORBIDDEN",
+                    "Venue Administrator roles cannot be changed through this screen.");
+        }
+        database.withConnection(connection -> {
+            try (var statement = connection.prepareStatement("""
+                    UPDATE users
+                    SET username = ?, role = ?, active = ?, updated_at = CURRENT_TIMESTAMP
+                    WHERE user_id = ?""")) {
+                statement.setString(1, username.trim());
+                statement.setString(2, role.name());
+                statement.setBoolean(3, active);
+                statement.setObject(4, userId);
+                if (statement.executeUpdate() == 0) {
+                    throw new IllegalArgumentException("User account was not found.");
+                }
+                return null;
+            } catch (SQLException exception) {
+                if ("23505".equals(exception.getSQLState())) {
+                    throw new IllegalArgumentException("That username is already in use.");
+                }
+                throw new IllegalStateException("Could not update user.", exception);
+            }
+        });
+    }
+
+    private static void requireAdministrator(Actor actor) {
+        if (actor == null || actor.userId() == null) {
+            throw new ApplicationException("UNAUTHENTICATED", "Authentication is required.");
+        }
+        if (actor.role() != Role.VENUE_ADMINISTRATOR) {
+            throw new ApplicationException("FORBIDDEN", "Only Venue Administrators can manage users.");
+        }
     }
 }

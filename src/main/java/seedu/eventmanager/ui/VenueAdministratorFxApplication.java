@@ -45,6 +45,14 @@ public final class VenueAdministratorFxApplication extends Application {
         return root;
     }
 
+    /** Creates the administrator workspace for an already authenticated session. */
+    public BorderPane createRoot(JdbcLocalSessionService.Session session) {
+        BorderPane root = new BorderPane();
+        root.setStyle("-fx-background-color: #f7f9fc;");
+        showDashboardPlaceholder(root, DatabaseBootstrap.configuration(), session);
+        return root;
+    }
+
     private void showLogin(BorderPane root) {
         try {
             DatabaseConfiguration configuration = DatabaseBootstrap.configuration();
@@ -105,7 +113,7 @@ public final class VenueAdministratorFxApplication extends Application {
         VenueAvailabilityRepository availabilityRepository = new JdbcVenueAvailabilityRepository(database);
         availabilityView[0] = new VenueAvailabilityView(availabilityRepository, showDashboard);
         UserAccessRepository userRepository = new JdbcUserAccessRepository(database, new PasswordHasher());
-        usersView[0] = new UserAccessView(userRepository, showDashboard);
+        usersView[0] = new UserAccessView(actor, userRepository, showDashboard);
         VenueAdministratorDashboardView dashboard = new VenueAdministratorDashboardView(
                 session,
                 () -> showLogin(root),
