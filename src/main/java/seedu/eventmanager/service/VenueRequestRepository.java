@@ -23,6 +23,14 @@ public interface VenueRequestRepository {
         return Optional.empty();
     }
 
+    /**
+     * Updates expected attendance for an open request only (`DRAFT` / `SUBMITTED`).
+     * @return true if a row was updated
+     */
+    default boolean updateExpectedAttendance(UUID requestId, int expectedAttendance) {
+        return false;
+    }
+
     /** Persists a decision while retaining the audit fields required by storage. */
     default void save(VenueRequest request, UUID decidedBy, String decisionReason) {
         save(request);

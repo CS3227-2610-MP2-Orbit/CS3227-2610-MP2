@@ -11,8 +11,10 @@ so a stale editor cannot overwrite a newer change.
 
 `OrganizerVenueRequestService` submits Jordan-compatible `SUBMITTED` venue
 requests for owned events (attendance = event capacity; UTC window from the
-event). `OrganizerIds` maps string organizer ids to UUIDs for the venue
-pipeline until shared authentication is unified.
+event). When `EventService.editEvent` changes capacity, open venue-request
+attendance is synced (`DRAFT`/`SUBMITTED` only); decided requests are unchanged.
+`OrganizerIds` maps string organizer ids to UUIDs for the venue pipeline until
+shared authentication is unified.
 
 `JdbcEventRepository` persists each event mutation and its sanitized business
 audit record in one PostgreSQL transaction. Publication and

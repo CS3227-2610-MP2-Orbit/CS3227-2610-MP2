@@ -9,6 +9,24 @@ The current Venue Administrator account-management flow supports editing a
 normal user's username, role, and active status. It intentionally does not
 provide a change-password or password-reset function yet. That capability is a
 future enhancement requiring a dedicated secure and audited workflow.
+## Skills used for Venue Administrator work
+
+The project skills are stored under `.agents/skills/` and are shared through
+the repository. Jordan's detailed evidence is recorded in `logs/jordan/`.
+
+| Skill | Relevance to Jordan's work |
+| --- | --- |
+| [requirements-and-acceptance](../.agents/skills/requirements-and-acceptance/SKILL.md) | Defined venue-request states, validation rules, and observable acceptance criteria. |
+| [test-driven-implementation](../.agents/skills/test-driven-implementation/SKILL.md) | Structured unit, integration, end-to-end, and regression testing. |
+| [code-review-and-verification](../.agents/skills/code-review-and-verification/SKILL.md) | Reviewed RBAC, transactions, error paths, observability, and verification evidence. |
+| [desktop-ui-polish](../.agents/skills/desktop-ui-polish/SKILL.md) | Guided the Venue Administrator dashboard layout and user-facing states. |
+| [security-and-rbac](../.agents/skills/security-and-rbac/SKILL.md) | Captures authentication, role, direct-API, and object-level authorization checks. |
+| [database-migration-and-integrity](../.agents/skills/database-migration-and-integrity/SKILL.md) | Captures PostgreSQL schema, constraints, conflict prevention, and rollback concerns. |
+| [observability-and-error-handling](../.agents/skills/observability-and-error-handling/SKILL.md) | Captures structured logging, safe errors, notifications, audit events, and metrics. |
+
+The final three skills were added retrospectively after the related Venue
+Administrator implementation. They describe and organize lessons from work
+already completed; future changes should invoke them before implementation.
 
 ## Agent skill: Venue Workflow Review Agent
 

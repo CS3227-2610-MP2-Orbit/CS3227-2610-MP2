@@ -91,12 +91,19 @@ public final class EventManagerApplication extends Application {
                     actor.userId().toString(), organizerFrom(localSettings()).ownedClubIds());
             EventService eventService = new EventService(
                     new JdbcEventRepository(dataSource), UUID::randomUUID, Clock.systemUTC());
+            OrganizerIdentity organizer = organizerFrom(localSettings());
             JdbcDatabase jdbcDatabase = new JdbcDatabase(configuration);
             JdbcVenueRepository venueRepository = new JdbcVenueRepository(jdbcDatabase);
+            JdbcVenueRequestRepository venueRequestRepository = new JdbcVenueRequestRepository(jdbcDatabase);
+            EventService eventService = new EventService(
+                    new JdbcEventRepository(dataSource),
+                    UUID::randomUUID,
+                    Clock.systemUTC(),
+                    venueRequestRepository);
             OrganizerVenueRequestService venueRequestService = new OrganizerVenueRequestService(
                     eventService,
                     venueRepository,
-                    new JdbcVenueRequestRepository(jdbcDatabase),
+                    venueRequestRepository,
                     UUID::randomUUID);
             // Edge-to-edge role shell: Home lives in the Organizer sidebar (no dual chrome).
             root.setPadding(Insets.EMPTY);
