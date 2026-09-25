@@ -23,6 +23,8 @@ import seedu.eventmanager.event.EventService;
 import seedu.eventmanager.event.JdbcEventRepository;
 import seedu.eventmanager.event.OrganizerIdentity;
 import seedu.eventmanager.event.OrganizerVenueRequestService;
+import seedu.eventmanager.event.RegistrationOverviewService;
+import seedu.eventmanager.registration.EventRegistrations;
 import seedu.eventmanager.registration.NoEventRegistrations;
 import seedu.eventmanager.storage.DatabaseBootstrap;
 import seedu.eventmanager.storage.DatabaseConfig;
@@ -93,11 +95,14 @@ public final class EventManagerApplication extends Application {
                     venueRepository,
                     venueRequestRepository,
                     UUID::randomUUID);
+            EventRegistrations registrations = new NoEventRegistrations();
             VolunteerService volunteerService = new VolunteerService(
                     eventService,
-                    new NoEventRegistrations(),
+                    registrations,
                     new JdbcVolunteerRepository(dataSource),
                     Clock.systemUTC());
+            RegistrationOverviewService registrationService =
+                    new RegistrationOverviewService(eventService, registrations);
             // Edge-to-edge role shell: Home lives in the Organizer sidebar (no dual chrome).
             root.setPadding(Insets.EMPTY);
             root.setTop(null);
@@ -105,6 +110,7 @@ public final class EventManagerApplication extends Application {
                     eventService,
                     venueRequestService,
                     volunteerService,
+                    registrationService,
                     venueRepository,
                     organizer,
                     () -> showHome(root)));
