@@ -19,6 +19,7 @@ public final class VenueAdministratorDashboardView {
     private final Label contentTitle = new Label();
     private Label pendingRequestsValue;
     private Label availableVenuesValue;
+    private final Runnable refreshDashboard;
     private final Runnable showRequests;
     private final Runnable showVenues;
     private final Runnable showUsers;
@@ -27,6 +28,7 @@ public final class VenueAdministratorDashboardView {
             Runnable onLogout, Runnable showRequests, Runnable showVenues, Runnable showUsers) {
         Objects.requireNonNull(session);
         Objects.requireNonNull(onLogout);
+        this.refreshDashboard = Objects.requireNonNull(refreshDashboard);
         this.showRequests = Objects.requireNonNull(showRequests);
         this.showVenues = Objects.requireNonNull(showVenues);
         this.showUsers = Objects.requireNonNull(showUsers);
@@ -58,7 +60,10 @@ public final class VenueAdministratorDashboardView {
         brand.setStyle("-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;");
         sidebar.getChildren().add(brand);
 
-        addNavigation(sidebar, "Dashboard", () -> showOverview(null));
+        addNavigation(sidebar, "Dashboard", () -> {
+            showOverview(null);
+            refreshDashboard.run();
+        });
         addNavigation(sidebar, "Venue requests", showRequests);
         addNavigation(sidebar, "Venues", showVenues);
         addNavigation(sidebar, "Users and access", showUsers);

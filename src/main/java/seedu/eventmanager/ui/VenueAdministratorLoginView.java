@@ -40,8 +40,11 @@ public final class VenueAdministratorLoginView {
         login.setDefaultButton(true);
         login.setOnAction(event -> submit());
         message.setStyle("-fx-text-fill: #b42318;");
+        message.setWrapText(true);
+        message.setMaxWidth(900);
         root.getChildren().addAll(heading, username, password, login, message);
-        root.setMaxWidth(360);
+        root.setPrefWidth(900);
+        root.setMaxWidth(1000);
         root.setPadding(new Insets(32));
     }
 

@@ -1,7 +1,6 @@
 package seedu.eventmanager.storage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -20,11 +19,22 @@ class DatabaseConfigurationTest {
     }
 
     @Test
-    void rejectsMissingDatabaseSettings() {
-        IllegalStateException exception = assertThrows(IllegalStateException.class,
-                () -> DatabaseConfiguration.from(Map.of("DATABASE_URL", "jdbc:postgresql://localhost/CS3227",
-                        "DATABASE_USER", "admin")));
+    void acceptsAConfiguredConnectionWithoutPassword() {
+        DatabaseConfiguration configuration = DatabaseConfiguration.from(Map.of(
+                "DATABASE_URL", "jdbc:postgresql://localhost/CS3227",
+                "DATABASE_USER", "admin"));
 
-        assertEquals("DATABASE_PASSWORD must be configured.", exception.getMessage());
+        assertEquals(null, configuration.password());
+    }
+
+    @Test
+    void fallsBackToOrganizerDatabaseSettings() {
+        DatabaseConfiguration configuration = DatabaseBootstrap.configuration(Map.of(
+                "EVENT_MANAGER_DB_URL", "jdbc:postgresql://localhost:5432/event_manager",
+                "EVENT_MANAGER_DB_USER", "joseph"), Map.of());
+
+        assertEquals("jdbc:postgresql://localhost:5432/event_manager", configuration.url());
+        assertEquals("joseph", configuration.username());
+        assertEquals(null, configuration.password());
     }
 }
