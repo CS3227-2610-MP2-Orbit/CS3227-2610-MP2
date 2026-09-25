@@ -58,7 +58,8 @@ class EventCapacitySyncIntegrationTest {
                 Statement statement = connection.createStatement()) {
             statement.execute("TRUNCATE venue_bookings, venue_requests, venue_availability, venues "
                     + "RESTART IDENTITY CASCADE");
-            statement.execute("TRUNCATE event_volunteer, event_volunteer_audit_record, "
+            statement.execute("TRUNCATE event_announcement, event_announcement_audit_record, "
+                    + "event_volunteer, event_volunteer_audit_record, "
                     + "organizer_event_audit_record, organizer_event RESTART IDENTITY");
         }
 

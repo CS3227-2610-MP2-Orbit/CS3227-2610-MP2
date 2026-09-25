@@ -19,6 +19,8 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import seedu.eventmanager.announcement.AnnouncementService;
+import seedu.eventmanager.announcement.JdbcAnnouncementRepository;
 import seedu.eventmanager.event.EventService;
 import seedu.eventmanager.event.JdbcEventRepository;
 import seedu.eventmanager.event.OrganizerIdentity;
@@ -32,6 +34,7 @@ import seedu.eventmanager.storage.DatabaseConfiguration;
 import seedu.eventmanager.storage.DatabaseMigration;
 import seedu.eventmanager.storage.DriverManagerDataSource;
 import seedu.eventmanager.storage.JdbcDatabase;
+import seedu.eventmanager.storage.JdbcNotificationService;
 import seedu.eventmanager.storage.JdbcVenueRepository;
 import seedu.eventmanager.storage.JdbcVenueRequestRepository;
 import seedu.eventmanager.volunteer.JdbcVolunteerRepository;
@@ -103,6 +106,13 @@ public final class EventManagerApplication extends Application {
                     Clock.systemUTC());
             RegistrationOverviewService registrationService =
                     new RegistrationOverviewService(eventService, registrations);
+            AnnouncementService announcementService = new AnnouncementService(
+                    eventService,
+                    registrations,
+                    new JdbcAnnouncementRepository(dataSource),
+                    new JdbcNotificationService(jdbcDatabase),
+                    UUID::randomUUID,
+                    Clock.systemUTC());
             // Edge-to-edge role shell: Home lives in the Organizer sidebar (no dual chrome).
             root.setPadding(Insets.EMPTY);
             root.setTop(null);
@@ -111,6 +121,7 @@ public final class EventManagerApplication extends Application {
                     venueRequestService,
                     volunteerService,
                     registrationService,
+                    announcementService,
                     venueRepository,
                     organizer,
                     () -> showHome(root)));

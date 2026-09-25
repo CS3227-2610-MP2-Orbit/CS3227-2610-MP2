@@ -11,8 +11,8 @@ Registration records and related business rules belong here.
 - `findRegisteredAttendee(eventId, attendeeId)` has a default implementation.
 
 Organizer volunteer assignment (`VolunteerService`) and View registrations
-(`event.RegistrationOverviewService`) use it today; event announcements are
-expected to use it too. `attendeeId` is intended to be the
+(`event.RegistrationOverviewService`) and event announcements
+(`announcement.AnnouncementService`) use it today. `attendeeId` is intended to be the
 shared `users.user_id` of an `ATTENDEE` account.
 
 `NoEventRegistrations` is a placeholder implementation (nobody is registered)
