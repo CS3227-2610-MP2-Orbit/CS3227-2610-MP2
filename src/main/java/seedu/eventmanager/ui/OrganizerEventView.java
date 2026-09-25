@@ -72,7 +72,7 @@ public final class OrganizerEventView extends BorderPane {
     private final Label editorHeading = new Label("Create draft event");
     private final Button reset = new Button("Reset");
     private final Button eventsNav = navButton("Events");
-    private final Button newEventNav = navButton("New event");
+    private final Button newEvent = new Button("+ New event");
     private final Button requestVenueNav = navButton("Request venue");
 
     private final ListView<Event> requestEvents = new ListView<>();
@@ -138,12 +138,8 @@ public final class OrganizerEventView extends BorderPane {
             showEventsScreen();
             showEventsList();
         });
-        newEventNav.setOnAction(ignored -> {
-            showEventsScreen();
-            enterCreateMode(true);
-        });
         requestVenueNav.setOnAction(ignored -> showRequestVenueScreen());
-        highlightNav(true);
+        highlightNavForScreen();
 
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
@@ -160,7 +156,7 @@ public final class OrganizerEventView extends BorderPane {
         home.setOnAction(ignored -> onHome.run());
 
         sidebar.getChildren().addAll(
-                brand, role, eventsNav, newEventNav, requestVenueNav,
+                brand, role, eventsNav, requestVenueNav,
                 spacer, clubsHint, identity, home);
         return sidebar;
     }
@@ -184,7 +180,14 @@ public final class OrganizerEventView extends BorderPane {
                     }
                 });
 
-        VBox listCard = new VBox(12, sectionLabel("Your events"), events);
+        newEvent.setStyle(PRIMARY_BUTTON_STYLE);
+        newEvent.setOnAction(ignored -> enterCreateMode(true));
+        Region listHeaderSpacer = new Region();
+        HBox.setHgrow(listHeaderSpacer, Priority.ALWAYS);
+        HBox listHeader = new HBox(8, sectionLabel("Your events"), listHeaderSpacer, newEvent);
+        listHeader.setAlignment(Pos.CENTER_LEFT);
+
+        VBox listCard = new VBox(12, listHeader, events);
         listCard.setPadding(new Insets(18));
         listCard.setStyle(CARD_STYLE);
         listCard.setMinWidth(280);
@@ -592,10 +595,9 @@ public final class OrganizerEventView extends BorderPane {
                 SingaporeDateTimes.dateOf(event.endsAt()),
                 SingaporeDateTimes.timeOf(event.endsAt()),
                 Integer.toString(event.capacity()));
-        editorHeading.setText("Edit draft event");
+        editorHeading.setText("Edit draft event — " + event.title());
         reset.setText("Revert changes");
         feedback.setText("");
-        highlightNav(false);
     }
 
     private void resetForm() {
@@ -616,11 +618,9 @@ public final class OrganizerEventView extends BorderPane {
     private void showEventsList() {
         if (events.getItems().isEmpty()) {
             enterCreateMode(false);
-            highlightNav(false);
-            setFeedback("No events yet. Use New event to create a draft.", false);
+            setFeedback("No events yet. Fill in the form to create your first draft.", false);
             return;
         }
-        highlightNav(false);
         if (events.getSelectionModel().getSelectedItem() == null) {
             events.getSelectionModel().selectFirst();
         } else {
@@ -639,7 +639,6 @@ public final class OrganizerEventView extends BorderPane {
         applyDetails("", "", null, "18:00", null, "20:00", "80");
         editorHeading.setText("Create draft event");
         reset.setText("Reset");
-        highlightNav(true);
         if (announce) {
             setFeedback("Ready to create a new draft.", false);
         } else {
@@ -648,25 +647,10 @@ public final class OrganizerEventView extends BorderPane {
         title.requestFocus();
     }
 
-    /** {@code creating == true} highlights New event; otherwise Events. */
-    private void highlightNav(boolean creating) {
-        if (screen != Screen.EVENTS) {
-            return;
-        }
-        eventsNav.setStyle(creating ? NAV_BUTTON_STYLE : NAV_BUTTON_ACTIVE_STYLE);
-        newEventNav.setStyle(creating ? NAV_BUTTON_ACTIVE_STYLE : NAV_BUTTON_STYLE);
-        requestVenueNav.setStyle(NAV_BUTTON_STYLE);
-    }
-
     private void highlightNavForScreen() {
-        if (screen == Screen.REQUEST_VENUE) {
-            eventsNav.setStyle(NAV_BUTTON_STYLE);
-            newEventNav.setStyle(NAV_BUTTON_STYLE);
-            requestVenueNav.setStyle(NAV_BUTTON_ACTIVE_STYLE);
-            return;
-        }
-        boolean creating = editingEventId == null;
-        highlightNav(creating);
+        boolean onRequest = screen == Screen.REQUEST_VENUE;
+        eventsNav.setStyle(onRequest ? NAV_BUTTON_STYLE : NAV_BUTTON_ACTIVE_STYLE);
+        requestVenueNav.setStyle(onRequest ? NAV_BUTTON_ACTIVE_STYLE : NAV_BUTTON_STYLE);
     }
 
     private void applyDetails(

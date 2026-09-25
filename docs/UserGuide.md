@@ -89,7 +89,7 @@ The app is designed for users who:
 | Role | Action | Where in the UI |
 | --- | --- | --- |
 | Either | Open a role workspace | Home screen |
-| Organizer | Create draft event | **New event** → fill form → **Save event** |
+| Organizer | Create draft event | **Events** → **+ New event** → fill form → **Save event** |
 | Organizer | Edit draft event | **Events** → select event → edit → **Save event** |
 | Organizer | Reset / revert form | **Reset** (new) or **Revert changes** (edit) |
 | Organizer | Request a venue | **Request venue** → select event + venue → **Submit request** |
@@ -122,7 +122,7 @@ Creates a new draft event owned by one of your configured clubs.
 **Steps:**
 
 1. On the home screen, select **Club Organizer**.
-2. In the sidebar, select **New event**.
+2. In the sidebar, select **Events**, then select **+ New event** above **Your events**.
 3. Choose a **Club**, enter **Title**, optional **Description**, start/end date and Singapore time (24-hour, e.g. `18:00`), and a positive **Capacity**.
 4. Select **Save event**.
 
@@ -136,7 +136,8 @@ Creates a new draft event owned by one of your configured clubs.
 
 **Steps:**
 
-1. Select **Events** (or pick an event in the list).
+1. Select **Events**, then pick an event in **Your events**. The form heading shows
+   **Edit draft event — *title***.
 2. Change fields as needed.
 3. Select **Save event**.
 
@@ -160,7 +161,7 @@ Submits a `SUBMITTED` venue booking request so a Venue Administrator can approve
 
 **Steps:**
 
-1. Create or select an owned event under **Events** / **New event**.
+1. Create or select an owned event under **Events**.
 2. Open **Request venue**.
 3. Select the event and an **ACTIVE** venue.
 4. Select **Submit request**.
