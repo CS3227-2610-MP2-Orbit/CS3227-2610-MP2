@@ -1,5 +1,6 @@
 package seedu.eventmanager.ui;
 
+import java.util.List;
 import java.util.Objects;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -14,6 +15,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import seedu.eventmanager.venue.VenueRequest;
+import seedu.eventmanager.venue.VenueRequestStatus;
 
 /** Venue request review screen for the Venue Administrator. */
 public final class VenueRequestManagementView {
@@ -40,9 +42,17 @@ public final class VenueRequestManagementView {
     }
 
     public void update(VenueAdministratorDashboardState state) {
-        table.setItems(FXCollections.observableArrayList(state.data().pendingRequests()));
+        if (state.status() == VenueAdministratorDashboardState.Status.ERROR) {
+            status.setText(state.message());
+            return;
+        }
+        List<VenueRequest> submitted = state.data().pendingRequests().stream()
+                .filter(request -> request.status() == VenueRequestStatus.SUBMITTED)
+                .toList();
+        table.setItems(FXCollections.observableArrayList(submitted));
+        table.getSelectionModel().clearSelection();
         status.setText(state.status() == VenueAdministratorDashboardState.Status.ERROR
-                ? state.message() : table.getItems().size() + " submitted request(s)");
+                ? state.message() : submitted.size() + " submitted request(s)");
     }
 
     private void build() {

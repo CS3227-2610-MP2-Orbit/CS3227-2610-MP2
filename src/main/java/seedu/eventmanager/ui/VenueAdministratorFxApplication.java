@@ -109,6 +109,7 @@ public final class VenueAdministratorFxApplication extends Application {
         VenueAdministratorDashboardView dashboard = new VenueAdministratorDashboardView(
                 session,
                 () -> showLogin(root),
+                controller::load,
                 showRequests,
                 () -> {
                     venueView[0].reload();
