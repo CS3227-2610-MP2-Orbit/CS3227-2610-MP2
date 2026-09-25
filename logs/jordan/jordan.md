@@ -156,4 +156,3 @@ The AI did not replace developer judgement. Jordan remains responsible for:
 - Testing integration behavior against the intended PostgreSQL database.
 - Reviewing merge conflicts when frontend, migrations, build files, or shared services change.
 - Deciding whether future restrictions, utilization reporting, organiser mapping, and production deployment are in scope.
-

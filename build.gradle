@@ -18,7 +18,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'org.postgresql:postgresql:42.7.7'
+    implementation 'org.postgresql:postgresql:42.7.13'
     implementation 'org.flywaydb:flyway-core:11.11.2'
     implementation 'org.flywaydb:flyway-database-postgresql:11.11.2'
     implementation 'io.github.cdimascio:dotenv-java:3.2.0'
@@ -29,12 +29,13 @@ dependencies {
 }
 
 application {
-    mainClass = 'seedu.eventmanager.ui.VenueAdministratorFxApplication'
+    mainClass = 'seedu.eventmanager.Main'
+    applicationDefaultJvmArgs = ['--enable-native-access=javafx.graphics']
 }
 
 javafx {
-    version = '25.0.1'
-    modules = [ 'javafx.controls' ]
+    version = '25'
+    modules = ['javafx.controls']
 }
 
 tasks.named('test') {

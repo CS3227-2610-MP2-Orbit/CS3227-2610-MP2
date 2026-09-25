@@ -22,9 +22,18 @@ public final class VenueManagementView {
     private final BorderPane root = new BorderPane();
     private final TableView<Venue> table = new TableView<>();
     private final VenueRepository venues;
+    private final java.util.function.Consumer<UUID> onVenueCreated;
 
     public VenueManagementView(VenueRepository venues, Runnable showDashboard) {
+        this(venues, showDashboard, venueId -> { });
+    }
+
+    public VenueManagementView(
+            VenueRepository venues,
+            Runnable showDashboard,
+            java.util.function.Consumer<UUID> onVenueCreated) {
         this.venues = Objects.requireNonNull(venues);
+        this.onVenueCreated = Objects.requireNonNull(onVenueCreated);
         Objects.requireNonNull(showDashboard);
         Button back = new Button("← Dashboard");
         back.setOnAction(event -> showDashboard.run());
@@ -74,8 +83,10 @@ public final class VenueManagementView {
             if (name.get().isBlank() || location.get().isBlank() || parsedCapacity <= 0) {
                 throw new IllegalArgumentException("Name, location, and positive capacity are required.");
             }
-            venues.save(new Venue(UUID.randomUUID(), name.get().trim(), location.get().trim(),
+            UUID venueId = UUID.randomUUID();
+            venues.save(new Venue(venueId, name.get().trim(), location.get().trim(),
                     parsedCapacity, null, VenueStatus.ACTIVE));
+            onVenueCreated.accept(venueId);
             reload();
         } catch (RuntimeException exception) {
             showError(exception.getMessage());
@@ -123,6 +134,21 @@ public final class VenueManagementView {
                 reload();
             }
         });
+    }
+
+    private void claimAccess() {
+        Venue selected = table.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            showError("Select a venue first.");
+            return;
+        }
+        try {
+            onVenueCreated.accept(selected.venueId());
+            new Alert(Alert.AlertType.INFORMATION,
+                    "Access granted for " + selected.name() + ".").showAndWait();
+        } catch (RuntimeException exception) {
+            showError(exception.getMessage());
+        }
     }
 
     private Optional<String> prompt(String title, String label, String value) {

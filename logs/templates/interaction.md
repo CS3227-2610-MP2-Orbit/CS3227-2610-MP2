@@ -43,6 +43,12 @@ commit identifier as a required field.
 
 Suggested commit message:
 
+## AI-generated mini reflection
+
+Summarize what the task demonstrated, its strongest outcome, its main
+limitation, and a useful next step. Keep this clearly attributed to the AI; do
+not present it as the student's personal reflection or approval.
+
 ## Student review
 
 - [ ] I confirmed that the original prompts are accurate.

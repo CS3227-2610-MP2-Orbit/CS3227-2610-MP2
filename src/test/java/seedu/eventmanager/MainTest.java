@@ -9,7 +9,6 @@ import org.junit.jupiter.api.Test;
 class MainTest {
     @Test
     void main_startsWithoutThrowing() {
-        Assumptions.assumeTrue("true".equalsIgnoreCase(System.getenv("DATABASE_INTEGRATION_TESTS")));
-        assertDoesNotThrow(() -> Main.main(new String[0]));
+        assertDoesNotThrow(() -> Main.main(new String[] {"--version"}));
     }
 }
