@@ -21,20 +21,15 @@ public final class VenueAdministratorDashboardView {
     private Label availableVenuesValue;
     private final Runnable showRequests;
     private final Runnable showVenues;
-    private final Runnable showAvailability;
     private final Runnable showUsers;
-    private final Runnable showUtilization;
 
     public VenueAdministratorDashboardView(JdbcLocalSessionService.Session session,
-            Runnable onLogout, Runnable showRequests, Runnable showVenues, Runnable showAvailability,
-            Runnable showUsers, Runnable showUtilization) {
+            Runnable onLogout, Runnable showRequests, Runnable showVenues, Runnable showUsers) {
         Objects.requireNonNull(session);
         Objects.requireNonNull(onLogout);
         this.showRequests = Objects.requireNonNull(showRequests);
         this.showVenues = Objects.requireNonNull(showVenues);
-        this.showAvailability = Objects.requireNonNull(showAvailability);
         this.showUsers = Objects.requireNonNull(showUsers);
-        this.showUtilization = Objects.requireNonNull(showUtilization);
         root.setStyle("-fx-background-color: #f7f9fc;");
         root.setLeft(sidebar(onLogout));
         showOverview(session);
@@ -66,10 +61,7 @@ public final class VenueAdministratorDashboardView {
         addNavigation(sidebar, "Dashboard", () -> showOverview(null));
         addNavigation(sidebar, "Venue requests", showRequests);
         addNavigation(sidebar, "Venues", showVenues);
-        addNavigation(sidebar, "Availability", showAvailability);
         addNavigation(sidebar, "Users and access", showUsers);
-        addNavigation(sidebar, "Venue utilization", showUtilization);
-        addNavigation(sidebar, "Audit activity", () -> showPlaceholder("Audit activity"));
 
         VBox spacer = new VBox();
         VBox.setVgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
@@ -112,13 +104,6 @@ public final class VenueAdministratorDashboardView {
         VBox content = content(pageTitle, contentTitle, cards,
                 new Label("Live venue activity will appear here once the dashboard repository is connected."));
         root.setCenter(content);
-    }
-
-    private void showPlaceholder(String name) {
-        pageTitle.setText(name);
-        contentTitle.setText(name);
-        root.setCenter(content(pageTitle, contentTitle,
-                new Label("This section is planned for the next frontend step.")));
     }
 
     private VBox content(Node... nodes) {
