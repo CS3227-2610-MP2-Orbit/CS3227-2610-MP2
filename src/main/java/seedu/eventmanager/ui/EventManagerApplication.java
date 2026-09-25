@@ -87,10 +87,6 @@ public final class EventManagerApplication extends Application {
             DriverManagerDataSource dataSource = new DriverManagerDataSource(databaseConfig);
             new DatabaseMigration(dataSource).migrate();
 
-            OrganizerIdentity organizer = new OrganizerIdentity(
-                    actor.userId().toString(), organizerFrom(localSettings()).ownedClubIds());
-            EventService eventService = new EventService(
-                    new JdbcEventRepository(dataSource), UUID::randomUUID, Clock.systemUTC());
             OrganizerIdentity organizer = organizerFrom(localSettings());
             JdbcDatabase jdbcDatabase = new JdbcDatabase(configuration);
             JdbcVenueRepository venueRepository = new JdbcVenueRepository(jdbcDatabase);
