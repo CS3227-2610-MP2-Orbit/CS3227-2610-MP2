@@ -93,6 +93,7 @@ The app is designed for users who:
 | Organizer | Edit draft event | **Events** → select event → edit → **Save event** |
 | Organizer | Reset / revert form | **Reset** (new) or **Revert changes** (edit) |
 | Organizer | Request a venue | **Request venue** → select event + venue → **Submit request** |
+| Organizer | Assign / remove volunteers | **Volunteers** → select event → **Assign volunteer** or **Remove selected** (requires registered attendees) |
 | Venue Admin | Log in | Venue Administrator login screen |
 | Venue Admin | Create venue | **Venues** → **Create venue** |
 | Venue Admin | Claim access to a venue | **Venues** → select row → **Claim access** |
@@ -173,6 +174,21 @@ Submits a `SUBMITTED` venue booking request so a Venue Administrator can approve
 > **Caution:** An event may have only **one open** request (`DRAFT` or `SUBMITTED`) at a time. Booking conflicts are checked when the administrator **approves**, not at submit time. Events are **not** auto-published when a venue is approved.
 
 > **Tip:** After Admin decides, return to **Request venue** and select the event again to see the updated status.
+
+### Assigning volunteers
+
+Assigns attendees who are registered for one of your events as volunteers, with an optional role.
+
+**Steps:**
+
+1. In the sidebar, select **Volunteers**.
+2. Select an event in **Your events**. **Assigned volunteers** lists current volunteers.
+3. Under **Assign a volunteer**, choose an **Attendee**, optionally enter a **Role** (up to 60 characters, e.g. `Usher`), and select **Assign volunteer**.
+4. To remove a volunteer, select them in **Assigned volunteers** and select **Remove selected**.
+
+**Expected result:** Feedback confirms the assignment or removal and the list updates. Assigning the same attendee twice is rejected.
+
+> **Caution:** Only attendees **registered** for the event can be assigned. Attendee registration is not available in this build yet, so the attendee picker is empty and shows *No registered attendees available to assign*. Assigning cannot be demonstrated until registration exists.
 
 ---
 

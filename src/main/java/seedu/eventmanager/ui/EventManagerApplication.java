@@ -23,6 +23,7 @@ import seedu.eventmanager.event.EventService;
 import seedu.eventmanager.event.JdbcEventRepository;
 import seedu.eventmanager.event.OrganizerIdentity;
 import seedu.eventmanager.event.OrganizerVenueRequestService;
+import seedu.eventmanager.registration.NoEventRegistrations;
 import seedu.eventmanager.storage.DatabaseBootstrap;
 import seedu.eventmanager.storage.DatabaseConfig;
 import seedu.eventmanager.storage.DatabaseConfiguration;
@@ -31,6 +32,8 @@ import seedu.eventmanager.storage.DriverManagerDataSource;
 import seedu.eventmanager.storage.JdbcDatabase;
 import seedu.eventmanager.storage.JdbcVenueRepository;
 import seedu.eventmanager.storage.JdbcVenueRequestRepository;
+import seedu.eventmanager.volunteer.JdbcVolunteerRepository;
+import seedu.eventmanager.volunteer.VolunteerService;
 
 /** Desktop application shell that routes users to the available role workspaces. */
 public final class EventManagerApplication extends Application {
@@ -90,12 +93,18 @@ public final class EventManagerApplication extends Application {
                     venueRepository,
                     venueRequestRepository,
                     UUID::randomUUID);
+            VolunteerService volunteerService = new VolunteerService(
+                    eventService,
+                    new NoEventRegistrations(),
+                    new JdbcVolunteerRepository(dataSource),
+                    Clock.systemUTC());
             // Edge-to-edge role shell: Home lives in the Organizer sidebar (no dual chrome).
             root.setPadding(Insets.EMPTY);
             root.setTop(null);
             root.setCenter(new OrganizerEventView(
                     eventService,
                     venueRequestService,
+                    volunteerService,
                     venueRepository,
                     organizer,
                     () -> showHome(root)));

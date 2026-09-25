@@ -19,7 +19,7 @@ import seedu.eventmanager.registration.RegisteredAttendee;
 
 /** Organizer workflow: assign registered attendees as volunteers for an owned event. */
 public final class VolunteerService {
-    static final int MAX_ROLE_LENGTH = 60;
+    public static final int MAX_ROLE_LENGTH = 60;
 
     private final EventService eventService;
     private final EventRegistrations registrations;

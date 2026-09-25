@@ -2,7 +2,7 @@
 
 Volunteer assignment and management belong here.
 
-## Implemented (service and persistence only)
+## Implemented
 
 `VolunteerService` lets a Club Organizer, for an event their club owns:
 
@@ -18,11 +18,14 @@ writes an `ASSIGN_VOLUNTEER` / `REMOVE_VOLUNTEER` business audit record in
 `event_volunteer_audit_record` in the same transaction. Attendee names are not
 stored; they are read from `EventRegistrations` at list time.
 
+The Organizer **Volunteers** screen (`OrganizerEventView`) calls this service;
+`EventManagerApplication` wires it with `NoEventRegistrations`.
+
 ## Not implemented / unresolved
 
-- No desktop UI yet; the service is not wired into `EventManagerApplication`.
 - Registered attendees come from `EventRegistrations`, which has no real
-  implementation until Attendee registration exists (see `registration/README.md`).
+  implementation until Attendee registration exists (see `registration/README.md`),
+  so the Volunteers screen currently has no attendees to assign.
 - Undecided team policy: what happens to an assignment when the attendee cancels
   their registration, volunteer caps, volunteer notifications, attendee sign-up,
   and whether volunteers may perform QR check-in.

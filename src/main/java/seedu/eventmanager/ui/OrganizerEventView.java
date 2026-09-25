@@ -30,15 +30,19 @@ import seedu.eventmanager.event.EventDetails;
 import seedu.eventmanager.event.EventService;
 import seedu.eventmanager.event.OrganizerIdentity;
 import seedu.eventmanager.event.OrganizerVenueRequestService;
+import seedu.eventmanager.registration.RegisteredAttendee;
 import seedu.eventmanager.service.VenueRepository;
 import seedu.eventmanager.venue.Venue;
 import seedu.eventmanager.venue.VenueRequest;
 import seedu.eventmanager.venue.VenueRequestStatus;
 import seedu.eventmanager.venue.VenueStatus;
+import seedu.eventmanager.volunteer.AssignedVolunteer;
+import seedu.eventmanager.volunteer.VolunteerService;
 
 /**
- * JavaFX screen for an organizer to create/edit draft events and submit venue requests.
- * Visual layout follows the Venue Administrator shell (dark sidebar + card content).
+ * JavaFX screen for an organizer to create/edit draft events, submit venue requests,
+ * and assign volunteers. Visual layout follows the Venue Administrator shell
+ * (dark sidebar + card content).
  */
 public final class OrganizerEventView extends BorderPane {
     private static final String SIDEBAR_STYLE = "-fx-background-color: #172033;";
@@ -51,10 +55,15 @@ public final class OrganizerEventView extends BorderPane {
     private static final String PRIMARY_BUTTON_STYLE =
             "-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8px 16px;";
 
-    private enum Screen { EVENTS, REQUEST_VENUE }
+    private static final String SECONDARY_BUTTON_STYLE =
+            "-fx-background-color: white; -fx-text-fill: #b42318; -fx-border-color: #e2e8f0;"
+                    + " -fx-border-radius: 4px; -fx-background-radius: 4px; -fx-padding: 8px 16px;";
+
+    private enum Screen { EVENTS, REQUEST_VENUE, VOLUNTEERS }
 
     private final EventService service;
     private final OrganizerVenueRequestService venueRequestService;
+    private final VolunteerService volunteerService;
     private final VenueRepository venueRepository;
     private final OrganizerIdentity actor;
     private final Runnable onHome;
@@ -74,6 +83,7 @@ public final class OrganizerEventView extends BorderPane {
     private final Button eventsNav = navButton("Events");
     private final Button newEvent = new Button("+ New event");
     private final Button requestVenueNav = navButton("Request venue");
+    private final Button volunteersNav = navButton("Volunteers");
 
     private final ListView<Event> requestEvents = new ListView<>();
     private final ComboBox<Venue> venuePicker = new ComboBox<>();
@@ -82,8 +92,19 @@ public final class OrganizerEventView extends BorderPane {
     private final Label requestStatus = new Label();
     private final Button submitRequest = new Button("Submit request");
 
+    private final ListView<Event> volunteerEvents = new ListView<>();
+    private final Label volunteerHeading = new Label("Volunteers");
+    private final ListView<AssignedVolunteer> assignedVolunteers = new ListView<>();
+    private final ComboBox<RegisteredAttendee> attendeePicker = new ComboBox<>();
+    private final TextField volunteerRole = new TextField();
+    private final Label availabilityNote = new Label();
+    private final Label volunteerFeedback = new Label();
+    private final Button assignVolunteer = new Button("Assign volunteer");
+    private final Button removeVolunteer = new Button("Remove selected");
+
     private final VBox eventsContent;
     private final VBox requestContent;
+    private final VBox volunteerContent;
     private final StackPane workspace = new StackPane();
 
     private UUID editingEventId;
@@ -93,11 +114,13 @@ public final class OrganizerEventView extends BorderPane {
     public OrganizerEventView(
             EventService service,
             OrganizerVenueRequestService venueRequestService,
+            VolunteerService volunteerService,
             VenueRepository venueRepository,
             OrganizerIdentity actor,
             Runnable onHome) {
         this.service = Objects.requireNonNull(service, "service");
         this.venueRequestService = Objects.requireNonNull(venueRequestService, "venueRequestService");
+        this.volunteerService = Objects.requireNonNull(volunteerService, "volunteerService");
         this.venueRepository = Objects.requireNonNull(venueRepository, "venueRepository");
         this.actor = Objects.requireNonNull(actor, "actor");
         this.onHome = Objects.requireNonNull(onHome, "onHome");
@@ -107,6 +130,7 @@ public final class OrganizerEventView extends BorderPane {
         setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
         eventsContent = buildEventsContent();
         requestContent = buildRequestContent();
+        volunteerContent = buildVolunteerContent();
         workspace.getChildren().setAll(eventsContent);
         configureLayout();
         refreshEvents(null);
@@ -139,6 +163,7 @@ public final class OrganizerEventView extends BorderPane {
             showEventsList();
         });
         requestVenueNav.setOnAction(ignored -> showRequestVenueScreen());
+        volunteersNav.setOnAction(ignored -> showVolunteersScreen());
         highlightNavForScreen();
 
         Region spacer = new Region();
@@ -156,7 +181,7 @@ public final class OrganizerEventView extends BorderPane {
         home.setOnAction(ignored -> onHome.run());
 
         sidebar.getChildren().addAll(
-                brand, role, eventsNav, requestVenueNav,
+                brand, role, eventsNav, requestVenueNav, volunteersNav,
                 spacer, clubsHint, identity, home);
         return sidebar;
     }
@@ -366,6 +391,140 @@ public final class OrganizerEventView extends BorderPane {
         return content;
     }
 
+    private VBox buildVolunteerContent() {
+        Label pageTitle = new Label("Volunteers");
+        pageTitle.setStyle("-fx-text-fill: #61708a; -fx-font-size: 13px;");
+        Label contentTitle = new Label("Club Organizer — Volunteers");
+        contentTitle.setStyle("-fx-text-fill: #172033; -fx-font-size: 24px; -fx-font-weight: bold;");
+
+        volunteerEvents.setMinWidth(260);
+        volunteerEvents.setPrefWidth(320);
+        volunteerEvents.setMaxWidth(360);
+        volunteerEvents.setPlaceholder(new Label("No events yet"));
+        volunteerEvents.setStyle(CARD_STYLE);
+        volunteerEvents.setCellFactory(ignored -> eventCell());
+        volunteerEvents.getSelectionModel().selectedItemProperty()
+                .addListener((ignored, previous, selected) -> {
+                    volunteerFeedback.setText("");
+                    loadVolunteers(selected);
+                });
+
+        VBox listCard = new VBox(12, sectionLabel("Your events"), volunteerEvents);
+        listCard.setPadding(new Insets(18));
+        listCard.setStyle(CARD_STYLE);
+        listCard.setMinWidth(280);
+        listCard.setPrefWidth(340);
+        listCard.setMaxWidth(380);
+        VBox.setVgrow(volunteerEvents, Priority.ALWAYS);
+
+        volunteerHeading.setStyle("-fx-text-fill: #172033; -fx-font-size: 16px; -fx-font-weight: bold;");
+        Label help = new Label(
+                "Only attendees registered for this event can be assigned. "
+                        + "A role is optional (for example Usher or Registration desk).");
+        help.setWrapText(true);
+        help.setStyle("-fx-text-fill: #61708a;");
+
+        assignedVolunteers.setPlaceholder(new Label("No volunteers assigned yet"));
+        assignedVolunteers.setStyle(CARD_STYLE);
+        assignedVolunteers.setPrefHeight(200);
+        assignedVolunteers.setCellFactory(ignored -> volunteerCell());
+        assignedVolunteers.getSelectionModel().selectedItemProperty()
+                .addListener((ignored, previous, selected) -> removeVolunteer.setDisable(selected == null));
+        removeVolunteer.setStyle(SECONDARY_BUTTON_STYLE);
+        removeVolunteer.setDisable(true);
+        removeVolunteer.setOnAction(ignored -> removeSelectedVolunteer());
+        HBox removeActions = new HBox(removeVolunteer);
+        removeActions.setAlignment(Pos.CENTER_RIGHT);
+
+        attendeePicker.setMaxWidth(Double.MAX_VALUE);
+        attendeePicker.setPromptText("Select a registered attendee");
+        attendeePicker.setCellFactory(ignored -> attendeeCell());
+        attendeePicker.setButtonCell(attendeeCell());
+        volunteerRole.setPromptText("Optional, e.g. Usher");
+        volunteerRole.setMaxWidth(Double.MAX_VALUE);
+        volunteerRole.setTextFormatter(new TextFormatter<>(change ->
+                change.getControlNewText().length() <= VolunteerService.MAX_ROLE_LENGTH ? change : null));
+        availabilityNote.setWrapText(true);
+        availabilityNote.setStyle("-fx-text-fill: #61708a;");
+        volunteerFeedback.setWrapText(true);
+
+        GridPane form = new GridPane();
+        form.setHgap(16);
+        form.setVgap(14);
+        form.setMaxWidth(Double.MAX_VALUE);
+        ColumnConstraints labels = new ColumnConstraints();
+        labels.setMinWidth(170);
+        labels.setPrefWidth(190);
+        ColumnConstraints fields = new ColumnConstraints();
+        fields.setHgrow(Priority.ALWAYS);
+        fields.setMinWidth(280);
+        fields.setFillWidth(true);
+        form.getColumnConstraints().addAll(labels, fields);
+        form.add(fieldLabel("Attendee"), 0, 0);
+        form.add(attendeePicker, 1, 0);
+        form.add(fieldLabel("Role"), 0, 1);
+        form.add(volunteerRole, 1, 1);
+        form.add(availabilityNote, 1, 2);
+
+        assignVolunteer.setStyle(PRIMARY_BUTTON_STYLE);
+        assignVolunteer.setOnAction(ignored -> assignSelectedAttendee());
+        HBox assignActions = new HBox(assignVolunteer);
+        assignActions.setAlignment(Pos.CENTER_RIGHT);
+
+        VBox formCard = new VBox(16,
+                volunteerHeading,
+                help,
+                sectionLabel("Assigned volunteers"),
+                assignedVolunteers,
+                removeActions,
+                sectionLabel("Assign a volunteer"),
+                form,
+                volunteerFeedback,
+                assignActions);
+        formCard.setPadding(new Insets(22));
+        formCard.setStyle(CARD_STYLE);
+        formCard.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(formCard, Priority.ALWAYS);
+
+        HBox body = new HBox(20, listCard, formCard);
+        body.setMaxWidth(Double.MAX_VALUE);
+        VBox.setVgrow(body, Priority.ALWAYS);
+        VBox.setVgrow(listCard, Priority.ALWAYS);
+        VBox.setVgrow(formCard, Priority.ALWAYS);
+
+        VBox content = new VBox(18, pageTitle, contentTitle, body);
+        content.setPadding(new Insets(28, 32, 28, 32));
+        content.setMaxWidth(Double.MAX_VALUE);
+        VBox.setVgrow(body, Priority.ALWAYS);
+        return content;
+    }
+
+    private static ListCell<AssignedVolunteer> volunteerCell() {
+        return new ListCell<>() {
+            @Override
+            protected void updateItem(AssignedVolunteer volunteer, boolean empty) {
+                super.updateItem(volunteer, empty);
+                if (empty || volunteer == null) {
+                    setText(null);
+                    return;
+                }
+                String name = volunteer.displayName().orElse("Attendee no longer registered");
+                String role = volunteer.role().isEmpty() ? "No role" : volunteer.role();
+                setText(name + " — " + role);
+            }
+        };
+    }
+
+    private static ListCell<RegisteredAttendee> attendeeCell() {
+        return new ListCell<>() {
+            @Override
+            protected void updateItem(RegisteredAttendee attendee, boolean empty) {
+                super.updateItem(attendee, empty);
+                setText(empty || attendee == null ? null : attendee.displayName());
+            }
+        };
+    }
+
     private static ListCell<Event> eventCell() {
         return new ListCell<>() {
             @Override
@@ -452,6 +611,99 @@ public final class OrganizerEventView extends BorderPane {
         } else {
             updateRequestSummary(requestEvents.getSelectionModel().getSelectedItem());
         }
+    }
+
+    private void showVolunteersScreen() {
+        screen = Screen.VOLUNTEERS;
+        workspace.getChildren().setAll(volunteerContent);
+        refreshEvents(null);
+        highlightNavForScreen();
+        volunteerFeedback.setText("");
+        if (volunteerEvents.getSelectionModel().getSelectedItem() == null
+                && !volunteerEvents.getItems().isEmpty()) {
+            volunteerEvents.getSelectionModel().selectFirst();
+        } else {
+            loadVolunteers(volunteerEvents.getSelectionModel().getSelectedItem());
+        }
+    }
+
+    private void loadVolunteers(Event event) {
+        if (event == null) {
+            volunteerHeading.setText("Volunteers");
+            assignedVolunteers.getItems().clear();
+            attendeePicker.getItems().clear();
+            availabilityNote.setText("Select an event from the list.");
+            attendeePicker.setDisable(true);
+            volunteerRole.setDisable(true);
+            assignVolunteer.setDisable(true);
+            return;
+        }
+        volunteerHeading.setText("Volunteers — " + event.title());
+        try {
+            assignedVolunteers.getItems().setAll(volunteerService.listVolunteers(actor, event.id()));
+            attendeePicker.getItems().setAll(volunteerService.availableAttendees(actor, event.id()));
+            boolean noneAvailable = attendeePicker.getItems().isEmpty();
+            availabilityNote.setText(noneAvailable
+                    ? "No registered attendees available to assign. Attendees must register for "
+                            + "this event before they can volunteer."
+                    : "");
+            attendeePicker.setDisable(noneAvailable);
+            volunteerRole.setDisable(noneAvailable);
+            assignVolunteer.setDisable(noneAvailable);
+            if (!noneAvailable) {
+                attendeePicker.getSelectionModel().selectFirst();
+            }
+        } catch (RuntimeException exception) {
+            assignedVolunteers.getItems().clear();
+            attendeePicker.getItems().clear();
+            attendeePicker.setDisable(true);
+            volunteerRole.setDisable(true);
+            assignVolunteer.setDisable(true);
+            setVolunteerFeedback("Could not load volunteers: " + exception.getMessage(), true);
+        }
+    }
+
+    private void assignSelectedAttendee() {
+        Event event = volunteerEvents.getSelectionModel().getSelectedItem();
+        RegisteredAttendee attendee = attendeePicker.getSelectionModel().getSelectedItem();
+        if (event == null) {
+            setVolunteerFeedback("Select an event first.", true);
+            return;
+        }
+        if (attendee == null) {
+            setVolunteerFeedback("Select a registered attendee.", true);
+            return;
+        }
+        try {
+            volunteerService.assign(actor, event.id(), attendee.attendeeId(), volunteerRole.getText());
+            volunteerRole.clear();
+            loadVolunteers(event);
+            setVolunteerFeedback(attendee.displayName() + " assigned as a volunteer.", false);
+        } catch (RuntimeException exception) {
+            setVolunteerFeedback(exception.getMessage(), true);
+        }
+    }
+
+    private void removeSelectedVolunteer() {
+        Event event = volunteerEvents.getSelectionModel().getSelectedItem();
+        AssignedVolunteer volunteer = assignedVolunteers.getSelectionModel().getSelectedItem();
+        if (event == null || volunteer == null) {
+            setVolunteerFeedback("Select a volunteer to remove.", true);
+            return;
+        }
+        try {
+            volunteerService.remove(actor, event.id(), volunteer.attendeeId());
+            loadVolunteers(event);
+            setVolunteerFeedback(
+                    volunteer.displayName().orElse("Volunteer") + " removed.", false);
+        } catch (RuntimeException exception) {
+            setVolunteerFeedback(exception.getMessage(), true);
+        }
+    }
+
+    private void setVolunteerFeedback(String message, boolean error) {
+        volunteerFeedback.setText(message == null ? "Operation failed" : message);
+        volunteerFeedback.setStyle(error ? "-fx-text-fill: #b42318;" : "-fx-text-fill: #1b5e20;");
     }
 
     private void refreshVenues() {
@@ -571,6 +823,7 @@ public final class OrganizerEventView extends BorderPane {
         java.util.List<Event> listed = service.listEvents(actor);
         events.getItems().setAll(listed);
         requestEvents.getItems().setAll(listed);
+        volunteerEvents.getItems().setAll(listed);
         if (selectedId != null) {
             listed.stream()
                     .filter(event -> event.id().equals(selectedId))
@@ -578,6 +831,7 @@ public final class OrganizerEventView extends BorderPane {
                     .ifPresent(event -> {
                         events.getSelectionModel().select(event);
                         requestEvents.getSelectionModel().select(event);
+                        volunteerEvents.getSelectionModel().select(event);
                     });
         }
     }
@@ -648,9 +902,9 @@ public final class OrganizerEventView extends BorderPane {
     }
 
     private void highlightNavForScreen() {
-        boolean onRequest = screen == Screen.REQUEST_VENUE;
-        eventsNav.setStyle(onRequest ? NAV_BUTTON_STYLE : NAV_BUTTON_ACTIVE_STYLE);
-        requestVenueNav.setStyle(onRequest ? NAV_BUTTON_ACTIVE_STYLE : NAV_BUTTON_STYLE);
+        eventsNav.setStyle(screen == Screen.EVENTS ? NAV_BUTTON_ACTIVE_STYLE : NAV_BUTTON_STYLE);
+        requestVenueNav.setStyle(screen == Screen.REQUEST_VENUE ? NAV_BUTTON_ACTIVE_STYLE : NAV_BUTTON_STYLE);
+        volunteersNav.setStyle(screen == Screen.VOLUNTEERS ? NAV_BUTTON_ACTIVE_STYLE : NAV_BUTTON_STYLE);
     }
 
     private void applyDetails(
