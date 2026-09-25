@@ -4,10 +4,13 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import seedu.eventmanager.common.AccessDeniedException;
 import seedu.eventmanager.common.EntityNotFoundException;
 import seedu.eventmanager.common.ValidationException;
+import seedu.eventmanager.service.VenueRequestRepository;
+import seedu.eventmanager.venue.VenueRequest;
 
 /** Organizer application workflow for creating, viewing, and editing events. */
 public final class EventService {
@@ -15,6 +18,7 @@ public final class EventService {
     private static final int MAX_DESCRIPTION_LENGTH = 5_000;
 
     private final EventRepository repository;
+    private final VenueRequestRepository venueRequests;
     private final IdGenerator idGenerator;
     private final Clock clock;
 
@@ -25,9 +29,18 @@ public final class EventService {
     }
 
     public EventService(EventRepository repository, IdGenerator idGenerator, Clock clock) {
+        this(repository, idGenerator, clock, null);
+    }
+
+    public EventService(
+            EventRepository repository,
+            IdGenerator idGenerator,
+            Clock clock,
+            VenueRequestRepository venueRequests) {
         this.repository = Objects.requireNonNull(repository, "repository");
         this.idGenerator = Objects.requireNonNull(idGenerator, "idGenerator");
         this.clock = Objects.requireNonNull(clock, "clock");
+        this.venueRequests = venueRequests;
     }
 
     public Event createEvent(OrganizerIdentity actor, String clubId, EventDetails details) {
@@ -58,7 +71,11 @@ public final class EventService {
         return event;
     }
 
-    public Event editEvent(
+    /**
+     * Updates a draft event. When capacity changes, syncs expected attendance on any open
+     * ({@code DRAFT}/{@code SUBMITTED}) venue request; decided requests are left alone.
+     */
+    public CapacityUpdateResult editEvent(
             OrganizerIdentity actor, UUID eventId, long expectedVersion, EventDetails details) {
         requireActor(actor);
         Objects.requireNonNull(eventId, "eventId");
@@ -94,7 +111,11 @@ public final class EventService {
                 eventId,
                 edited.version());
         repository.update(edited, expectedVersion, auditRecord);
-        return edited;
+
+        if (current.capacity() == edited.capacity()) {
+            return CapacityUpdateResult.noOpenRequest(edited);
+        }
+        return syncOpenRequestAttendance(edited);
     }
 
     public Event getEvent(OrganizerIdentity actor, UUID eventId) {
@@ -108,6 +129,41 @@ public final class EventService {
     public List<Event> listEvents(OrganizerIdentity actor) {
         requireActor(actor);
         return List.copyOf(repository.findByClubIds(actor.ownedClubIds()));
+    }
+
+    private CapacityUpdateResult syncOpenRequestAttendance(Event edited) {
+        if (venueRequests == null) {
+            return CapacityUpdateResult.noOpenRequest(edited);
+        }
+
+        UUID eventId = edited.id();
+        int newCapacity = edited.capacity();
+        Optional<VenueRequest> open = venueRequests.findOpenByEventId(eventId);
+        if (open.isPresent()) {
+            VenueRequest currentRequest = open.get();
+            boolean changed = venueRequests.updateExpectedAttendance(
+                    currentRequest.requestId(), newCapacity);
+            if (!changed) {
+                return CapacityUpdateResult.decidedUnchanged(edited);
+            }
+            VenueRequest after = new VenueRequest(
+                    currentRequest.requestId(),
+                    currentRequest.eventId(),
+                    currentRequest.venueId(),
+                    currentRequest.organizerId(),
+                    currentRequest.startsAt(),
+                    currentRequest.endsAt(),
+                    newCapacity,
+                    currentRequest.status());
+            return CapacityUpdateResult.synced(edited, after);
+        }
+
+        Optional<VenueRequest> latest = venueRequests.findLatestByEventId(eventId);
+        if (CapacityUpdateResult.classifyWithoutOpen(latest)
+                == CapacityUpdateResult.SyncStatus.DECIDED_REQUEST_UNCHANGED) {
+            return CapacityUpdateResult.decidedUnchanged(edited);
+        }
+        return CapacityUpdateResult.noOpenRequest(edited);
     }
 
     private Event findExisting(UUID eventId) {

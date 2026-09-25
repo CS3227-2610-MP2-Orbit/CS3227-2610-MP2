@@ -282,7 +282,7 @@ See [Agentic SE](AgenticSE.md). Cursor project hooks (optional process guardrail
 ### Organizer create/edit event
 
 1. Open **Club Organizer**.
-2. **New event** → fill required fields → **Save event**.
+2. **Events** → **+ New event** → fill required fields → **Save event**.
 3. Select the event, change the title, **Save event**.
 4. **Revert changes** after editing without saving — last saved draft returns.
 
