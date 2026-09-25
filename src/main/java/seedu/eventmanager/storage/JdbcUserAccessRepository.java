@@ -62,18 +62,28 @@ public final class JdbcUserAccessRepository implements UserAccessRepository {
     }
 
     @Override
-    public void grantVenueAccess(UUID userId, UUID venueId) {
+    public void updateUser(UUID userId, String username, Role role, boolean active) {
+        if (userId == null || username == null || username.isBlank() || role == null) {
+            throw new IllegalArgumentException("User ID, username, and role are required.");
+        }
         database.withConnection(connection -> {
             try (var statement = connection.prepareStatement("""
-                    INSERT INTO venue_administrator_venues (user_id, venue_id, created_at)
-                    VALUES (?, ?, CURRENT_TIMESTAMP)
-                    ON CONFLICT (user_id, venue_id) DO NOTHING""")) {
-                statement.setObject(1, userId);
-                statement.setObject(2, venueId);
-                statement.executeUpdate();
+                    UPDATE users
+                    SET username = ?, role = ?, active = ?, updated_at = CURRENT_TIMESTAMP
+                    WHERE user_id = ?""")) {
+                statement.setString(1, username.trim());
+                statement.setString(2, role.name());
+                statement.setBoolean(3, active);
+                statement.setObject(4, userId);
+                if (statement.executeUpdate() == 0) {
+                    throw new IllegalArgumentException("User account was not found.");
+                }
                 return null;
             } catch (SQLException exception) {
-                throw new IllegalStateException("Could not grant venue access.", exception);
+                if ("23505".equals(exception.getSQLState())) {
+                    throw new IllegalArgumentException("That username is already in use.");
+                }
+                throw new IllegalStateException("Could not update user.", exception);
             }
         });
     }

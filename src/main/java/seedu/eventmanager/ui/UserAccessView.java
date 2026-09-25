@@ -2,11 +2,13 @@ package seedu.eventmanager.ui;
 
 import java.util.Objects;
 import java.util.Optional;
-import java.util.UUID;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.ChoiceDialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
@@ -35,11 +37,11 @@ public final class UserAccessView {
                 column("User ID", user -> user.userId().toString()));
         Button create = new Button("Create user");
         create.setOnAction(event -> createUser());
-        Button grant = new Button("Grant venue access");
-        grant.setOnAction(event -> grantAccess());
+        Button edit = new Button("Edit account");
+        edit.setOnAction(event -> editUser());
         Button refresh = new Button("Refresh");
         refresh.setOnAction(event -> reload());
-        HBox actions = new HBox(10, create, grant, refresh);
+        HBox actions = new HBox(10, create, edit, refresh);
         VBox content = new VBox(16, back, heading, actions, table);
         content.setPadding(new Insets(28));
         root.setCenter(content);
@@ -74,12 +76,33 @@ public final class UserAccessView {
         }
     }
 
-    private void grantAccess() {
+    private void editUser() {
         UserAccessRepository.UserSummary selected = table.getSelectionModel().getSelectedItem();
-        Optional<String> venueId = prompt("Grant venue access", "Venue ID", "");
-        if (selected == null || venueId.isEmpty()) return;
+        if (selected == null) {
+            showError("Select a user account first.");
+            return;
+        }
+        TextInputDialog username = new TextInputDialog(selected.username());
+        username.setTitle("Edit account");
+        username.setContentText("Username:");
+        Optional<String> updatedUsername = username.showAndWait();
+        if (updatedUsername.isEmpty()) return;
+        ChoiceDialog<Role> role = new ChoiceDialog<>(selected.role(),
+                java.util.List.of(Role.ATTENDEE, Role.CLUB_ORGANIZER, Role.VENUE_ADMINISTRATOR));
+        role.setTitle("Edit account");
+        role.setContentText("Role:");
+        Optional<Role> updatedRole = role.showAndWait();
+        if (updatedRole.isEmpty()) return;
+        CheckBox active = new CheckBox("Account active");
+        active.setSelected(selected.active());
+        Alert status = new Alert(Alert.AlertType.CONFIRMATION);
+        status.setTitle("Edit account");
+        status.setHeaderText("Update account status");
+        status.getDialogPane().setContent(active);
+        if (status.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) return;
         try {
-            users.grantVenueAccess(selected.userId(), UUID.fromString(venueId.get().trim()));
+            users.updateUser(selected.userId(), updatedUsername.get(), updatedRole.get(), active.isSelected());
+            reload();
         } catch (RuntimeException exception) {
             showError(exception.getMessage());
         }
