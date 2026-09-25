@@ -6,26 +6,19 @@ import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
-import seedu.eventmanager.common.Actor;
 import seedu.eventmanager.service.UserAccessRepository;
 import seedu.eventmanager.service.VenueAdministratorService;
 import seedu.eventmanager.service.VenueAdministratorServiceFactory;
-import seedu.eventmanager.service.VenueAvailabilityRepository;
-import seedu.eventmanager.service.VenueRepository;
 import seedu.eventmanager.service.VenueRequestRepository;
 import seedu.eventmanager.storage.DatabaseBootstrap;
 import seedu.eventmanager.storage.DatabaseConfiguration;
 import seedu.eventmanager.storage.JdbcAuthorizationService;
+import seedu.eventmanager.storage.JdbcDatabase;
+import seedu.eventmanager.storage.JdbcLocalSessionService;
 import seedu.eventmanager.storage.JdbcVenueRequestRepository;
 import seedu.eventmanager.storage.JdbcVenueRepository;
-import seedu.eventmanager.service.VenueRepository;
-import seedu.eventmanager.service.UserAccessRepository;
 import seedu.eventmanager.storage.JdbcUserAccessRepository;
-import seedu.eventmanager.storage.JdbcVenueAvailabilityRepository;
-import seedu.eventmanager.storage.JdbcVenueRepository;
-import seedu.eventmanager.storage.JdbcVenueRequestRepository;
 import seedu.eventmanager.storage.PasswordHasher;
-import seedu.eventmanager.venue.VenueStatus;
 
 /** Initial JavaFX shell for the Venue Administrator frontend. */
 public final class VenueAdministratorFxApplication extends Application {
@@ -76,35 +69,36 @@ public final class VenueAdministratorFxApplication extends Application {
         VenueAdministratorDashboardView[] dashboardView = new VenueAdministratorDashboardView[1];
         VenueManagementView[] venueView = new VenueManagementView[1];
         UserAccessView[] usersView = new UserAccessView[1];
-        VenueRepository venueRepository = new JdbcVenueRepository(database);
+        JdbcVenueRepository venueRepository = new JdbcVenueRepository(database);
 
         VenueAdministratorDashboardController controller = new VenueAdministratorDashboardController(
                 session.actor(), authorization, client, state -> {
                     if (requestView[0] != null) {
                         requestView[0].update(state);
                     }
+                    if (dashboardView[0] != null) {
+                        dashboardView[0].update(state, venueRepository.countCurrentlyAvailable());
+                    }
         });
         requestView[0] = new VenueRequestManagementView(controller,
                 () -> root.setCenter(dashboardView[0].root()));
         requestView[0].update(controller.state());
-        VenueRepository venueRepository = new JdbcVenueRepository(database);
         venueView[0] = new VenueManagementView(venueRepository,
                 () -> root.setCenter(dashboardView[0].root()));
         UserAccessRepository userRepository = new JdbcUserAccessRepository(database, new PasswordHasher());
+        Runnable showDashboard = () -> {
+            controller.load();
+            root.setCenter(dashboardView[0].root());
+        };
         usersView[0] = new UserAccessView(userRepository, showDashboard);
         VenueAdministratorDashboardView dashboard = new VenueAdministratorDashboardView(
-                session, () -> showLogin(stage, root), () -> root.setCenter(requestView[0].root()),
+                session, () -> showLogin(root), showDashboard,
+                () -> root.setCenter(requestView[0].root()),
                 () -> root.setCenter(venueView[0].root()),
                 () -> root.setCenter(usersView[0].root()));
         dashboardView[0] = dashboard;
         controller.load();
         root.setCenter(dashboard.root());
-    }
-
-    private static int activeVenueCount(VenueRepository venueRepository) {
-        return (int) venueRepository.findAll().stream()
-                .filter(venue -> venue.status() == VenueStatus.ACTIVE)
-                .count();
     }
 
     public static void main(String[] args) {

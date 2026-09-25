@@ -25,7 +25,8 @@ public final class VenueAdministratorDashboardView {
     private final Runnable showUsers;
 
     public VenueAdministratorDashboardView(JdbcLocalSessionService.Session session,
-            Runnable onLogout, Runnable showRequests, Runnable showVenues, Runnable showUsers) {
+            Runnable onLogout, Runnable refreshDashboard, Runnable showRequests,
+            Runnable showVenues, Runnable showUsers) {
         Objects.requireNonNull(session);
         Objects.requireNonNull(onLogout);
         this.refreshDashboard = Objects.requireNonNull(refreshDashboard);

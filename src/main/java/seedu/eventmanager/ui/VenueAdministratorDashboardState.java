@@ -1,6 +1,5 @@
 package seedu.eventmanager.ui;
 
-import seedu.eventmanager.venue.VenueRequest;
 import java.util.List;
 
 /** Explicit UI state for loading, empty, successful, and failed dashboard views. */
