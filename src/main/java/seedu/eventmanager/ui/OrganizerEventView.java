@@ -36,6 +36,8 @@ import seedu.eventmanager.event.EventDetails;
 import seedu.eventmanager.event.EventService;
 import seedu.eventmanager.event.OrganizerIdentity;
 import seedu.eventmanager.event.OrganizerVenueRequestService;
+import seedu.eventmanager.event.RegistrationOverview;
+import seedu.eventmanager.event.RegistrationOverviewService;
 import seedu.eventmanager.registration.RegisteredAttendee;
 import seedu.eventmanager.service.VenueRepository;
 import seedu.eventmanager.venue.Venue;
@@ -47,7 +49,7 @@ import seedu.eventmanager.volunteer.VolunteerService;
 
 /**
  * JavaFX screen for an organizer to create/edit draft events, submit venue requests,
- * assign volunteers, and create clubs. Visual layout follows the Venue Administrator shell
+ * assign volunteers, view registrations, and create clubs. Visual layout follows the Venue Administrator shell
  * (dark sidebar + card content).
  */
 public final class OrganizerEventView extends BorderPane {
@@ -65,11 +67,12 @@ public final class OrganizerEventView extends BorderPane {
             "-fx-background-color: white; -fx-text-fill: #b42318; -fx-border-color: #e2e8f0;"
                     + " -fx-border-radius: 4px; -fx-background-radius: 4px; -fx-padding: 8px 16px;";
 
-    private enum Screen { EVENTS, REQUEST_VENUE, VOLUNTEERS, CLUBS }
+    private enum Screen { EVENTS, REQUEST_VENUE, VOLUNTEERS, REGISTRATIONS, CLUBS }
 
     private final EventService service;
     private final OrganizerVenueRequestService venueRequestService;
     private final VolunteerService volunteerService;
+    private final RegistrationOverviewService registrationService;
     private final VenueRepository venueRepository;
     private final ClubService clubService;
     private final Actor account;
@@ -93,6 +96,7 @@ public final class OrganizerEventView extends BorderPane {
     private final Button newEvent = new Button("+ New event");
     private final Button requestVenueNav = navButton("Request venue");
     private final Button volunteersNav = navButton("Volunteers");
+    private final Button registrationsNav = navButton("Registrations");
     private final Button clubsNav = navButton("Clubs");
     private final Label clubsHint = new Label();
 
@@ -119,9 +123,16 @@ public final class OrganizerEventView extends BorderPane {
     private final Button assignVolunteer = new Button("Assign volunteer");
     private final Button removeVolunteer = new Button("Remove selected");
 
+    private final ListView<Event> registrationEvents = new ListView<>();
+    private final Label registrationHeading = new Label("Registrations");
+    private final Label registrationCount = new Label();
+    private final ListView<RegisteredAttendee> registrants = new ListView<>();
+    private final Label registrationFeedback = new Label();
+
     private final VBox eventsContent;
     private final VBox requestContent;
     private final VBox volunteerContent;
+    private final VBox registrationContent;
     private final VBox clubContent;
     private final StackPane workspace = new StackPane();
 
@@ -133,6 +144,7 @@ public final class OrganizerEventView extends BorderPane {
             EventService service,
             OrganizerVenueRequestService venueRequestService,
             VolunteerService volunteerService,
+            RegistrationOverviewService registrationService,
             ClubService clubService,
             VenueRepository venueRepository,
             Actor account,
@@ -140,6 +152,7 @@ public final class OrganizerEventView extends BorderPane {
         this.service = Objects.requireNonNull(service, "service");
         this.venueRequestService = Objects.requireNonNull(venueRequestService, "venueRequestService");
         this.volunteerService = Objects.requireNonNull(volunteerService, "volunteerService");
+        this.registrationService = Objects.requireNonNull(registrationService, "registrationService");
         this.clubService = Objects.requireNonNull(clubService, "clubService");
         this.venueRepository = Objects.requireNonNull(venueRepository, "venueRepository");
         this.account = Objects.requireNonNull(account, "account");
@@ -161,6 +174,7 @@ public final class OrganizerEventView extends BorderPane {
         eventsContent = buildEventsContent();
         requestContent = buildRequestContent();
         volunteerContent = buildVolunteerContent();
+        registrationContent = buildRegistrationContent();
         clubContent = buildClubContent();
         workspace.getChildren().setAll(eventsContent);
         configureLayout();
@@ -219,6 +233,7 @@ public final class OrganizerEventView extends BorderPane {
         });
         requestVenueNav.setOnAction(ignored -> showRequestVenueScreen());
         volunteersNav.setOnAction(ignored -> showVolunteersScreen());
+        registrationsNav.setOnAction(ignored -> showRegistrationsScreen());
         clubsNav.setOnAction(ignored -> showClubsScreen());
         highlightNavForScreen();
 
@@ -232,7 +247,7 @@ public final class OrganizerEventView extends BorderPane {
         home.setOnAction(ignored -> onHome.run());
 
         sidebar.getChildren().addAll(
-                brand, role, eventsNav, requestVenueNav, volunteersNav, clubsNav,
+                brand, role, eventsNav, requestVenueNav, volunteersNav, registrationsNav, clubsNav,
                 spacer, clubsHint, home);
         return sidebar;
     }
@@ -552,6 +567,62 @@ public final class OrganizerEventView extends BorderPane {
         return content;
     }
 
+    private VBox buildRegistrationContent() {
+        Label pageTitle = new Label("Registrations");
+        pageTitle.setStyle("-fx-text-fill: #61708a; -fx-font-size: 13px;");
+        Label contentTitle = new Label("Club Organizer — Registrations");
+        contentTitle.setStyle("-fx-text-fill: #172033; -fx-font-size: 24px; -fx-font-weight: bold;");
+
+        registrationEvents.setMinWidth(260);
+        registrationEvents.setPrefWidth(320);
+        registrationEvents.setMaxWidth(360);
+        registrationEvents.setPlaceholder(new Label("No events yet"));
+        registrationEvents.setStyle(CARD_STYLE);
+        registrationEvents.setCellFactory(ignored -> eventCell());
+        registrationEvents.getSelectionModel().selectedItemProperty()
+                .addListener((ignored, previous, selected) -> loadRegistrations(selected));
+
+        VBox listCard = new VBox(12, sectionLabel("Your events"), registrationEvents);
+        listCard.setPadding(new Insets(18));
+        listCard.setStyle(CARD_STYLE);
+        listCard.setMinWidth(280);
+        listCard.setPrefWidth(340);
+        listCard.setMaxWidth(380);
+        VBox.setVgrow(registrationEvents, Priority.ALWAYS);
+
+        registrationHeading.setStyle("-fx-text-fill: #172033; -fx-font-size: 16px; -fx-font-weight: bold;");
+        registrationCount.setStyle("-fx-text-fill: #172033; -fx-font-size: 14px;");
+        registrationFeedback.setWrapText(true);
+        registrationFeedback.setStyle("-fx-text-fill: #b42318;");
+
+        registrants.setPlaceholder(new Label("No attendees have registered for this event yet."));
+        registrants.setStyle(CARD_STYLE);
+        registrants.setCellFactory(ignored -> attendeeCell());
+        VBox.setVgrow(registrants, Priority.ALWAYS);
+
+        VBox detailCard = new VBox(16,
+                registrationHeading,
+                registrationCount,
+                sectionLabel("Registered attendees"),
+                registrants,
+                registrationFeedback);
+        detailCard.setPadding(new Insets(22));
+        detailCard.setStyle(CARD_STYLE);
+        detailCard.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(detailCard, Priority.ALWAYS);
+
+        HBox body = new HBox(20, listCard, detailCard);
+        body.setMaxWidth(Double.MAX_VALUE);
+        VBox.setVgrow(listCard, Priority.ALWAYS);
+        VBox.setVgrow(detailCard, Priority.ALWAYS);
+
+        VBox content = new VBox(18, pageTitle, contentTitle, body);
+        content.setPadding(new Insets(28, 32, 28, 32));
+        content.setMaxWidth(Double.MAX_VALUE);
+        VBox.setVgrow(body, Priority.ALWAYS);
+        return content;
+    }
+
     private VBox buildClubContent() {
         Label pageTitle = new Label("Clubs");
         pageTitle.setStyle("-fx-text-fill: #61708a; -fx-font-size: 13px;");
@@ -786,6 +857,39 @@ public final class OrganizerEventView extends BorderPane {
         }
     }
 
+    private void showRegistrationsScreen() {
+        screen = Screen.REGISTRATIONS;
+        workspace.getChildren().setAll(registrationContent);
+        refreshEvents(null);
+        highlightNavForScreen();
+        if (registrationEvents.getSelectionModel().getSelectedItem() == null
+                && !registrationEvents.getItems().isEmpty()) {
+            registrationEvents.getSelectionModel().selectFirst();
+        } else {
+            loadRegistrations(registrationEvents.getSelectionModel().getSelectedItem());
+        }
+    }
+
+    private void loadRegistrations(Event event) {
+        registrationFeedback.setText("");
+        if (event == null) {
+            registrationHeading.setText("Registrations");
+            registrationCount.setText("Select an event from the list.");
+            registrants.getItems().clear();
+            return;
+        }
+        registrationHeading.setText("Registrations — " + event.title());
+        try {
+            RegistrationOverview overview = registrationService.overview(actor, event.id());
+            registrationCount.setText(overview.registeredCount() + " / " + overview.capacity() + " registered");
+            registrants.getItems().setAll(overview.attendees());
+        } catch (RuntimeException exception) {
+            registrationCount.setText("");
+            registrants.getItems().clear();
+            registrationFeedback.setText("Could not load registrations: " + exception.getMessage());
+        }
+    }
+
     private void loadVolunteers(Event event) {
         if (event == null) {
             volunteerHeading.setText("Volunteers");
@@ -983,6 +1087,7 @@ public final class OrganizerEventView extends BorderPane {
         events.getItems().setAll(listed);
         requestEvents.getItems().setAll(listed);
         volunteerEvents.getItems().setAll(listed);
+        registrationEvents.getItems().setAll(listed);
         if (selectedId != null) {
             listed.stream()
                     .filter(event -> event.id().equals(selectedId))
@@ -991,6 +1096,7 @@ public final class OrganizerEventView extends BorderPane {
                         events.getSelectionModel().select(event);
                         requestEvents.getSelectionModel().select(event);
                         volunteerEvents.getSelectionModel().select(event);
+                        registrationEvents.getSelectionModel().select(event);
                     });
         }
     }
@@ -1064,6 +1170,7 @@ public final class OrganizerEventView extends BorderPane {
         eventsNav.setStyle(screen == Screen.EVENTS ? NAV_BUTTON_ACTIVE_STYLE : NAV_BUTTON_STYLE);
         requestVenueNav.setStyle(screen == Screen.REQUEST_VENUE ? NAV_BUTTON_ACTIVE_STYLE : NAV_BUTTON_STYLE);
         volunteersNav.setStyle(screen == Screen.VOLUNTEERS ? NAV_BUTTON_ACTIVE_STYLE : NAV_BUTTON_STYLE);
+        registrationsNav.setStyle(screen == Screen.REGISTRATIONS ? NAV_BUTTON_ACTIVE_STYLE : NAV_BUTTON_STYLE);
         clubsNav.setStyle(screen == Screen.CLUBS ? NAV_BUTTON_ACTIVE_STYLE : NAV_BUTTON_STYLE);
     }
 

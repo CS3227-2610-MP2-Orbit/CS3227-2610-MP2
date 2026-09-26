@@ -92,6 +92,7 @@ The app is designed for users who:
 | Organizer | Edit draft event | **Events** → select event → edit → **Save event** |
 | Organizer | Reset / revert form | **Reset** (new) or **Revert changes** (edit) |
 | Organizer | Request a venue | **Request venue** → select event + venue → **Submit request** |
+| Organizer | View registrations | **Registrations** → select event |
 | Organizer | Assign / remove volunteers | **Volunteers** → select event → **Assign volunteer** or **Remove selected** (requires registered attendees) |
 | Venue Admin | Log in | Venue Administrator login screen |
 | Venue Admin | Create venue | **Venues** → **Create venue** |
@@ -190,6 +191,19 @@ Submits a `SUBMITTED` venue booking request so a Venue Administrator can approve
 
 > **Tip:** After Admin decides, return to **Request venue** and select the event again to see the updated status.
 
+### Viewing registrations
+
+Shows who is registered for one of your events.
+
+**Steps:**
+
+1. In the sidebar, select **Registrations**.
+2. Select an event in **Your events**.
+
+**Expected result:** The panel shows the count as *registered / capacity* (for example `12 / 80 registered`) and lists registered attendees by name, sorted alphabetically. Select the event again to refresh.
+
+> **Caution:** The list reads real registrations from the database and counts confirmed and checked-in attendees with active accounts. This build has no Attendee screen for registering, and Organizers cannot publish events yet, so events normally show `0 / capacity registered` and *No attendees have registered for this event yet.* The list is read-only; registrations cannot be changed here.
+
 ### Assigning volunteers
 
 Assigns attendees who are registered for one of your events as volunteers, with an optional role.
@@ -203,7 +217,7 @@ Assigns attendees who are registered for one of your events as volunteers, with 
 
 **Expected result:** Feedback confirms the assignment or removal and the list updates. Assigning the same attendee twice is rejected.
 
-> **Caution:** Only attendees **registered** for the event can be assigned. Attendee registration is not available in this build yet, so the attendee picker is empty and shows *No registered attendees available to assign*. Assigning cannot be demonstrated until registration exists.
+> **Caution:** Only attendees **registered** for the event can be assigned. This build has no Attendee screen for registering, so the attendee picker is normally empty and shows *No registered attendees available to assign*.
 
 ---
 

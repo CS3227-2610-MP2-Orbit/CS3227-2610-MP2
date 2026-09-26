@@ -13,6 +13,9 @@ so a stale editor cannot overwrite a newer change.
 requests for owned events (attendance = event capacity; UTC window from the
 event). When `EventService.editEvent` changes capacity, open venue-request
 attendance is synced (`DRAFT`/`SUBMITTED` only); decided requests are unchanged.
+`RegistrationOverviewService` gives the owning organizer a read-only list of
+registrants (sorted by name) with a registered/capacity count, read from
+`EventRegistrations`; it writes nothing and enforces no capacity policy.
 `OrganizerIds` maps string organizer ids to UUIDs for the venue pipeline until
 shared authentication is unified.
 
