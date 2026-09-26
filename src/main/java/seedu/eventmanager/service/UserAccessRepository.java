@@ -2,6 +2,7 @@ package seedu.eventmanager.service;
 
 import java.util.List;
 import java.util.UUID;
+import seedu.eventmanager.common.Actor;
 import seedu.eventmanager.common.Role;
 
 public interface UserAccessRepository {

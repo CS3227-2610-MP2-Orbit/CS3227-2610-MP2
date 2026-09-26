@@ -143,6 +143,27 @@ public final class JdbcVenueRequestRepository implements VenueRequestRepository 
     }
 
     @Override
+    public boolean updateExpectedAttendance(UUID requestId, int expectedAttendance) {
+        if (expectedAttendance <= 0) {
+            throw new IllegalArgumentException("Expected attendance must be positive");
+        }
+        return database.withConnection(connection -> {
+            try (var statement = connection.prepareStatement("""
+                    UPDATE venue_requests
+                    SET expected_attendance = ?, updated_at = ?
+                    WHERE request_id = ?
+                      AND status IN ('DRAFT', 'SUBMITTED')""")) {
+                statement.setInt(1, expectedAttendance);
+                statement.setObject(2, OffsetDateTime.now());
+                statement.setObject(3, requestId);
+                return statement.executeUpdate() > 0;
+            } catch (SQLException exception) {
+                throw databaseFailure("Could not update venue request attendance.", exception);
+            }
+        });
+    }
+
+    @Override
     public void save(VenueRequest request) {
         save(request, null, null);
     }
