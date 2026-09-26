@@ -35,6 +35,27 @@ public final class JdbcVenueRepository implements VenueRepository {
         });
     }
 
+    /** Returns active venues without any confirmed or at-risk booking. */
+    public int countCurrentlyAvailable() {
+        return database.withConnection(connection -> {
+            try (var statement = connection.prepareStatement("""
+                    SELECT COUNT(*)
+                    FROM venues v
+                    WHERE v.status = 'ACTIVE'
+                      AND NOT EXISTS (
+                          SELECT 1 FROM venue_bookings b
+                          WHERE b.venue_id = v.venue_id
+                            AND b.status IN ('CONFIRMED', 'AT_RISK'))""")) {
+                try (var result = statement.executeQuery()) {
+                    result.next();
+                    return result.getInt(1);
+                }
+            } catch (SQLException exception) {
+                throw new IllegalStateException("Could not count available venues.", exception);
+            }
+        });
+    }
+
     @Override
     public Venue findById(UUID venueId) {
         return database.withConnection(connection -> {

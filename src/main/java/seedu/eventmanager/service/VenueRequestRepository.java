@@ -13,6 +13,16 @@ public interface VenueRequestRepository {
         return List.of();
     }
 
+    default List<VenueRequestDisplay> findSubmittedDisplay() {
+        return findSubmitted().stream()
+                .map(request -> new VenueRequestDisplay(request, null, null, null, null))
+                .toList();
+    }
+
+    default List<ApprovedBookingDisplay> findApprovedBookingDisplays() {
+        return List.of();
+    }
+
     /** Open request for an event (`DRAFT` or `SUBMITTED`), if any. */
     default Optional<VenueRequest> findOpenByEventId(UUID eventId) {
         return Optional.empty();

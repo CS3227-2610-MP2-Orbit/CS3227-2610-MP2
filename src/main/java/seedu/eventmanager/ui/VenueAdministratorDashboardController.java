@@ -1,7 +1,6 @@
 package seedu.eventmanager.ui;
 
 import seedu.eventmanager.common.Actor;
-import seedu.eventmanager.common.ApplicationException;
 import seedu.eventmanager.common.ErrorResponseMapper;
 import seedu.eventmanager.common.Role;
 import seedu.eventmanager.service.AuthorizationService;

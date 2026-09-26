@@ -79,12 +79,13 @@ class VenueAdministratorIntegrationTest {
     void rejectionUpdatesRequestAndNotifiesOrganizer() {
         store.submit(request());
 
-        VenueRequest rejected = workflow.reject(administrator, requestId, "Venue maintenance");
+        VenueRequest rejected = workflow.reject(administrator, requestId,
+                VenueAdministratorService.REASON_VENUE_BOOKED);
 
         assertEquals(VenueRequestStatus.REJECTED, rejected.status());
         assertFalse(store.bookings.containsKey(requestId));
         assertEquals("VENUE_REQUEST_REJECTED", store.lastNotification);
-        assertEquals("Venue maintenance", store.lastAuditReason);
+        assertEquals(VenueAdministratorService.REASON_VENUE_BOOKED, store.lastAuditReason);
     }
 
     @Test

@@ -56,14 +56,15 @@ class VenueAdministratorServiceTest {
 
     @Test
     void rejectionRequiresReasonAndDoesNotCreateBooking() {
-        assertCode("REJECTION_REASON_REQUIRED", () -> service.reject(administrator, requestId, " "));
+        assertCode("REJECTION_REASON_REQUIRED", () -> service.reject(administrator, requestId, ""));
 
-        VenueRequest result = service.reject(administrator, requestId, "Venue maintenance");
+        VenueRequest result = service.reject(administrator, requestId,
+                VenueAdministratorService.REASON_VENUE_BOOKED);
 
         assertEquals(VenueRequestStatus.REJECTED, result.status());
         assertEquals(0, bookings.createCount);
         assertEquals("VENUE_REQUEST_REJECTED", notifications.event);
-        assertEquals("Venue maintenance", audit.reason);
+        assertEquals(VenueAdministratorService.REASON_VENUE_BOOKED, audit.reason);
     }
 
     @Test
@@ -91,7 +92,8 @@ class VenueAdministratorServiceTest {
     void alreadyRejectedRequestCannotBeRejectedAgain() {
         requests.current = withStatus(VenueRequestStatus.REJECTED);
 
-        assertCode("INVALID_STATE", () -> service.reject(administrator, requestId, "duplicate decision"));
+        assertCode("INVALID_STATE", () -> service.reject(administrator, requestId,
+                VenueAdministratorService.REASON_VENUE_BOOKED));
         assertEquals(0, bookings.createCount);
     }
 

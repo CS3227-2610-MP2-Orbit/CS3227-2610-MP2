@@ -11,7 +11,7 @@ import seedu.eventmanager.common.ApplicationException;
 import seedu.eventmanager.common.Role;
 import seedu.eventmanager.service.UserAccessRepository;
 
-/** PostgreSQL user and venue-scope persistence for local administration. */
+/** PostgreSQL user persistence for local administration. */
 public final class JdbcUserAccessRepository implements UserAccessRepository {
     private final JdbcDatabase database;
     private final PasswordHasher passwords;
@@ -72,27 +72,6 @@ public final class JdbcUserAccessRepository implements UserAccessRepository {
                     throw new IllegalArgumentException("That username is already in use.");
                 }
                 throw new IllegalStateException("Could not create user.", exception);
-            }
-        });
-    }
-
-    @Override
-    public void grantVenueAccess(Actor actor, UUID userId, UUID venueId) {
-        requireAdministrator(actor);
-        if (userId == null || venueId == null) {
-            throw new IllegalArgumentException("User ID and venue ID are required.");
-        }
-        database.withConnection(connection -> {
-            try (var statement = connection.prepareStatement("""
-                    INSERT INTO venue_administrator_venues (user_id, venue_id, created_at)
-                    VALUES (?, ?, CURRENT_TIMESTAMP)
-                    ON CONFLICT (user_id, venue_id) DO NOTHING""")) {
-                statement.setObject(1, userId);
-                statement.setObject(2, venueId);
-                statement.executeUpdate();
-                return null;
-            } catch (SQLException exception) {
-                throw new IllegalStateException("Could not grant venue access.", exception);
             }
         });
     }

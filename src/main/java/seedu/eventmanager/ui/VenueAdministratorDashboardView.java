@@ -22,19 +22,16 @@ public final class VenueAdministratorDashboardView {
     private final Runnable refreshDashboard;
     private final Runnable showRequests;
     private final Runnable showVenues;
-    private final Runnable showAvailability;
     private final Runnable showUsers;
 
     public VenueAdministratorDashboardView(JdbcLocalSessionService.Session session,
-            Runnable onLogout, Runnable refreshDashboard, Runnable showRequests, Runnable showVenues,
-            Runnable showAvailability,
-            Runnable showUsers) {
+            Runnable onLogout, Runnable refreshDashboard, Runnable showRequests,
+            Runnable showVenues, Runnable showUsers) {
         Objects.requireNonNull(session);
         Objects.requireNonNull(onLogout);
         this.refreshDashboard = Objects.requireNonNull(refreshDashboard);
         this.showRequests = Objects.requireNonNull(showRequests);
         this.showVenues = Objects.requireNonNull(showVenues);
-        this.showAvailability = Objects.requireNonNull(showAvailability);
         this.showUsers = Objects.requireNonNull(showUsers);
         root.setStyle("-fx-background-color: #f7f9fc;");
         root.setLeft(sidebar(onLogout));
@@ -70,9 +67,7 @@ public final class VenueAdministratorDashboardView {
         });
         addNavigation(sidebar, "Venue requests", showRequests);
         addNavigation(sidebar, "Venues", showVenues);
-        addNavigation(sidebar, "Availability", showAvailability);
         addNavigation(sidebar, "Users and access", showUsers);
-        addNavigation(sidebar, "Audit activity", () -> showPlaceholder("Audit activity"));
 
         VBox spacer = new VBox();
         VBox.setVgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
@@ -105,23 +100,18 @@ public final class VenueAdministratorDashboardView {
         GridPane cards = new GridPane();
         cards.setHgap(16);
         cards.setVgap(16);
-        pendingRequestsValue = new Label("0");
+        if (pendingRequestsValue == null) {
+            pendingRequestsValue = new Label("0");
+        }
         cards.add(summaryCard("Pending requests", pendingRequestsValue, "Awaiting review"), 0, 0);
-        cards.add(summaryCard("Upcoming bookings", "0", "Next 30 days"), 1, 0);
-        availableVenuesValue = new Label("0");
-        cards.add(summaryCard("Available venues", availableVenuesValue, "Ready to book"), 2, 0);
-        cards.add(summaryCard("Warnings", "0", "Needs attention"), 0, 1);
+        if (availableVenuesValue == null) {
+            availableVenuesValue = new Label("0");
+        }
+        cards.add(summaryCard("Available venues", availableVenuesValue, "Ready to book"), 1, 0);
 
         VBox content = content(pageTitle, contentTitle, cards,
                 new Label("Live venue activity will appear here once the dashboard repository is connected."));
         root.setCenter(content);
-    }
-
-    private void showPlaceholder(String name) {
-        pageTitle.setText(name);
-        contentTitle.setText(name);
-        root.setCenter(content(pageTitle, contentTitle,
-                new Label("This section is planned for the next frontend step.")));
     }
 
     private VBox content(Node... nodes) {

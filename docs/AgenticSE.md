@@ -4,6 +4,14 @@ The team uses one engineering agent with seven reusable SWE skills. They apply t
 Organizer, Venue Administrator, and Attendee work; the examples below are not
 additional product requirements. Project-wide rules live in [`AGENTS.md`](../AGENTS.md).
 
+## Account-management scope
+
+The Venue Administrator `Users and access` screen supports creating and editing
+user accounts, including username, role, and active status. All authenticated
+Venue Administrators share the same access to every venue.
+The system does not currently provide a change-password or password-reset
+function; this is planned for a later secure and audited workflow.
+
 | Skill | Use it for | Expected output |
 | --- | --- | --- |
 | [requirements-and-acceptance](../.agents/skills/requirements-and-acceptance/SKILL.md) | Clarifying a feature before implementation | Sourced rules, testable criteria, assumptions, and unresolved decisions |
