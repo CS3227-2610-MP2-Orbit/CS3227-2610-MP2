@@ -202,7 +202,7 @@ Shows who is registered for one of your events.
 
 **Expected result:** The panel shows the count as *registered / capacity* (for example `12 / 80 registered`) and lists registered attendees by name, sorted alphabetically. Select the event again to refresh.
 
-> **Caution:** Attendee registration is not available in this build yet, so every event shows `0 / capacity registered` and *No attendees have registered for this event yet.* The list is read-only; registrations cannot be changed here.
+> **Caution:** The list reads real registrations from the database and counts confirmed and checked-in attendees with active accounts. This build has no Attendee screen for registering, and Organizers cannot publish events yet, so events normally show `0 / capacity registered` and *No attendees have registered for this event yet.* The list is read-only; registrations cannot be changed here.
 
 ### Assigning volunteers
 
@@ -217,7 +217,7 @@ Assigns attendees who are registered for one of your events as volunteers, with 
 
 **Expected result:** Feedback confirms the assignment or removal and the list updates. Assigning the same attendee twice is rejected.
 
-> **Caution:** Only attendees **registered** for the event can be assigned. Attendee registration is not available in this build yet, so the attendee picker is empty and shows *No registered attendees available to assign*. Assigning cannot be demonstrated until registration exists.
+> **Caution:** Only attendees **registered** for the event can be assigned. This build has no Attendee screen for registering, so the attendee picker is normally empty and shows *No registered attendees available to assign*.
 
 ---
 

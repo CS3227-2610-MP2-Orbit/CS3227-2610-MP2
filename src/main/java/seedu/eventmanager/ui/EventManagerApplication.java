@@ -20,13 +20,14 @@ import seedu.eventmanager.event.JdbcEventRepository;
 import seedu.eventmanager.event.OrganizerVenueRequestService;
 import seedu.eventmanager.event.RegistrationOverviewService;
 import seedu.eventmanager.registration.EventRegistrations;
-import seedu.eventmanager.registration.NoEventRegistrations;
 import seedu.eventmanager.storage.DatabaseBootstrap;
 import seedu.eventmanager.storage.DatabaseConfig;
 import seedu.eventmanager.storage.DatabaseConfiguration;
 import seedu.eventmanager.storage.DatabaseMigration;
 import seedu.eventmanager.storage.DriverManagerDataSource;
 import seedu.eventmanager.storage.JdbcDatabase;
+import seedu.eventmanager.storage.JdbcEventRegistrations;
+import seedu.eventmanager.storage.RegistrationDatabaseMigration;
 import seedu.eventmanager.storage.JdbcVenueRepository;
 import seedu.eventmanager.storage.JdbcVenueRequestRepository;
 import seedu.eventmanager.storage.JdbcLocalSessionService;
@@ -86,6 +87,7 @@ public final class EventManagerApplication extends Application {
                     configuration.url(), configuration.username(), configuration.password());
             DriverManagerDataSource dataSource = new DriverManagerDataSource(databaseConfig);
             new DatabaseMigration(dataSource).migrate();
+            RegistrationDatabaseMigration.migrate(configuration);
 
             ClubService clubService = new ClubService(
                     new JdbcClubRepository(dataSource), UUID::randomUUID, Clock.systemUTC());
@@ -102,7 +104,7 @@ public final class EventManagerApplication extends Application {
                     venueRepository,
                     venueRequestRepository,
                     UUID::randomUUID);
-            EventRegistrations registrations = new NoEventRegistrations();
+            EventRegistrations registrations = new JdbcEventRegistrations(jdbcDatabase);
             VolunteerService volunteerService = new VolunteerService(
                     eventService,
                     registrations,
