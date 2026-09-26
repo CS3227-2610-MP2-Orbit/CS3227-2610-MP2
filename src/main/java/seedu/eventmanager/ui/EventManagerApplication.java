@@ -20,6 +20,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import seedu.eventmanager.event.EventService;
+import seedu.eventmanager.attendee.EventCatalogueService;
 import seedu.eventmanager.event.JdbcEventRepository;
 import seedu.eventmanager.event.OrganizerIdentity;
 import seedu.eventmanager.event.OrganizerVenueRequestService;
@@ -29,6 +30,7 @@ import seedu.eventmanager.storage.DatabaseConfiguration;
 import seedu.eventmanager.storage.DatabaseMigration;
 import seedu.eventmanager.storage.DriverManagerDataSource;
 import seedu.eventmanager.storage.JdbcDatabase;
+import seedu.eventmanager.storage.JdbcEventCatalogueRepository;
 import seedu.eventmanager.storage.JdbcVenueRepository;
 import seedu.eventmanager.storage.JdbcVenueRequestRepository;
 import seedu.eventmanager.storage.JdbcLocalSessionService;
@@ -38,6 +40,8 @@ import seedu.eventmanager.common.Role;
 
 /** Desktop application shell that routes users to the available role workspaces. */
 public final class EventManagerApplication extends Application {
+    private AttendeeBrowseView attendeeView;
+
     @Override
     public void start(Stage stage) {
         stage.setTitle("Event Venue Manager");
@@ -51,6 +55,7 @@ public final class EventManagerApplication extends Application {
     }
 
     private void showHome(BorderPane root) {
+        closeAttendee();
         try {
             DatabaseConfiguration configuration = DatabaseBootstrap.configuration();
             DatabaseBootstrap.migrate(configuration);
@@ -73,8 +78,7 @@ public final class EventManagerApplication extends Application {
         } else if (session.actor().role() == Role.CLUB_ORGANIZER) {
             showOrganizer(root, session.actor());
         } else {
-            showWorkspace(root, "Attendee", new Label(
-                    "Attendee workspace is not available in this application build."));
+            showAttendee(root);
         }
     }
 
@@ -120,6 +124,32 @@ public final class EventManagerApplication extends Application {
         root.setPadding(Insets.EMPTY);
         showWorkspace(root, "Venue Administrator",
                 new VenueAdministratorFxApplication().createRoot(session));
+    }
+
+    private void showAttendee(BorderPane root) {
+        closeAttendee();
+        root.setPadding(Insets.EMPTY);
+        root.setTop(null);
+        attendeeView = new AttendeeBrowseView(() -> {
+            // Configuration and JDBC are resolved by the view's background task.
+            DatabaseConfiguration configuration = DatabaseBootstrap.configuration();
+            var dataSource = new DriverManagerDataSource(new DatabaseConfig(
+                    configuration.url(), configuration.username(), configuration.password()));
+            return new EventCatalogueService(new JdbcEventCatalogueRepository(dataSource), Clock.systemUTC());
+        }, () -> showHome(root));
+        root.setCenter(attendeeView);
+    }
+
+    private void closeAttendee() {
+        if (attendeeView != null) {
+            attendeeView.close();
+            attendeeView = null;
+        }
+    }
+
+    @Override
+    public void stop() {
+        closeAttendee();
     }
 
     private void showWorkspace(BorderPane root, String title, Node workspace) {

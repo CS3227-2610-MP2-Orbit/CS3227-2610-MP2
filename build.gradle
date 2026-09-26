@@ -41,3 +41,11 @@ javafx {
 tasks.named('test') {
     useJUnitPlatform()
 }
+
+// Opt-in: requires a graphical desktop. Uses synthetic service fixtures, not a live database.
+tasks.register('attendeeUiSmoke', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'seedu.eventmanager.ui.AttendeeBrowseSmoke'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
