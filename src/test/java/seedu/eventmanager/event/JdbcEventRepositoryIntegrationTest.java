@@ -39,7 +39,8 @@ class JdbcEventRepositoryIntegrationTest {
         new DatabaseMigration(dataSource).migrate();
         try (Connection connection = dataSource.getConnection();
                 Statement statement = connection.createStatement()) {
-            statement.execute("TRUNCATE organizer_event, organizer_event_audit_record RESTART IDENTITY");
+            statement.execute("TRUNCATE event_volunteer, event_volunteer_audit_record, "
+                    + "organizer_event, organizer_event_audit_record RESTART IDENTITY");
         }
         repository = new JdbcEventRepository(dataSource);
     }
