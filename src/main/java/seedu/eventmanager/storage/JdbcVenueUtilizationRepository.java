@@ -26,8 +26,10 @@ public final class JdbcVenueUtilizationRepository implements VenueUtilizationRep
         return database.withConnection(connection -> {
             try (var statement = connection.prepareStatement("""
                     SELECT v.venue_id, v.name, COUNT(b.booking_id),
-                           COALESCE(SUM(EXTRACT(EPOCH FROM
-                               (LEAST(b.ends_at, ?) - GREATEST(b.starts_at, ?))) / 3600.0), 0)
+                           CASE WHEN COUNT(b.booking_id) = 0 THEN 0.0
+                                ELSE COALESCE(SUM(EXTRACT(EPOCH FROM
+                                    (LEAST(b.ends_at, ?) - GREATEST(b.starts_at, ?))) / 3600.0), 0.0)
+                           END
                     FROM venues v
                     LEFT JOIN venue_bookings b ON b.venue_id = v.venue_id
                         AND b.status IN ('CONFIRMED', 'AT_RISK')
