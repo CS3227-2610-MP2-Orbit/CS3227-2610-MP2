@@ -109,7 +109,7 @@ public final class UserAccessView {
         status.getDialogPane().setContent(active);
         if (status.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) return;
         try {
-            users.updateUser(selected.userId(), updatedUsername.get(), updatedRole.get(), active.isSelected());
+            users.updateUser(actor, selected.userId(), updatedUsername.get(), updatedRole.get(), active.isSelected());
             reload();
         } catch (RuntimeException exception) {
             showError(exception.getMessage());

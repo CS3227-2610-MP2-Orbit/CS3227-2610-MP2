@@ -7,8 +7,8 @@ import seedu.eventmanager.common.Role;
 
 public interface UserAccessRepository {
     List<UserSummary> findAllUsers();
-    void createUser(String username, String password, Role role);
-    void updateUser(UUID userId, String username, Role role, boolean active);
+    void createUser(Actor actor, String username, String password, Role role);
+    void updateUser(Actor actor, UUID userId, String username, Role role, boolean active);
 
     record UserSummary(UUID userId, String username, Role role, boolean active) { }
 }

@@ -77,33 +77,6 @@ public final class JdbcUserAccessRepository implements UserAccessRepository {
     }
 
     @Override
-    public void updateUser(UUID userId, String username, Role role, boolean active) {
-        if (userId == null || username == null || username.isBlank() || role == null) {
-            throw new IllegalArgumentException("User ID, username, and role are required.");
-        }
-        database.withConnection(connection -> {
-            try (var statement = connection.prepareStatement("""
-                    UPDATE users
-                    SET username = ?, role = ?, active = ?, updated_at = CURRENT_TIMESTAMP
-                    WHERE user_id = ?""")) {
-                statement.setString(1, username.trim());
-                statement.setString(2, role.name());
-                statement.setBoolean(3, active);
-                statement.setObject(4, userId);
-                if (statement.executeUpdate() == 0) {
-                    throw new IllegalArgumentException("User account was not found.");
-                }
-                return null;
-            } catch (SQLException exception) {
-                if ("23505".equals(exception.getSQLState())) {
-                    throw new IllegalArgumentException("That username is already in use.");
-                }
-                throw new IllegalStateException("Could not update user.", exception);
-            }
-        });
-    }
-
-    @Override
     public void updateUser(Actor actor, UUID userId, String username, Role role, boolean active) {
         requireAdministrator(actor);
         if (userId == null || username == null || username.isBlank()) {

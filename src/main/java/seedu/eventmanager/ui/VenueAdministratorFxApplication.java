@@ -98,7 +98,7 @@ public final class VenueAdministratorFxApplication extends Application {
             controller.load();
             root.setCenter(dashboardView[0].root());
         };
-        usersView[0] = new UserAccessView(userRepository, showDashboard);
+        usersView[0] = new UserAccessView(session.actor(), userRepository, showDashboard);
         VenueAdministratorDashboardView dashboard = new VenueAdministratorDashboardView(
                 session, () -> showLogin(root), showDashboard,
                 () -> root.setCenter(requestView[0].root()),
