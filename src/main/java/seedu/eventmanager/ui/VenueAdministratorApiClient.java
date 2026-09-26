@@ -2,6 +2,7 @@ package seedu.eventmanager.ui;
 
 import seedu.eventmanager.venue.VenueRequest;
 import seedu.eventmanager.service.VenueRequestDisplay;
+import seedu.eventmanager.service.ApprovedBookingDisplay;
 import java.util.List;
 import java.util.UUID;
 
@@ -14,6 +15,7 @@ public interface VenueAdministratorApiClient {
     record VenueAdministratorDashboardData(
             List<VenueRequest> pendingRequests,
             List<VenueRequestDisplay> pendingRequestDisplays,
+            List<ApprovedBookingDisplay> approvedBookingDisplays,
             List<BookingSummary> upcomingBookings,
             List<AvailabilitySummary> availability,
             List<WarningSummary> warnings,
@@ -21,6 +23,7 @@ public interface VenueAdministratorApiClient {
         public VenueAdministratorDashboardData {
             pendingRequests = List.copyOf(pendingRequests);
             pendingRequestDisplays = List.copyOf(pendingRequestDisplays);
+            approvedBookingDisplays = List.copyOf(approvedBookingDisplays);
             upcomingBookings = List.copyOf(upcomingBookings);
             availability = List.copyOf(availability);
             warnings = List.copyOf(warnings);
@@ -34,6 +37,7 @@ public interface VenueAdministratorApiClient {
                     pendingRequests.stream()
                             .map(request -> new VenueRequestDisplay(request, null, null, null, null))
                             .toList(),
+                    List.of(),
                     upcomingBookings, availability, warnings, recentActivity);
         }
     }

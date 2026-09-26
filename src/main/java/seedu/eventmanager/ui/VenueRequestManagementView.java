@@ -16,11 +16,13 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import seedu.eventmanager.venue.VenueRequestStatus;
 import seedu.eventmanager.service.VenueRequestDisplay;
+import seedu.eventmanager.service.ApprovedBookingDisplay;
 
 /** Venue request review screen for the Venue Administrator. */
 public final class VenueRequestManagementView {
     private final BorderPane root = new BorderPane();
     private final TableView<VenueRequestDisplay> table = new TableView<>();
+    private final TableView<ApprovedBookingDisplay> approvedTable = new TableView<>();
     private final Label status = new Label();
     private final VenueAdministratorDashboardController controller;
     private final Runnable showDashboard;
@@ -50,6 +52,7 @@ public final class VenueRequestManagementView {
                 .filter(request -> request.request().status() == VenueRequestStatus.SUBMITTED)
                 .toList();
         table.setItems(FXCollections.observableArrayList(submitted));
+        approvedTable.setItems(FXCollections.observableArrayList(state.data().approvedBookingDisplays()));
         table.getSelectionModel().clearSelection();
         status.setText(state.status() == VenueAdministratorDashboardState.Status.ERROR
                 ? state.message() : submitted.size() + " submitted request(s)");
@@ -61,19 +64,32 @@ public final class VenueRequestManagementView {
         Button back = new Button("← Dashboard");
         back.setOnAction(event -> showDashboard.run());
         table.setPlaceholder(new Label("No submitted venue requests."));
+        approvedTable.setPlaceholder(new Label("No approved venue bookings."));
         table.getColumns().addAll(column("Request", r -> shortId(r.requestId())),
                 column("Venue", r -> r.venueName() + " — " + r.venueLocation()),
                 column("Event", VenueRequestDisplay::eventTitle),
                 column("Organizer", VenueRequestDisplay::organizerName),
                 column("Starts", r -> r.request().startsAt().toString()),
                 column("Attendance", r -> String.valueOf(r.request().expectedAttendance())));
+        approvedTable.getColumns().addAll(
+                bookingColumn("Booking", r -> shortId(r.bookingId())),
+                bookingColumn("Venue", ApprovedBookingDisplay::venueLabel),
+                bookingColumn("Event", r -> text(r.eventTitle(), "Unknown event")),
+                bookingColumn("Organizer", r -> text(r.organizerName(), "Unknown organizer")),
+                bookingColumn("Starts", r -> r.startsAt().toString()),
+                bookingColumn("Ends", r -> r.endsAt().toString()),
+                bookingColumn("Attendance", r -> String.valueOf(r.expectedAttendance())),
+                bookingColumn("Status", ApprovedBookingDisplay::status));
 
         Button approve = new Button("Approve");
         approve.setOnAction(event -> decideApprove());
         Button reject = new Button("Reject");
         reject.setOnAction(event -> decideReject());
         HBox actions = new HBox(10, approve, reject);
-        VBox content = new VBox(16, back, heading, table, actions, status);
+        Label approvedHeading = new Label("Approved bookings");
+        approvedHeading.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+        VBox content = new VBox(16, back, heading, table, actions, status,
+                approvedHeading, approvedTable);
         content.setPadding(new Insets(28));
         root.setCenter(content);
     }
@@ -84,6 +100,18 @@ public final class VenueRequestManagementView {
         column.setCellValueFactory(cell -> new SimpleStringProperty(value.apply(cell.getValue())));
         column.setPrefWidth(160);
         return column;
+    }
+
+    private TableColumn<ApprovedBookingDisplay, String> bookingColumn(String title,
+            java.util.function.Function<ApprovedBookingDisplay, String> value) {
+        TableColumn<ApprovedBookingDisplay, String> column = new TableColumn<>(title);
+        column.setCellValueFactory(cell -> new SimpleStringProperty(value.apply(cell.getValue())));
+        column.setPrefWidth(160);
+        return column;
+    }
+
+    private static String text(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value;
     }
 
     private static String shortId(java.util.UUID id) {

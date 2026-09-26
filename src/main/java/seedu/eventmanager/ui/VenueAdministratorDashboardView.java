@@ -100,9 +100,13 @@ public final class VenueAdministratorDashboardView {
         GridPane cards = new GridPane();
         cards.setHgap(16);
         cards.setVgap(16);
-        pendingRequestsValue = new Label("0");
+        if (pendingRequestsValue == null) {
+            pendingRequestsValue = new Label("0");
+        }
         cards.add(summaryCard("Pending requests", pendingRequestsValue, "Awaiting review"), 0, 0);
-        availableVenuesValue = new Label("0");
+        if (availableVenuesValue == null) {
+            availableVenuesValue = new Label("0");
+        }
         cards.add(summaryCard("Available venues", availableVenuesValue, "Ready to book"), 1, 0);
 
         VBox content = content(pageTitle, contentTitle, cards,

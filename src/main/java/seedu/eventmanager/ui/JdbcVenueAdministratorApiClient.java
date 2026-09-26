@@ -25,6 +25,7 @@ public final class JdbcVenueAdministratorApiClient implements VenueAdministrator
     public VenueAdministratorDashboardData loadDashboard() {
         List<VenueRequest> pending = requests.findSubmitted();
         return new VenueAdministratorDashboardData(pending, requests.findSubmittedDisplay(),
+                requests.findApprovedBookingDisplays(),
                 List.of(), List.of(), List.of(), List.of());
     }
 
