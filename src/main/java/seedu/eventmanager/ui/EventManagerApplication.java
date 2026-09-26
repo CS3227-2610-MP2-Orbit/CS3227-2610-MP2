@@ -1,12 +1,6 @@
 package seedu.eventmanager.ui;
 
-import io.github.cdimascio.dotenv.Dotenv;
 import java.time.Clock;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import javafx.application.Application;
 import javafx.geometry.Insets;
@@ -21,22 +15,28 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import seedu.eventmanager.announcement.AnnouncementService;
 import seedu.eventmanager.announcement.JdbcAnnouncementRepository;
+import seedu.eventmanager.club.ClubService;
+import seedu.eventmanager.club.JdbcClubRepository;
 import seedu.eventmanager.event.EventService;
 import seedu.eventmanager.event.JdbcEventRepository;
-import seedu.eventmanager.event.OrganizerIdentity;
 import seedu.eventmanager.event.OrganizerVenueRequestService;
 import seedu.eventmanager.event.RegistrationOverviewService;
 import seedu.eventmanager.registration.EventRegistrations;
-import seedu.eventmanager.registration.NoEventRegistrations;
 import seedu.eventmanager.storage.DatabaseBootstrap;
 import seedu.eventmanager.storage.DatabaseConfig;
 import seedu.eventmanager.storage.DatabaseConfiguration;
 import seedu.eventmanager.storage.DatabaseMigration;
 import seedu.eventmanager.storage.DriverManagerDataSource;
 import seedu.eventmanager.storage.JdbcDatabase;
+import seedu.eventmanager.storage.JdbcEventRegistrations;
 import seedu.eventmanager.storage.JdbcNotificationService;
+import seedu.eventmanager.storage.RegistrationDatabaseMigration;
 import seedu.eventmanager.storage.JdbcVenueRepository;
 import seedu.eventmanager.storage.JdbcVenueRequestRepository;
+import seedu.eventmanager.storage.JdbcLocalSessionService;
+import seedu.eventmanager.storage.PasswordHasher;
+import seedu.eventmanager.common.Actor;
+import seedu.eventmanager.common.Role;
 import seedu.eventmanager.volunteer.JdbcVolunteerRepository;
 import seedu.eventmanager.volunteer.VolunteerService;
 
@@ -55,27 +55,34 @@ public final class EventManagerApplication extends Application {
     }
 
     private void showHome(BorderPane root) {
-        root.setPadding(new Insets(24));
-        Label heading = new Label("Event Venue Manager");
-        heading.setStyle("-fx-font-size: 28px; -fx-font-weight: bold;");
-        Label message = new Label("Choose a workspace to continue.");
-        message.setStyle("-fx-text-fill: #526075; -fx-font-size: 14px;");
-
-        Button organizer = roleButton("Club Organizer", "Create and edit your club events.");
-        organizer.setOnAction(ignored -> showOrganizer(root));
-        Button venueAdministrator = roleButton("Venue Administrator",
-                "Review venue requests and manage venues.");
-        venueAdministrator.setOnAction(ignored -> showVenueAdministrator(root));
-
-        VBox choices = new VBox(14, organizer, venueAdministrator);
-        choices.setMaxWidth(420);
-        VBox content = new VBox(18, heading, message, choices);
-        content.setAlignment(Pos.CENTER_LEFT);
-        root.setTop(null);
-        root.setCenter(content);
+        try {
+            DatabaseConfiguration configuration = DatabaseBootstrap.configuration();
+            DatabaseBootstrap.migrate(configuration);
+            JdbcLocalSessionService sessions = new JdbcLocalSessionService(
+                    new JdbcDatabase(configuration), new PasswordHasher());
+            root.setPadding(new Insets(24));
+            root.setTop(null);
+            root.setCenter(new HomeAuthenticationView(sessions,
+                    session -> routeAuthenticatedUser(root, configuration, session)));
+        } catch (RuntimeException exception) {
+            root.setPadding(new Insets(24));
+            root.setCenter(databaseErrorView(exception));
+        }
     }
 
-    private void showOrganizer(BorderPane root) {
+    private void routeAuthenticatedUser(BorderPane root, DatabaseConfiguration configuration,
+            JdbcLocalSessionService.Session session) {
+        if (session.actor().role() == Role.VENUE_ADMINISTRATOR) {
+            showVenueAdministrator(root, session);
+        } else if (session.actor().role() == Role.CLUB_ORGANIZER) {
+            showOrganizer(root, session.actor());
+        } else {
+            showWorkspace(root, "Attendee", new Label(
+                    "Attendee workspace is not available in this application build."));
+        }
+    }
+
+    private void showOrganizer(BorderPane root, Actor actor) {
         try {
             DatabaseConfiguration configuration = DatabaseBootstrap.configuration();
             DatabaseBootstrap.migrate(configuration);
@@ -83,8 +90,10 @@ public final class EventManagerApplication extends Application {
                     configuration.url(), configuration.username(), configuration.password());
             DriverManagerDataSource dataSource = new DriverManagerDataSource(databaseConfig);
             new DatabaseMigration(dataSource).migrate();
+            RegistrationDatabaseMigration.migrate(configuration);
 
-            OrganizerIdentity organizer = organizerFrom(localSettings());
+            ClubService clubService = new ClubService(
+                    new JdbcClubRepository(dataSource), UUID::randomUUID, Clock.systemUTC());
             JdbcDatabase jdbcDatabase = new JdbcDatabase(configuration);
             JdbcVenueRepository venueRepository = new JdbcVenueRepository(jdbcDatabase);
             JdbcVenueRequestRepository venueRequestRepository = new JdbcVenueRequestRepository(jdbcDatabase);
@@ -98,7 +107,7 @@ public final class EventManagerApplication extends Application {
                     venueRepository,
                     venueRequestRepository,
                     UUID::randomUUID);
-            EventRegistrations registrations = new NoEventRegistrations();
+            EventRegistrations registrations = new JdbcEventRegistrations(jdbcDatabase);
             VolunteerService volunteerService = new VolunteerService(
                     eventService,
                     registrations,
@@ -122,8 +131,9 @@ public final class EventManagerApplication extends Application {
                     volunteerService,
                     registrationService,
                     announcementService,
+                    clubService,
                     venueRepository,
-                    organizer,
+                    actor,
                     () -> showHome(root)));
         } catch (RuntimeException | java.sql.SQLException exception) {
             root.setPadding(new Insets(24));
@@ -131,9 +141,10 @@ public final class EventManagerApplication extends Application {
         }
     }
 
-    private void showVenueAdministrator(BorderPane root) {
+    private void showVenueAdministrator(BorderPane root, JdbcLocalSessionService.Session session) {
         root.setPadding(Insets.EMPTY);
-        showWorkspace(root, "Venue Administrator", new VenueAdministratorFxApplication().createRoot());
+        showWorkspace(root, "Venue Administrator",
+                new VenueAdministratorFxApplication().createRoot(session));
     }
 
     private void showWorkspace(BorderPane root, String title, Node workspace) {
@@ -156,33 +167,6 @@ public final class EventManagerApplication extends Application {
         button.setPrefHeight(74);
         button.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-padding: 14px;");
         return button;
-    }
-
-    private static OrganizerIdentity organizerFrom(Map<String, String> environment) {
-        String organizerId = environment.getOrDefault(
-                "EVENT_MANAGER_ORGANIZER_ID", "demo-organizer");
-        String rawClubIds = environment.getOrDefault("EVENT_MANAGER_CLUB_IDS", "demo-club");
-        Set<String> clubIds = new LinkedHashSet<>();
-        Arrays.stream(rawClubIds.split(","))
-                .map(String::strip)
-                .filter(value -> !value.isEmpty())
-                .forEach(clubIds::add);
-        if (clubIds.isEmpty()) {
-            throw new IllegalArgumentException("At least one organizer club ID is required");
-        }
-        return new OrganizerIdentity(organizerId, clubIds);
-    }
-
-    /** Process env vars override values from the project-root {@code .env} file. */
-    private static Map<String, String> localSettings() {
-        Map<String, String> values = new HashMap<>();
-        Dotenv dotenv = Dotenv.configure()
-                .ignoreIfMissing()
-                .ignoreIfMalformed()
-                .load();
-        dotenv.entries().forEach(entry -> values.put(entry.getKey(), entry.getValue()));
-        values.putAll(System.getenv());
-        return values;
     }
 
     private static VBox databaseErrorView(Exception exception) {

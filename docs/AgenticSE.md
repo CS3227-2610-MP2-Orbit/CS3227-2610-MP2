@@ -1,6 +1,6 @@
 # Agentic SE workflow
 
-The team uses one engineering agent with four reusable SWE skills. They apply to
+The team uses one engineering agent with seven reusable SWE skills. They apply to
 Organizer, Venue Administrator, and Attendee work; the examples below are not
 additional product requirements. Project-wide rules live in [`AGENTS.md`](../AGENTS.md).
 
@@ -10,6 +10,9 @@ additional product requirements. Project-wide rules live in [`AGENTS.md`](../AGE
 | [test-driven-implementation](../.agents/skills/test-driven-implementation/SKILL.md) | Implementing settled behavior or fixing a bug | An observed failing test, minimal fix, passing checks, and verification limits |
 | [code-review-and-verification](../.agents/skills/code-review-and-verification/SKILL.md) | Reviewing a diff or a targeted implementation | Evidence-backed findings, checks run, and remaining uncertainty |
 | [desktop-ui-polish](../.agents/skills/desktop-ui-polish/SKILL.md) | Polishing JavaFX role screens for layout and shared shell | Before/after layout checklist, Venue-aligned tokens, explicit non-goals |
+| [security-and-rbac](../.agents/skills/security-and-rbac/SKILL.md) | Reviewing authentication, roles, and resource authorization | Backend authorization evidence, forbidden-case tests, and safe error handling |
+| [database-migration-and-integrity](../.agents/skills/database-migration-and-integrity/SKILL.md) | Designing PostgreSQL migrations and data-integrity rules | Normalized schema, constraints, transaction behavior, and migration checks |
+| [observability-and-error-handling](../.agents/skills/observability-and-error-handling/SKILL.md) | Reviewing logs, errors, audit events, notifications, and metrics | Safe structured logging, consistent errors, side-effect checks, and monitoring limits |
 
 ## Using the skills
 
@@ -45,6 +48,11 @@ Use $desktop-ui-polish on Club Organizer events.
 Remove squished dual chrome, keep Venue shell tokens, and list non-goals.
 Do not add club CRUD. Review-only unless implementation is explicitly authorized.
 ```
+
+The three additional skills were added after the initial Venue Administrator
+implementation. Jordan's logs map them retrospectively to related work; they
+should be used prospectively for new security, database, and observability
+changes.
 
 Use the actual comparison branch for a review. `main` is the baseline when these
 skills were added; the assignment's required submission branch is `master`.
@@ -118,6 +126,14 @@ the JSONL event or line to inspect. The graders use only Python's standard
 library and do not call an LLM.
 
 ## Logs and reflections
+
+### Current account-management limitation
+
+The Venue Administrator `Users and access` screen supports creating normal-user
+accounts, editing their username, role, and active status, and granting venue
+scope to administrators. It does not currently provide a change-password or
+password-reset function. Password changes are planned for a later iteration
+through a dedicated, audited workflow.
 
 Use `logs/<contributor>/NNN-description.md`, starting with the
 [interaction template](../logs/templates/interaction.md). Each contributor has

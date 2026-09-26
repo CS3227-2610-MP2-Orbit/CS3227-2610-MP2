@@ -24,8 +24,9 @@ other recipients, and the result reports queued and failed counts.
 
 ## Not implemented / dependencies
 
-- Recipients come from `EventRegistrations`, which has no real implementation
-  until Attendee registration exists, so no notifications are queued today.
+- Recipients come from `JdbcEventRegistrations`. There is no Attendee
+  registration screen or Organizer event publication yet, so in normal use no
+  notifications are queued.
 - Queued notifications are not delivered: `NotificationOutboxWorker` is not run
   by the application, and the only delivery adapter logs locally.
 - Attendees cannot view announcements yet (Attendee "Receive notifications").

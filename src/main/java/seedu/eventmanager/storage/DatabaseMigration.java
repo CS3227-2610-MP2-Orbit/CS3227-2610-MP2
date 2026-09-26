@@ -14,7 +14,8 @@ public final class DatabaseMigration {
     private static final List<String> MIGRATION_RESOURCES = List.of(
             "/db/organizer/V1__create_organizer_events.sql",
             "/db/organizer/V2__create_event_volunteers.sql",
-            "/db/organizer/V3__create_event_announcements.sql");
+            "/db/organizer/V3__create_event_announcements.sql",
+            "/db/organizer/V4__create_organizer_clubs.sql");
 
     private final DataSource dataSource;
 
