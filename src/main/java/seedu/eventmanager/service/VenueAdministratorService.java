@@ -49,6 +49,9 @@ public final class VenueAdministratorService {
     }
 
     public VenueRequest reject(Actor administrator, UUID requestId, String reason) {
+        if (reason == null || reason.isBlank()) {
+            throw new ApplicationException("REJECTION_REASON_REQUIRED", "A rejection reason is required.");
+        }
         if (!REASON_VENUE_BOOKED.equals(reason) && !REASON_CAPACITY_EXCEEDED.equals(reason)) {
             throw new ApplicationException("INVALID_DECISION_REASON", "Select a supported rejection reason.");
         }
