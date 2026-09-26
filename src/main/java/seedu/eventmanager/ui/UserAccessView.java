@@ -7,6 +7,9 @@ import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.ChoiceDialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
@@ -15,6 +18,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import seedu.eventmanager.common.Role;
+import seedu.eventmanager.common.Actor;
 import seedu.eventmanager.service.UserAccessRepository;
 
 /** Local user and venue-scope management screen. */
@@ -22,8 +26,10 @@ public final class UserAccessView {
     private final BorderPane root = new BorderPane();
     private final TableView<UserAccessRepository.UserSummary> table = new TableView<>();
     private final UserAccessRepository users;
+    private final Actor actor;
 
-    public UserAccessView(UserAccessRepository users, Runnable showDashboard) {
+    public UserAccessView(Actor actor, UserAccessRepository users, Runnable showDashboard) {
+        this.actor = Objects.requireNonNull(actor);
         this.users = Objects.requireNonNull(users);
         Button back = new Button("← Dashboard");
         back.setOnAction(event -> showDashboard.run());
@@ -35,11 +41,13 @@ public final class UserAccessView {
                 column("User ID", user -> user.userId().toString()));
         Button create = new Button("Create user");
         create.setOnAction(event -> createUser());
+        Button edit = new Button("Edit account");
+        edit.setOnAction(event -> editUser());
         Button grant = new Button("Grant venue access");
         grant.setOnAction(event -> grantAccess());
         Button refresh = new Button("Refresh");
         refresh.setOnAction(event -> reload());
-        HBox actions = new HBox(10, create, grant, refresh);
+        HBox actions = new HBox(10, create, edit, grant, refresh);
         VBox content = new VBox(16, back, heading, actions, table);
         content.setPadding(new Insets(28));
         root.setCenter(content);
@@ -64,10 +72,15 @@ public final class UserAccessView {
     private void createUser() {
         Optional<String> username = prompt("Create user", "Username", "");
         Optional<String> password = prompt("Create user", "Password", "");
-        Optional<String> role = prompt("Create user", "Role", "VENUE_ADMINISTRATOR");
+        ChoiceDialog<Role> roleDialog = new ChoiceDialog<>(Role.ATTENDEE,
+                java.util.List.of(Role.ATTENDEE, Role.CLUB_ORGANIZER, Role.VENUE_ADMINISTRATOR));
+        roleDialog.setTitle("Create user");
+        roleDialog.setHeaderText("Select account role");
+        roleDialog.setContentText("Role:");
+        Optional<Role> role = roleDialog.showAndWait();
         if (username.isEmpty() || password.isEmpty() || role.isEmpty()) return;
         try {
-            users.createUser(username.get().trim(), password.get(), Role.valueOf(role.get().trim()));
+            users.createUser(actor, username.get().trim(), password.get(), role.get());
             reload();
         } catch (RuntimeException exception) {
             showError(exception.getMessage());
@@ -79,7 +92,47 @@ public final class UserAccessView {
         Optional<String> venueId = prompt("Grant venue access", "Venue ID", "");
         if (selected == null || venueId.isEmpty()) return;
         try {
-            users.grantVenueAccess(selected.userId(), UUID.fromString(venueId.get().trim()));
+            users.grantVenueAccess(actor, selected.userId(), UUID.fromString(venueId.get().trim()));
+        } catch (RuntimeException exception) {
+            showError(exception.getMessage());
+        }
+    }
+
+    private void editUser() {
+        UserAccessRepository.UserSummary selected = table.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            showError("Select a user account first.");
+            return;
+        }
+        if (selected.role() == Role.VENUE_ADMINISTRATOR) {
+            showError("Venue Administrator accounts cannot be edited here.");
+            return;
+        }
+        TextInputDialog username = new TextInputDialog(selected.username());
+        username.setTitle("Edit account");
+        username.setHeaderText("Update username");
+        username.setContentText("Username:");
+        Optional<String> updatedUsername = username.showAndWait();
+        if (updatedUsername.isEmpty()) return;
+
+        ChoiceDialog<Role> role = new ChoiceDialog<>(selected.role(),
+                java.util.List.of(Role.ATTENDEE, Role.CLUB_ORGANIZER));
+        role.setTitle("Edit account");
+        role.setHeaderText("Update normal-user role");
+        role.setContentText("Role:");
+        Optional<Role> updatedRole = role.showAndWait();
+        if (updatedRole.isEmpty()) return;
+
+        CheckBox active = new CheckBox("Account active");
+        active.setSelected(selected.active());
+        Alert status = new Alert(Alert.AlertType.CONFIRMATION);
+        status.setTitle("Edit account");
+        status.setHeaderText("Update account status");
+        status.getDialogPane().setContent(active);
+        if (status.showAndWait().orElse(ButtonType.CANCEL) != ButtonType.OK) return;
+        try {
+            users.updateUser(actor, selected.userId(), updatedUsername.get(), updatedRole.get(), active.isSelected());
+            reload();
         } catch (RuntimeException exception) {
             showError(exception.getMessage());
         }
