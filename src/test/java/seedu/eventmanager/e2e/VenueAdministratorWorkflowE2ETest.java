@@ -67,12 +67,12 @@ class VenueAdministratorWorkflowE2ETest {
                 new Actor(adminId, Role.VENUE_ADMINISTRATOR));
 
         dashboard.load();
-        dashboard.reject(requestId, "Capacity requirements cannot be met.");
+        dashboard.reject(requestId, VenueAdministratorService.REASON_CAPACITY_EXCEEDED);
 
         assertEquals(VenueRequestStatus.REJECTED, scenario.requests.get(requestId).status());
         assertEquals("VENUE_REQUEST_REJECTED", scenario.requests.notificationEvent);
         assertEquals("VENUE_REQUEST_REJECTED", scenario.requests.auditEvent);
-        assertEquals("Capacity requirements cannot be met.", scenario.requests.auditReason);
+        assertEquals(VenueAdministratorService.REASON_CAPACITY_EXCEEDED, scenario.requests.auditReason);
         assertEquals(VenueAdministratorDashboardState.Status.EMPTY, dashboard.state().status());
     }
 
