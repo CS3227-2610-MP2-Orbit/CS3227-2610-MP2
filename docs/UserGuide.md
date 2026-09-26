@@ -75,11 +75,12 @@ The app is designed for users who:
    .\gradlew.bat run
    ```
 
-5. A home screen appears. Choose a workspace:
+5. A shared login screen appears. Log in with your role's account (or create a
+   normal Attendee/Organizer account); the app routes you to that workspace:
 
-   * **Club Organizer** — create/edit events and request venues (no login; identity from `.env`).
+   * **Club Organizer** — create/edit events and request venues (club ownership still comes from `.env`).
    * **Venue Administrator** — local login, then dashboard, venues, and request review.
-   * **Attendee** — public, read-only browse/search of upcoming published events.
+   * **Attendee** — read-only browse/search of upcoming published events after login.
 
 6. Continue with [Features](#features).
 
@@ -109,7 +110,7 @@ The app is designed for users who:
 
 Event Venue Manager uses one shared desktop shell:
 
-1. Home screen routes to Club Organizer, Venue Administrator, or Attendee.
+1. Shared login routes to Club Organizer, Venue Administrator, or Attendee based on account role.
 2. Each role has a dark sidebar and card-style content area.
 3. Organizer event data and Admin venue/request data share the same PostgreSQL database when configured as above.
 
@@ -123,7 +124,7 @@ Creates a new draft event owned by one of your configured clubs.
 
 **Steps:**
 
-1. On the home screen, select **Club Organizer**.
+1. Log in with a **Club Organizer** account.
 2. In the sidebar, select **Events**, then select **+ New event** above **Your events**.
 3. Choose a **Club**, enter **Title**, optional **Description**, start/end date and Singapore time (24-hour, e.g. `18:00`), and a positive **Capacity**.
 4. Select **Save event**.
@@ -184,7 +185,7 @@ Submits a `SUBMITTED` venue booking request so a Venue Administrator can approve
 
 **Steps:**
 
-1. Home → **Venue Administrator**.
+1. Log in with a **Venue Administrator** account at the shared login screen.
 2. Sign in with a local Venue Administrator account.
 
 > **Note:** If you have no account yet, create one under **Users and access** (after an existing admin session), or use the account your team already seeded (commonly username `admin`).
@@ -272,13 +273,14 @@ A: Select the venue → **Claim access**, or recreate the venue while logged in 
 A: Set `EVENT_MANAGER_CLUB_IDS` in `.env` and restart. There is no Clubs CRUD UI yet.
 
 **Q: Do Club Organizer and Venue Administrator share a login?**  
-A: Not yet. Organizer uses `.env` identity; Admin uses local login.
+A: Yes, the shared login routes by account role. Organizer club ownership still
+uses `.env` configuration; this is not yet unified with account-based club ownership.
 
 ---
 
 ## Known Issues
 
-* Shared authentication across roles is not implemented.
+* Shared login is implemented, but Organizer club ownership still uses `.env` configuration.
 * Organizer string ids are mapped to UUIDs for venue requests (temporary until shared users auth).
 * No supersede/withdraw of venue requests from the Organizer UI.
 * Attendee registration, notifications, check-in, and history are not implemented yet.

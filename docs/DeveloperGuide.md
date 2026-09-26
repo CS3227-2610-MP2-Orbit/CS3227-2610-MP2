@@ -337,7 +337,8 @@ See [Agentic SE](AgenticSE.md). Cursor project hooks (optional process guardrail
 
 1. Ensure Postgres is running and `.env` is set.
 2. `./gradlew run`
-3. Confirm the home screen offers Club Organizer, Venue Administrator, and Attendee.
+3. Confirm the shared login routes an ATTENDEE account to the catalogue and retains
+   Organizer/Admin role routing. Attendee Home returns to the login screen.
 
 ### Organizer create/edit event
 
