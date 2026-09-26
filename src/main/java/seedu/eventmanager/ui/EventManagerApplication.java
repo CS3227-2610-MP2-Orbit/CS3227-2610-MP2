@@ -1,12 +1,6 @@
 package seedu.eventmanager.ui;
 
-import io.github.cdimascio.dotenv.Dotenv;
 import java.time.Clock;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import javafx.application.Application;
 import javafx.geometry.Insets;
@@ -19,9 +13,10 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import seedu.eventmanager.club.ClubService;
+import seedu.eventmanager.club.JdbcClubRepository;
 import seedu.eventmanager.event.EventService;
 import seedu.eventmanager.event.JdbcEventRepository;
-import seedu.eventmanager.event.OrganizerIdentity;
 import seedu.eventmanager.event.OrganizerVenueRequestService;
 import seedu.eventmanager.registration.NoEventRegistrations;
 import seedu.eventmanager.storage.DatabaseBootstrap;
@@ -90,7 +85,8 @@ public final class EventManagerApplication extends Application {
             DriverManagerDataSource dataSource = new DriverManagerDataSource(databaseConfig);
             new DatabaseMigration(dataSource).migrate();
 
-            OrganizerIdentity organizer = organizerFrom(localSettings());
+            ClubService clubService = new ClubService(
+                    new JdbcClubRepository(dataSource), UUID::randomUUID, Clock.systemUTC());
             JdbcDatabase jdbcDatabase = new JdbcDatabase(configuration);
             JdbcVenueRepository venueRepository = new JdbcVenueRepository(jdbcDatabase);
             JdbcVenueRequestRepository venueRequestRepository = new JdbcVenueRequestRepository(jdbcDatabase);
@@ -116,8 +112,9 @@ public final class EventManagerApplication extends Application {
                     eventService,
                     venueRequestService,
                     volunteerService,
+                    clubService,
                     venueRepository,
-                    organizer,
+                    actor,
                     () -> showHome(root)));
         } catch (RuntimeException | java.sql.SQLException exception) {
             root.setPadding(new Insets(24));
@@ -151,33 +148,6 @@ public final class EventManagerApplication extends Application {
         button.setPrefHeight(74);
         button.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-padding: 14px;");
         return button;
-    }
-
-    private static OrganizerIdentity organizerFrom(Map<String, String> environment) {
-        String organizerId = environment.getOrDefault(
-                "EVENT_MANAGER_ORGANIZER_ID", "demo-organizer");
-        String rawClubIds = environment.getOrDefault("EVENT_MANAGER_CLUB_IDS", "demo-club");
-        Set<String> clubIds = new LinkedHashSet<>();
-        Arrays.stream(rawClubIds.split(","))
-                .map(String::strip)
-                .filter(value -> !value.isEmpty())
-                .forEach(clubIds::add);
-        if (clubIds.isEmpty()) {
-            throw new IllegalArgumentException("At least one organizer club ID is required");
-        }
-        return new OrganizerIdentity(organizerId, clubIds);
-    }
-
-    /** Process env vars override values from the project-root {@code .env} file. */
-    private static Map<String, String> localSettings() {
-        Map<String, String> values = new HashMap<>();
-        Dotenv dotenv = Dotenv.configure()
-                .ignoreIfMissing()
-                .ignoreIfMalformed()
-                .load();
-        dotenv.entries().forEach(entry -> values.put(entry.getKey(), entry.getValue()));
-        values.putAll(System.getenv());
-        return values;
     }
 
     private static VBox databaseErrorView(Exception exception) {
