@@ -1,76 +1,61 @@
 package seedu.eventmanager.ui;
 
+import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Consumer;
 import javafx.geometry.Insets;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ChoiceDialog;
+import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
-import java.util.List;
-import java.util.Optional;
 import javafx.scene.layout.VBox;
 import seedu.eventmanager.common.Role;
 import seedu.eventmanager.storage.JdbcLocalSessionService;
 
-/** Minimal login form for local Venue Administrator sessions. */
-public final class VenueAdministratorLoginView {
+/** Shared authentication gate for the role workspaces. */
+public final class HomeAuthenticationView extends VBox {
     private final JdbcLocalSessionService sessions;
-    private final Consumer<JdbcLocalSessionService.Session> onLogin;
-    private final VBox root = new VBox(12);
+    private final Consumer<JdbcLocalSessionService.Session> onAuthenticated;
     private final TextField username = new TextField();
     private final PasswordField password = new PasswordField();
     private final Label message = new Label();
 
-    public VenueAdministratorLoginView(JdbcLocalSessionService sessions,
-            Consumer<JdbcLocalSessionService.Session> onLogin) {
+    public HomeAuthenticationView(JdbcLocalSessionService sessions,
+            Consumer<JdbcLocalSessionService.Session> onAuthenticated) {
         this.sessions = Objects.requireNonNull(sessions);
-        this.onLogin = Objects.requireNonNull(onLogin);
-        build();
-    }
-
-    public VBox root() {
-        return root;
-    }
-
-    private void build() {
-        Label heading = new Label("Venue Administrator Login");
+        this.onAuthenticated = Objects.requireNonNull(onAuthenticated);
+        setSpacing(12);
+        setPadding(new Insets(32));
+        setMaxWidth(900);
+        Label heading = new Label("Event Venue Manager");
         heading.setStyle("-fx-font-size: 24px; -fx-font-weight: bold;");
         username.setPromptText("Username");
         password.setPromptText("Password");
         Button login = new Button("Log in");
         login.setDefaultButton(true);
-        login.setOnAction(event -> submit());
+        login.setOnAction(event -> login());
         Button register = new Button("Create normal user account");
         register.setOnAction(event -> register());
-        message.setStyle("-fx-text-fill: #b42318;");
         message.setWrapText(true);
         message.setMaxWidth(900);
-        root.getChildren().addAll(heading, username, password, login, register, message);
-        root.setPrefWidth(900);
-        root.setMaxWidth(1000);
-        root.setPadding(new Insets(32));
+        getChildren().addAll(heading,
+                new Label("Log in or create an account before entering a workspace."),
+                username, password, login, register, message);
     }
 
-    private void submit() {
-        message.setText("");
+    private void login() {
         try {
-            JdbcLocalSessionService.Session session = sessions.login(username.getText(), password.getText());
-            if (session.actor().role() != Role.VENUE_ADMINISTRATOR) {
-                throw new IllegalArgumentException("This login is not a Venue Administrator account.");
-            }
-            onLogin.accept(session);
+            onAuthenticated.accept(sessions.login(username.getText(), password.getText()));
         } catch (RuntimeException exception) {
-            message.setText(exception.getMessage() == null
-                    ? "Login failed." : exception.getMessage());
+            showError(exception.getMessage());
         }
     }
 
     private void register() {
-        TextField registrationUsername = new TextField();
-        PasswordField registrationPassword = new PasswordField();
         ChoiceDialog<Role> roleDialog = new ChoiceDialog<>(Role.ATTENDEE,
                 List.of(Role.ATTENDEE, Role.CLUB_ORGANIZER));
         roleDialog.setTitle("Create normal user account");
@@ -79,24 +64,32 @@ public final class VenueAdministratorLoginView {
         Optional<Role> role = roleDialog.showAndWait();
         if (role.isEmpty()) return;
 
-        javafx.scene.control.Dialog<ButtonType> details = new javafx.scene.control.Dialog<>();
+        Dialog<ButtonType> details = new Dialog<>();
         details.setTitle("Create normal user account");
         details.setHeaderText("Enter your account details");
         ButtonType create = new ButtonType("Create", javafx.scene.control.ButtonBar.ButtonData.OK_DONE);
         details.getDialogPane().getButtonTypes().addAll(create, ButtonType.CANCEL);
-        VBox fields = new VBox(8, new Label("Username"), registrationUsername,
-                new Label("Password (at least 8 characters)"), registrationPassword);
+        TextField newUsername = new TextField();
+        PasswordField newPassword = new PasswordField();
+        VBox fields = new VBox(8, new Label("Username"), newUsername,
+                new Label("Password (at least 8 characters)"), newPassword);
         fields.setPadding(new Insets(12));
         details.getDialogPane().setContent(fields);
         details.setResultConverter(button -> button == create ? create : null);
         if (details.showAndWait().isEmpty()) return;
         try {
-            sessions.registerNormalUser(registrationUsername.getText(), registrationPassword.getText(), role.get());
+            sessions.registerNormalUser(newUsername.getText(), newPassword.getText(), role.get());
+            username.setText(newUsername.getText().trim());
+            password.setText("");
             message.setStyle("-fx-text-fill: #067647;");
-            message.setText("Account created. You can now log in.");
+            message.setText("Account created. Log in to continue.");
         } catch (RuntimeException exception) {
-            message.setStyle("-fx-text-fill: #b42318;");
-            message.setText(exception.getMessage() == null ? "Registration failed." : exception.getMessage());
+            showError(exception.getMessage());
         }
+    }
+
+    private void showError(String text) {
+        message.setStyle("-fx-text-fill: #b42318;");
+        message.setText(text == null ? "Authentication failed." : text);
     }
 }

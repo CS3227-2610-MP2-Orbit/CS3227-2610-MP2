@@ -224,8 +224,9 @@ Use **Users and access** to create administrator users and grant venue access by
 
 ## Attendee: browse and search events
 
-1. Select **Attendee** on the home screen. Browsing is public and read-only;
-   no attendee session or account is needed for this screen.
+1. On the shared login screen, create an **ATTENDEE** account if needed and
+   log in. Your role opens the read-only catalogue. The catalogue contains only
+   public event fields, but the desktop workspace follows the shared login gate.
 2. Enter text to search event titles/descriptions (case-insensitive literal
    substring), and optionally enter an exact, case-sensitive **Club ID**.
 3. Optionally choose **From date** and **To date** using the calendar controls.
@@ -235,7 +236,7 @@ Use **Users and access** to create administrator users and grant venue access by
    events whose start is still in the future are listed, ordered by start time
    and then event ID. **Clear filters** resets all fields and reloads the list.
 5. Select an event for its latest title, description, club ID, SGT start/end
-   times and configured capacity. **← Home** returns to the role picker.
+    times and configured capacity. **← Home** returns to the login screen.
 
 Configured capacity is **not remaining seats**. Venue/booking details,
 registration, personal notifications, check-in and attendance history are not

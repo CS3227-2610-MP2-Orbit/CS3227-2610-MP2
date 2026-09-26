@@ -1,5 +1,22 @@
 # Attendee implementation plan
 
+## Current decisions — 26 September 2026 (supersede the historical proposal below)
+
+- QR is out of scope. Plan a normal attendee self-check-in button; confirm the
+  timing policy before implementing it. No scanner, QR token or ticket generation.
+- Main's shared login (#22) now gates workspaces. The catalogue is routed from an
+  ATTENDEE login, while returning public event fields only.
+- Joseph agreed on EventRegistrations: current CONFIRMED/CHECKED_IN registrants,
+  excluding CANCELLED; one result per user/event; users.user_id and users.username
+  only. Inactive users are excluded from this projection without automatically
+  cancelling stored registrations. Joseph owns Organizer consumer wiring.
+- First PR: catalogue and authentication routing integration. Next handoff:
+  registration persistence/read adapter and authenticated register/cancel workflow.
+- Earlier evidence tables and QR-specific acceptance rows below are historical
+  planning context, not current implementation authority. Logs 009/010 track updates.
+
+## Historical planning record (25 September)
+
 Owner: Johannsen. Inspected: 25 September 2026, `attendee` at `bfab6b8`.
 Status: **partially ready — proposed policy and shared integration contracts need
 agreement before dependent implementation**. This is a plan, not a feature guide.

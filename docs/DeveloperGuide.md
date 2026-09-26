@@ -191,8 +191,9 @@ The Attendee route does not run migrations or create fixtures. Organizer schema
 initialization remains with the existing bootstrap. Publication is not currently
 implemented by `EventService`, so new drafts do not appear. Venue data, available
 seats, personalized records and mutations are intentionally not claimed by this
-slice. Shared login is needed when authenticated actions are implemented, not
-for this public catalogue. See [the Attendee plan](AttendeePlan.md).
+slice. After integrating shared authentication PR #22, the desktop catalogue is
+routed from an ATTENDEE login; its read service still exposes only public event
+fields. See [the Attendee plan](AttendeePlan.md).
 
 Focused verification:
 

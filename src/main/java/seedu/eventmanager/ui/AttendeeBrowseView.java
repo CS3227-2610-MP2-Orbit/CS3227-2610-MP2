@@ -64,7 +64,7 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
         browse.setOnAction(ignored -> refresh());
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
-        Label mode = text("Public catalogue\nRead-only access", "#93a4bd", 12);
+        Label mode = text("Event catalogue\nRead-only access", "#93a4bd", 12);
         Button home = new Button("← Home");
         home.setId("attendee-home");
         home.setMaxWidth(Double.MAX_VALUE);
