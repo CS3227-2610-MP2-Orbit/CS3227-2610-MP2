@@ -79,6 +79,7 @@ The app is designed for users who:
 
    * **Club Organizer** — create/edit events and request venues (no login; identity from `.env`).
    * **Venue Administrator** — local login, then dashboard, venues, and request review.
+   * **Attendee** — public, read-only browse/search of upcoming published events.
 
 6. Continue with [Features](#features).
 
@@ -88,7 +89,8 @@ The app is designed for users who:
 
 | Role | Action | Where in the UI |
 | --- | --- | --- |
-| Either | Open a role workspace | Home screen |
+| All | Open a role workspace | Home screen |
+| Attendee | Browse/search published events | **Attendee** → **Browse events** |
 | Organizer | Create draft event | **Events** → **+ New event** → fill form → **Save event** |
 | Organizer | Edit draft event | **Events** → select event → edit → **Save event** |
 | Organizer | Reset / revert form | **Reset** (new) or **Revert changes** (edit) |
@@ -107,7 +109,7 @@ The app is designed for users who:
 
 Event Venue Manager uses one shared desktop shell:
 
-1. Home screen routes to Club Organizer or Venue Administrator.
+1. Home screen routes to Club Organizer, Venue Administrator, or Attendee.
 2. Each role has a dark sidebar and card-style content area.
 3. Organizer event data and Admin venue/request data share the same PostgreSQL database when configured as above.
 
@@ -220,6 +222,40 @@ Use **Users and access** to create administrator users and grant venue access by
 
 ---
 
+## Attendee: browse and search events
+
+1. Select **Attendee** on the home screen. Browsing is public and read-only;
+   no attendee session or account is needed for this screen.
+2. Enter text to search event titles/descriptions (case-insensitive literal
+   substring), and optionally enter an exact, case-sensitive **Club ID**.
+3. Optionally choose **From date** and **To date** using the calendar controls.
+   These are inclusive event-start calendar dates in Singapore Time; either
+   bound may be left blank. From must not be later than To.
+4. Select **Search / Refresh** (or press Enter in a text field). Only published
+   events whose start is still in the future are listed, ordered by start time
+   and then event ID. **Clear filters** resets all fields and reloads the list.
+5. Select an event for its latest title, description, club ID, SGT start/end
+   times and configured capacity. **← Home** returns to the role picker.
+
+Configured capacity is **not remaining seats**. Venue/booking details,
+registration, personal notifications, check-in and attendance history are not
+connected yet; the details panel states these limits. An event that has started
+or is no longer published cannot be reopened through the catalogue.
+
+Browsing uses the same database settings as the other workspaces. It does not
+create or modify tables: initialize the Organizer schema by opening the Club
+Organizer workspace against your configured database first. On a connection or
+schema error, fix setup and use **Search / Refresh** to retry. Failures are shown
+without raw database exception messages.
+
+The Organizer currently creates drafts and has no publish action. Drafts are
+intentionally invisible here, so a freshly initialized database has no catalogue
+results. There is no hidden publish action or automatic demo-data insertion.
+Developers can run the separately labelled synthetic UI smoke test described in
+the Developer Guide; those fixtures are not real published events.
+
+---
+
 ## FAQ
 
 **Q: Organizer Request venue shows no venues.**  
@@ -244,7 +280,7 @@ A: Not yet. Organizer uses `.env` identity; Admin uses local login.
 * Shared authentication across roles is not implemented.
 * Organizer string ids are mapped to UUIDs for venue requests (temporary until shared users auth).
 * No supersede/withdraw of venue requests from the Organizer UI.
-* No Attendee workspace in the home screen yet.
+* Attendee registration, notifications, check-in, and history are not implemented yet.
 * Admin request table shows raw UUIDs rather than event/venue names.
 * Notification outbox stores Admin decisions but does not send email yet.
 

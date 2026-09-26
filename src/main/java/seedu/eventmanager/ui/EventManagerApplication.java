@@ -20,6 +20,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import seedu.eventmanager.event.EventService;
+import seedu.eventmanager.attendee.EventCatalogueService;
 import seedu.eventmanager.event.JdbcEventRepository;
 import seedu.eventmanager.event.OrganizerIdentity;
 import seedu.eventmanager.event.OrganizerVenueRequestService;
@@ -29,11 +30,14 @@ import seedu.eventmanager.storage.DatabaseConfiguration;
 import seedu.eventmanager.storage.DatabaseMigration;
 import seedu.eventmanager.storage.DriverManagerDataSource;
 import seedu.eventmanager.storage.JdbcDatabase;
+import seedu.eventmanager.storage.JdbcEventCatalogueRepository;
 import seedu.eventmanager.storage.JdbcVenueRepository;
 import seedu.eventmanager.storage.JdbcVenueRequestRepository;
 
 /** Desktop application shell that routes users to the available role workspaces. */
 public final class EventManagerApplication extends Application {
+    private AttendeeBrowseView attendeeView;
+
     @Override
     public void start(Stage stage) {
         stage.setTitle("Event Venue Manager");
@@ -47,6 +51,7 @@ public final class EventManagerApplication extends Application {
     }
 
     private void showHome(BorderPane root) {
+        closeAttendee();
         root.setPadding(new Insets(24));
         Label heading = new Label("Event Venue Manager");
         heading.setStyle("-fx-font-size: 28px; -fx-font-weight: bold;");
@@ -59,7 +64,11 @@ public final class EventManagerApplication extends Application {
                 "Review venue requests and manage venues.");
         venueAdministrator.setOnAction(ignored -> showVenueAdministrator(root));
 
-        VBox choices = new VBox(14, organizer, venueAdministrator);
+        Button attendee = roleButton("Attendee", "Browse and search upcoming published events.");
+        attendee.setId("attendee-workspace");
+        attendee.setOnAction(ignored -> showAttendee(root));
+
+        VBox choices = new VBox(14, organizer, venueAdministrator, attendee);
         choices.setMaxWidth(420);
         VBox content = new VBox(18, heading, message, choices);
         content.setAlignment(Pos.CENTER_LEFT);
@@ -108,6 +117,32 @@ public final class EventManagerApplication extends Application {
     private void showVenueAdministrator(BorderPane root) {
         root.setPadding(Insets.EMPTY);
         showWorkspace(root, "Venue Administrator", new VenueAdministratorFxApplication().createRoot());
+    }
+
+    private void showAttendee(BorderPane root) {
+        closeAttendee();
+        root.setPadding(Insets.EMPTY);
+        root.setTop(null);
+        attendeeView = new AttendeeBrowseView(() -> {
+            // Configuration and JDBC are resolved by the view's background task.
+            DatabaseConfiguration configuration = DatabaseBootstrap.configuration();
+            var dataSource = new DriverManagerDataSource(new DatabaseConfig(
+                    configuration.url(), configuration.username(), configuration.password()));
+            return new EventCatalogueService(new JdbcEventCatalogueRepository(dataSource), Clock.systemUTC());
+        }, () -> showHome(root));
+        root.setCenter(attendeeView);
+    }
+
+    private void closeAttendee() {
+        if (attendeeView != null) {
+            attendeeView.close();
+            attendeeView = null;
+        }
+    }
+
+    @Override
+    public void stop() {
+        closeAttendee();
     }
 
     private void showWorkspace(BorderPane root, String title, Node workspace) {
