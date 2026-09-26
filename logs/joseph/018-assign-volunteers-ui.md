@@ -89,6 +89,45 @@ adding policy. Its main limitation is that the assign path shows only the empty
 state until registrations exist and has no UI automation; the next step is a manual
 run and, once Johannsen's registration lands, an end-to-end assign check.
 
+## Follow-up: branch integration merges
+
+Prompts (verbatim):
+
+> ok, I will merge that. before i merge the feature-asign-volunteer branch. Can you merge the bug fixes of the authentication and the club UI to this branch as well. https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/tree/bug-club-organizer-authentication
+
+> im waitgin for my teamate's approval to merge, but can u merge it with his PR now. Assuming i will merge it https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/pull/26
+
+Decisions:
+
+- `origin/bug-club-organizer-authentication` (b904e94, log 019) was a direct
+  descendant of this branch, so it was fast-forwarded; no new commit.
+- PR #26 (`origin/attendee-registration-handoff`, 263d833) was merged with
+  `--no-ff`. The only conflict, `registration/README.md`, was resolved with
+  #26's version, which records the agreed contract and replaces this branch's
+  "proposed contract" text. #26 also adds a registration CI step.
+- Merge commit 5544afe created locally with the user's authorization. Not pushed.
+- `EventManagerApplication` still wires `NoEventRegistrations`; replacing it with
+  `JdbcEventRegistrations` plus `RegistrationDatabaseMigration` was not done here.
+
+Commands actually executed (temporary databases created with `createdb` and
+dropped with `dropdb` afterwards):
+
+```bash
+git merge --ff-only origin/bug-club-organizer-authentication
+EVENT_MANAGER_TEST_DB_URL=jdbc:postgresql://localhost:5432/event_manager_test_ffmerge EVENT_MANAGER_TEST_DB_USER=josephkwok ./gradlew test --rerun
+# BUILD SUCCESSFUL; tests=124 failures=0 errors=0 skipped=2
+git merge --no-ff --no-commit origin/attendee-registration-handoff
+# CONFLICT in src/main/java/seedu/eventmanager/registration/README.md
+git checkout --theirs -- src/main/java/seedu/eventmanager/registration/README.md
+EVENT_MANAGER_TEST_DB_URL=jdbc:postgresql://localhost:5432/event_manager_test_m26 EVENT_MANAGER_TEST_DB_USER=josephkwok ./gradlew classes test --rerun
+# BUILD SUCCESSFUL; tests=144 failures=0 errors=0 skipped=2
+git commit --no-edit
+```
+
+The two skipped tests are in `PostgreSqlVenueAdministratorIntegrationTest`
+(Jordan's), which was not enabled by these environment variables. No manual UI run
+was performed after either merge.
+
 ## Student review
 
 - [ ] I confirmed that the original prompts are accurate.
