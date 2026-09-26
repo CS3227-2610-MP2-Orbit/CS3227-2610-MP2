@@ -89,7 +89,10 @@ public final class VenueAdministratorFxApplication extends Application {
                     }
         });
         requestView[0] = new VenueRequestManagementView(controller,
-                () -> root.setCenter(dashboardView[0].root()));
+                () -> {
+                    controller.load();
+                    root.setCenter(dashboardView[0].root());
+                });
         requestView[0].update(controller.state());
         venueView[0] = new VenueManagementView(venueRepository,
                 () -> root.setCenter(dashboardView[0].root()));
