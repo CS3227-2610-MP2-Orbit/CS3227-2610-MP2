@@ -102,6 +102,21 @@ All commands run from the repository root. Disposable Postgres endpoint:
    UTC is the documented workaround for pre-existing Venue offset-equality tests;
    new registration package passed independently in the normal local timezone.
 
+6. Split the unpublished handoff branch from the catalogue so Joseph can use it
+   independently: committed backend changes, then
+   `git rebase --onto origin/main attendee attendee-registration-handoff`.
+   Applied cleanly on main 4987149, leaving catalogue commits on attendee.
+   Re-ran the same full UTC/Postgres build command: **108 tests, zero skipped,
+   failures or errors**. Difference from 117 is the nine catalogue tests absent
+   on this independent branch, not removed/disabled tests.
+7. Compared Git blob hashes for EventRegistrations and RegisteredAttendee against
+   origin/feature-view-registration: both pairs identical. Checked diff against
+   main: no Organizer/Admin implementation, UI, shared migration or existing test
+   modifications. `git diff --check` passed.
+
+Catalogue PR #25 was created and attached to the task; GitHub Validate passed.
+The handoff PR targets main directly; no dependency on catalogue merge order.
+
 ## Review, limitations and corrections
 
 - Real concurrency checks use two separate service/database instances and
