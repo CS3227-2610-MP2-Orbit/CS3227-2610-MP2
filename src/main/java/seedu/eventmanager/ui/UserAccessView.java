@@ -17,6 +17,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import seedu.eventmanager.common.Role;
+import seedu.eventmanager.common.Actor;
 import seedu.eventmanager.service.UserAccessRepository;
 
 /** Local user and venue-scope management screen. */
@@ -24,8 +25,10 @@ public final class UserAccessView {
     private final BorderPane root = new BorderPane();
     private final TableView<UserAccessRepository.UserSummary> table = new TableView<>();
     private final UserAccessRepository users;
+    private final Actor actor;
 
-    public UserAccessView(UserAccessRepository users, Runnable showDashboard) {
+    public UserAccessView(Actor actor, UserAccessRepository users, Runnable showDashboard) {
+        this.actor = Objects.requireNonNull(actor);
         this.users = Objects.requireNonNull(users);
         Button back = new Button("← Dashboard");
         back.setOnAction(event -> showDashboard.run());
@@ -66,10 +69,15 @@ public final class UserAccessView {
     private void createUser() {
         Optional<String> username = prompt("Create user", "Username", "");
         Optional<String> password = prompt("Create user", "Password", "");
-        Optional<String> role = prompt("Create user", "Role", "VENUE_ADMINISTRATOR");
+        ChoiceDialog<Role> roleDialog = new ChoiceDialog<>(Role.ATTENDEE,
+                java.util.List.of(Role.ATTENDEE, Role.CLUB_ORGANIZER, Role.VENUE_ADMINISTRATOR));
+        roleDialog.setTitle("Create user");
+        roleDialog.setHeaderText("Select account role");
+        roleDialog.setContentText("Role:");
+        Optional<Role> role = roleDialog.showAndWait();
         if (username.isEmpty() || password.isEmpty() || role.isEmpty()) return;
         try {
-            users.createUser(username.get().trim(), password.get(), Role.valueOf(role.get().trim()));
+            users.createUser(actor, username.get().trim(), password.get(), role.get());
             reload();
         } catch (RuntimeException exception) {
             showError(exception.getMessage());
