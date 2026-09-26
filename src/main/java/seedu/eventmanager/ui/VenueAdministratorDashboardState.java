@@ -26,6 +26,6 @@ public record VenueAdministratorDashboardState(Status status,
 
     private static VenueAdministratorApiClient.VenueAdministratorDashboardData emptyData() {
         return new VenueAdministratorApiClient.VenueAdministratorDashboardData(
-                List.of(), List.of(), List.of(), List.of(), List.of());
+                List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
     }
 }

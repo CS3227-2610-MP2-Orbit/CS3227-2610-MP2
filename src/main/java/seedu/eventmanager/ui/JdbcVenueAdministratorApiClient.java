@@ -24,7 +24,8 @@ public final class JdbcVenueAdministratorApiClient implements VenueAdministrator
     @Override
     public VenueAdministratorDashboardData loadDashboard() {
         List<VenueRequest> pending = requests.findSubmitted();
-        return new VenueAdministratorDashboardData(pending, List.of(), List.of(), List.of(), List.of());
+        return new VenueAdministratorDashboardData(pending, requests.findSubmittedDisplay(),
+                List.of(), List.of(), List.of(), List.of());
     }
 
     @Override

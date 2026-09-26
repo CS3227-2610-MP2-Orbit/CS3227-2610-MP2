@@ -102,10 +102,8 @@ public final class VenueAdministratorDashboardView {
         cards.setVgap(16);
         pendingRequestsValue = new Label("0");
         cards.add(summaryCard("Pending requests", pendingRequestsValue, "Awaiting review"), 0, 0);
-        cards.add(summaryCard("Upcoming bookings", "0", "Next 30 days"), 1, 0);
         availableVenuesValue = new Label("0");
-        cards.add(summaryCard("Available venues", availableVenuesValue, "Ready to book"), 2, 0);
-        cards.add(summaryCard("Warnings", "0", "Needs attention"), 0, 1);
+        cards.add(summaryCard("Available venues", availableVenuesValue, "Ready to book"), 1, 0);
 
         VBox content = content(pageTitle, contentTitle, cards,
                 new Label("Live venue activity will appear here once the dashboard repository is connected."));

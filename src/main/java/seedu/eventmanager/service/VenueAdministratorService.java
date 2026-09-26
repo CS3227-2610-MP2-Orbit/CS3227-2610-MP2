@@ -13,6 +13,8 @@ import java.util.Map;
 import java.util.UUID;
 
 public final class VenueAdministratorService {
+    public static final String REASON_VENUE_BOOKED = "Venue already booked";
+    public static final String REASON_CAPACITY_EXCEEDED = "Requested capacity exceeds venue capacity";
     private final VenueRequestRepository requests;
     private final VenueBookingRepository bookings;
     private final AuthorizationService authorization;
@@ -47,6 +49,9 @@ public final class VenueAdministratorService {
     }
 
     public VenueRequest reject(Actor administrator, UUID requestId, String reason) {
+        if (!REASON_VENUE_BOOKED.equals(reason) && !REASON_CAPACITY_EXCEEDED.equals(reason)) {
+            throw new ApplicationException("INVALID_DECISION_REASON", "Select a supported rejection reason.");
+        }
         return decideWithObservability(administrator, requestId, false, reason);
     }
 
