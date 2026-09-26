@@ -12,7 +12,7 @@ import java.util.UUID;
 import javax.sql.DataSource;
 import seedu.eventmanager.event.EventPersistenceException;
 
-/** PostgreSQL announcement repository that commits each announcement with its audit record atomically. */
+/** PostgreSQL announcement repository that commits each post or delete with its audit record atomically. */
 public final class JdbcAnnouncementRepository implements AnnouncementRepository {
     private final DataSource dataSource;
 
@@ -80,6 +80,41 @@ public final class JdbcAnnouncementRepository implements AnnouncementRepository 
             }
         } catch (SQLException exception) {
             throw new EventPersistenceException("Unable to post announcement", exception);
+        }
+    }
+
+    @Override
+    public boolean delete(UUID eventId, UUID announcementId, AnnouncementAuditRecord auditRecord) {
+        String sql = "DELETE FROM event_announcement WHERE id = ? AND event_id = ?";
+        try (Connection connection = dataSource.getConnection()) {
+            boolean originalAutoCommit = connection.getAutoCommit();
+            connection.setAutoCommit(false);
+            try {
+                int deleted;
+                try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                    statement.setObject(1, announcementId);
+                    statement.setObject(2, eventId);
+                    deleted = statement.executeUpdate();
+                }
+                if (deleted == 0) {
+                    connection.rollback();
+                    return false;
+                }
+                insertAudit(connection, auditRecord);
+                connection.commit();
+                return true;
+            } catch (SQLException | RuntimeException exception) {
+                try {
+                    connection.rollback();
+                } catch (SQLException rollbackFailure) {
+                    exception.addSuppressed(rollbackFailure);
+                }
+                throw exception;
+            } finally {
+                connection.setAutoCommit(originalAutoCommit);
+            }
+        } catch (SQLException exception) {
+            throw new EventPersistenceException("Unable to delete announcement", exception);
         }
     }
 

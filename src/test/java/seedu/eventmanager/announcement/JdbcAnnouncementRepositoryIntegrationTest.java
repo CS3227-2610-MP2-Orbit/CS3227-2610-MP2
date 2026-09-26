@@ -19,6 +19,7 @@ import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import seedu.eventmanager.event.EventDetails;
+import seedu.eventmanager.event.EventPersistenceException;
 import seedu.eventmanager.event.EventService;
 import seedu.eventmanager.event.JdbcEventRepository;
 import seedu.eventmanager.event.OrganizerIdentity;
@@ -114,6 +115,47 @@ class JdbcAnnouncementRepositoryIntegrationTest {
                         AnnouncementAuditRecord.Action.POST_ANNOUNCEMENT, unknownEvent, UUID.randomUUID())));
 
         assertTrue(auditActions().isEmpty());
+    }
+
+    @Test
+    void delete_removesRowAndWritesAuditTogether() throws Exception {
+        AnnouncementResult kept = service.post(ORGANIZER, EVENT_ID, "Keep me");
+        AnnouncementResult removed = service.post(ORGANIZER, EVENT_ID, "Delete me");
+
+        service.delete(ORGANIZER, EVENT_ID, removed.announcement().id());
+
+        assertEquals(List.of(kept.announcement()), repository.findByEventId(EVENT_ID));
+        assertEquals(List.of("POST_ANNOUNCEMENT", "POST_ANNOUNCEMENT", "DELETE_ANNOUNCEMENT"), auditActions());
+    }
+
+    @Test
+    void delete_wrongEventOrMissing_returnsFalseWithoutAudit() throws Exception {
+        Announcement stored = announcement("Hello", NOW);
+        repository.add(stored, audit(NOW));
+
+        assertEquals(false, repository.delete(UUID.randomUUID(), stored.id(), deleteAudit(stored.id())));
+        assertEquals(false, repository.delete(EVENT_ID, UUID.randomUUID(), deleteAudit(stored.id())));
+
+        assertEquals(List.of(stored), repository.findByEventId(EVENT_ID));
+        assertEquals(List.of("POST_ANNOUNCEMENT"), auditActions());
+    }
+
+    @Test
+    void delete_auditFailure_rollsBackDelete() throws Exception {
+        Announcement stored = announcement("Hello", NOW);
+        repository.add(stored, audit(NOW));
+        AnnouncementAuditRecord invalidAudit = new AnnouncementAuditRecord(
+                NOW, null, AnnouncementAuditRecord.Action.DELETE_ANNOUNCEMENT, EVENT_ID, stored.id());
+
+        assertThrows(EventPersistenceException.class, () -> repository.delete(EVENT_ID, stored.id(), invalidAudit));
+
+        assertEquals(List.of(stored), repository.findByEventId(EVENT_ID));
+        assertEquals(List.of("POST_ANNOUNCEMENT"), auditActions());
+    }
+
+    private static AnnouncementAuditRecord deleteAudit(UUID announcementId) {
+        return new AnnouncementAuditRecord(NOW, "organizer-1",
+                AnnouncementAuditRecord.Action.DELETE_ANNOUNCEMENT, EVENT_ID, announcementId);
     }
 
     private static Announcement announcement(String message, Instant createdAt) {

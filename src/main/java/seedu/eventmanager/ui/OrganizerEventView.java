@@ -9,7 +9,9 @@ import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.geometry.VPos;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
@@ -140,6 +142,7 @@ public final class OrganizerEventView extends BorderPane {
     private final TextArea announcementMessage = new TextArea();
     private final Label announcementCounter = new Label();
     private final Label announcementFeedback = new Label();
+    private final Button deleteAnnouncement = new Button("Delete selected");
     private final Button sendAnnouncement = new Button("Send announcement");
 
     private final VBox eventsContent;
@@ -669,8 +672,8 @@ public final class OrganizerEventView extends BorderPane {
 
         announcementHeading.setStyle("-fx-text-fill: #172033; -fx-font-size: 16px; -fx-font-weight: bold;");
         Label help = new Label(
-                "Announcements are saved permanently and queued as notifications for every attendee "
-                        + "registered for the event at the time you send.");
+                "Announcements are queued as notifications for every attendee registered for the event "
+                        + "at the time you send. Deleting one later does not withdraw those notifications.");
         help.setWrapText(true);
         help.setStyle("-fx-text-fill: #61708a;");
 
@@ -691,7 +694,14 @@ public final class OrganizerEventView extends BorderPane {
         announcementHistory.setPlaceholder(new Label("No announcements posted yet"));
         announcementHistory.setStyle(CARD_STYLE);
         announcementHistory.setCellFactory(ignored -> announcementCell());
+        announcementHistory.getSelectionModel().selectedItemProperty()
+                .addListener((ignored, previous, selected) -> deleteAnnouncement.setDisable(selected == null));
         VBox.setVgrow(announcementHistory, Priority.ALWAYS);
+        deleteAnnouncement.setStyle(SECONDARY_BUTTON_STYLE);
+        deleteAnnouncement.setDisable(true);
+        deleteAnnouncement.setOnAction(ignored -> deleteSelectedAnnouncement());
+        HBox deleteActions = new HBox(deleteAnnouncement);
+        deleteActions.setAlignment(Pos.CENTER_RIGHT);
 
         VBox detailCard = new VBox(16,
                 announcementHeading,
@@ -701,7 +711,8 @@ public final class OrganizerEventView extends BorderPane {
                 sendActions,
                 announcementFeedback,
                 sectionLabel("Posted announcements"),
-                announcementHistory);
+                announcementHistory,
+                deleteActions);
         detailCard.setPadding(new Insets(22));
         detailCard.setStyle(CARD_STYLE);
         detailCard.setMaxWidth(Double.MAX_VALUE);
@@ -1027,6 +1038,30 @@ public final class OrganizerEventView extends BorderPane {
             loadAnnouncements(event);
             setAnnouncementFeedback(announcementOutcome(result), result.notificationFailures() > 0);
         } catch (RuntimeException exception) {
+            setAnnouncementFeedback(exception.getMessage(), true);
+        }
+    }
+
+    private void deleteSelectedAnnouncement() {
+        Event event = announcementEvents.getSelectionModel().getSelectedItem();
+        Announcement selected = announcementHistory.getSelectionModel().getSelectedItem();
+        if (event == null || selected == null) {
+            setAnnouncementFeedback("Select an announcement to delete.", true);
+            return;
+        }
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                "Permanently delete this announcement? Notifications already queued for attendees are not withdrawn.",
+                ButtonType.CANCEL, ButtonType.OK);
+        confirm.setHeaderText("Delete announcement");
+        if (confirm.showAndWait().filter(ButtonType.OK::equals).isEmpty()) {
+            return;
+        }
+        try {
+            announcementService.delete(actor, event.id(), selected.id());
+            loadAnnouncements(event);
+            setAnnouncementFeedback("Announcement deleted.", false);
+        } catch (RuntimeException exception) {
+            loadAnnouncements(event);
             setAnnouncementFeedback(exception.getMessage(), true);
         }
     }

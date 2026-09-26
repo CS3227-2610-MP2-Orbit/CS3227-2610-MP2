@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import seedu.eventmanager.common.EntityNotFoundException;
 import seedu.eventmanager.common.ValidationException;
 import seedu.eventmanager.event.EventService;
 import seedu.eventmanager.event.OrganizerIdentity;
@@ -69,6 +70,17 @@ public final class AnnouncementService {
     public List<Announcement> list(OrganizerIdentity actor, UUID eventId) {
         requireOwnedEvent(actor, eventId);
         return announcements.findByEventId(eventId);
+    }
+
+    /** Permanently deletes an announcement of an owned event. Already-queued notifications are not withdrawn. */
+    public void delete(OrganizerIdentity actor, UUID eventId, UUID announcementId) {
+        requireOwnedEvent(actor, eventId);
+        Objects.requireNonNull(announcementId, "announcementId");
+        AnnouncementAuditRecord audit = new AnnouncementAuditRecord(clock.instant(), actor.userId(),
+                AnnouncementAuditRecord.Action.DELETE_ANNOUNCEMENT, eventId, announcementId);
+        if (!announcements.delete(eventId, announcementId, audit)) {
+            throw new EntityNotFoundException("Announcement not found for this event");
+        }
     }
 
     private void requireOwnedEvent(OrganizerIdentity actor, UUID eventId) {

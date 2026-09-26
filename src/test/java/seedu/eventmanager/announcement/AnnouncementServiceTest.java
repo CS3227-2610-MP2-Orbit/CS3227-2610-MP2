@@ -209,6 +209,86 @@ class AnnouncementServiceTest {
         assertThrows(AccessDeniedException.class, () -> service.list(OTHER_ORGANIZER, EVENT_ID));
     }
 
+    @Test
+    void delete_ownedAnnouncement_removedWithAuditAndOthersKept() {
+        service.post(ORGANIZER, EVENT_ID, "Keep me");
+        clock.advanceSeconds(60);
+        service.post(ORGANIZER, EVENT_ID, "Delete me");
+        clock.advanceSeconds(60);
+
+        service.delete(ORGANIZER, EVENT_ID, SECOND_ANNOUNCEMENT);
+
+        assertEquals(List.of("Keep me"),
+                service.list(ORGANIZER, EVENT_ID).stream().map(Announcement::message).toList());
+        assertEquals(
+                new AnnouncementAuditRecord(NOW.plusSeconds(120), "organizer-1",
+                        AnnouncementAuditRecord.Action.DELETE_ANNOUNCEMENT, EVENT_ID, SECOND_ANNOUNCEMENT),
+                announcements.auditRecords.getLast());
+    }
+
+    @Test
+    void delete_queuesNoNotificationsAndDoesNotReadRegistrations() {
+        service.post(ORGANIZER, EVENT_ID, "Doors open at 6pm");
+        registrations.register(EVENT_ID, ALICE, "Alice");
+        int queriesBefore = registrations.queries;
+
+        service.delete(ORGANIZER, EVENT_ID, FIRST_ANNOUNCEMENT);
+
+        assertTrue(notifications.sent.isEmpty());
+        assertEquals(queriesBefore, registrations.queries);
+    }
+
+    @Test
+    void delete_unownedEvent_rejectedWithoutChanges() {
+        service.post(ORGANIZER, EVENT_ID, "Doors open at 6pm");
+
+        assertThrows(AccessDeniedException.class,
+                () -> service.delete(OTHER_ORGANIZER, EVENT_ID, FIRST_ANNOUNCEMENT));
+
+        assertEquals(1, announcements.findByEventId(EVENT_ID).size());
+        assertEquals(1, announcements.auditRecords.size());
+    }
+
+    @Test
+    void delete_unknownEvent_rejected() {
+        UUID unknown = UUID.fromString("00000000-0000-0000-0000-00000000dead");
+
+        assertThrows(EntityNotFoundException.class, () -> service.delete(ORGANIZER, unknown, FIRST_ANNOUNCEMENT));
+    }
+
+    @Test
+    void delete_unknownAnnouncement_rejectedWithoutAudit() {
+        service.post(ORGANIZER, EVENT_ID, "Doors open at 6pm");
+        UUID unknown = UUID.fromString("00000000-0000-0000-0000-00000000dead");
+
+        assertThrows(EntityNotFoundException.class, () -> service.delete(ORGANIZER, EVENT_ID, unknown));
+
+        assertEquals(1, announcements.findByEventId(EVENT_ID).size());
+        assertEquals(1, announcements.auditRecords.size());
+    }
+
+    @Test
+    void delete_announcementOfAnotherEvent_rejectedAndKept() {
+        service.post(ORGANIZER, OTHER_EVENT_ID, "Other event news");
+
+        assertThrows(EntityNotFoundException.class,
+                () -> service.delete(ORGANIZER, EVENT_ID, FIRST_ANNOUNCEMENT));
+
+        assertEquals(1, announcements.findByEventId(OTHER_EVENT_ID).size());
+        assertEquals(1, announcements.auditRecords.size());
+    }
+
+    @Test
+    void delete_twice_secondRejected() {
+        service.post(ORGANIZER, EVENT_ID, "Doors open at 6pm");
+        service.delete(ORGANIZER, EVENT_ID, FIRST_ANNOUNCEMENT);
+
+        assertThrows(EntityNotFoundException.class,
+                () -> service.delete(ORGANIZER, EVENT_ID, FIRST_ANNOUNCEMENT));
+
+        assertEquals(2, announcements.auditRecords.size());
+    }
+
     private void assertNothingChanged() {
         assertTrue(announcements.findByEventId(EVENT_ID).isEmpty());
         assertTrue(announcements.auditRecords.isEmpty());
@@ -275,6 +355,15 @@ class AnnouncementServiceTest {
             }
             stored.add(announcement);
             auditRecords.add(auditRecord);
+        }
+
+        @Override
+        public boolean delete(UUID eventId, UUID announcementId, AnnouncementAuditRecord auditRecord) {
+            boolean removed = stored.removeIf(a -> a.id().equals(announcementId) && a.eventId().equals(eventId));
+            if (removed) {
+                auditRecords.add(auditRecord);
+            }
+            return removed;
         }
     }
 

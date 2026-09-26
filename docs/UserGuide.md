@@ -94,6 +94,7 @@ The app is designed for users who:
 | Organizer | Request a venue | **Request venue** → select event + venue → **Submit request** |
 | Organizer | View registrations | **Registrations** → select event |
 | Organizer | Post an announcement | **Announcements** → select event → write message → **Send announcement** |
+| Organizer | Delete an announcement | **Announcements** → select event → select announcement → **Delete selected** → **OK** |
 | Organizer | Assign / remove volunteers | **Volunteers** → select event → **Assign volunteer** or **Remove selected** (requires registered attendees) |
 | Venue Admin | Log in | Venue Administrator login screen |
 | Venue Admin | Create venue | **Venues** → **Create venue** |
@@ -218,7 +219,21 @@ Saves a message for one of your events and queues a notification for each regist
 
 **Expected result:** The announcement appears at the top of **Posted announcements**, and feedback reports how many notifications were queued (for example *Notification queued for 12 registered attendees*).
 
-> **Caution:** Announcements cannot be edited or deleted after sending. Notifications are only **queued** in the shared notification outbox; attendees cannot see them yet, because in-app notification delivery is not available in this build. Recipients are the event's current registrants; this build has no Attendee screen for registering, so feedback normally shows *No registered attendees to notify yet.*
+> **Caution:** Announcements cannot be edited after sending. Notifications are only **queued** in the shared notification outbox; attendees cannot see them yet, because in-app notification delivery is not available in this build. Recipients are the event's current registrants; this build has no Attendee screen for registering, so feedback normally shows *No registered attendees to notify yet.*
+
+### Deleting announcements
+
+Permanently removes one of your event's announcements.
+
+**Steps:**
+
+1. In the sidebar, select **Announcements**, then select the event.
+2. In **Posted announcements**, select the announcement.
+3. Select **Delete selected**, then **OK** to confirm (or **Cancel** to keep it).
+
+**Expected result:** The announcement disappears from **Posted announcements** and feedback shows *Announcement deleted.*
+
+> **Caution:** Deletion cannot be undone. Notifications already queued for attendees when the announcement was sent are **not** withdrawn.
 
 ### Assigning volunteers
 
