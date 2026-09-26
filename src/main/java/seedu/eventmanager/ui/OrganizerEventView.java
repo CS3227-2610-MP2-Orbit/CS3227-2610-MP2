@@ -1,5 +1,7 @@
 package seedu.eventmanager.ui;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
@@ -24,6 +26,10 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.util.StringConverter;
+import seedu.eventmanager.club.Club;
+import seedu.eventmanager.club.ClubService;
+import seedu.eventmanager.common.Actor;
 import seedu.eventmanager.event.CapacityUpdateResult;
 import seedu.eventmanager.event.Event;
 import seedu.eventmanager.event.EventDetails;
@@ -43,7 +49,7 @@ import seedu.eventmanager.volunteer.VolunteerService;
 
 /**
  * JavaFX screen for an organizer to create/edit draft events, submit venue requests,
- * assign volunteers, and view registrations. Visual layout follows the Venue Administrator shell
+ * assign volunteers, view registrations, and create clubs. Visual layout follows the Venue Administrator shell
  * (dark sidebar + card content).
  */
 public final class OrganizerEventView extends BorderPane {
@@ -61,14 +67,17 @@ public final class OrganizerEventView extends BorderPane {
             "-fx-background-color: white; -fx-text-fill: #b42318; -fx-border-color: #e2e8f0;"
                     + " -fx-border-radius: 4px; -fx-background-radius: 4px; -fx-padding: 8px 16px;";
 
-    private enum Screen { EVENTS, REQUEST_VENUE, VOLUNTEERS, REGISTRATIONS }
+    private enum Screen { EVENTS, REQUEST_VENUE, VOLUNTEERS, REGISTRATIONS, CLUBS }
 
     private final EventService service;
     private final OrganizerVenueRequestService venueRequestService;
     private final VolunteerService volunteerService;
     private final RegistrationOverviewService registrationService;
     private final VenueRepository venueRepository;
-    private final OrganizerIdentity actor;
+    private final ClubService clubService;
+    private final Actor account;
+    private OrganizerIdentity actor;
+    private final Map<String, String> clubNames = new HashMap<>();
     private final Runnable onHome;
 
     private final ListView<Event> events = new ListView<>();
@@ -88,6 +97,14 @@ public final class OrganizerEventView extends BorderPane {
     private final Button requestVenueNav = navButton("Request venue");
     private final Button volunteersNav = navButton("Volunteers");
     private final Button registrationsNav = navButton("Registrations");
+    private final Button clubsNav = navButton("Clubs");
+    private final Label clubsHint = new Label();
+
+    private final ListView<Club> myClubs = new ListView<>();
+    private final TextField clubName = new TextField();
+    private final Button createClub = new Button("Create club");
+    private final Label clubFeedback = new Label();
+    private final Label noClubNote = new Label();
 
     private final ListView<Event> requestEvents = new ListView<>();
     private final ComboBox<Venue> venuePicker = new ComboBox<>();
@@ -116,6 +133,7 @@ public final class OrganizerEventView extends BorderPane {
     private final VBox requestContent;
     private final VBox volunteerContent;
     private final VBox registrationContent;
+    private final VBox clubContent;
     private final StackPane workspace = new StackPane();
 
     private UUID editingEventId;
@@ -127,28 +145,65 @@ public final class OrganizerEventView extends BorderPane {
             OrganizerVenueRequestService venueRequestService,
             VolunteerService volunteerService,
             RegistrationOverviewService registrationService,
+            ClubService clubService,
             VenueRepository venueRepository,
-            OrganizerIdentity actor,
+            Actor account,
             Runnable onHome) {
         this.service = Objects.requireNonNull(service, "service");
         this.venueRequestService = Objects.requireNonNull(venueRequestService, "venueRequestService");
         this.volunteerService = Objects.requireNonNull(volunteerService, "volunteerService");
         this.registrationService = Objects.requireNonNull(registrationService, "registrationService");
+        this.clubService = Objects.requireNonNull(clubService, "clubService");
         this.venueRepository = Objects.requireNonNull(venueRepository, "venueRepository");
-        this.actor = Objects.requireNonNull(actor, "actor");
+        this.account = Objects.requireNonNull(account, "account");
         this.onHome = Objects.requireNonNull(onHome, "onHome");
-        club.getItems().setAll(actor.ownedClubIds().stream().sorted().toList());
-        club.getSelectionModel().selectFirst();
+        club.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(String clubId) {
+                return clubId == null ? "" : clubNames.getOrDefault(clubId, clubId);
+            }
+
+            @Override
+            public String fromString(String text) {
+                return text;
+            }
+        });
+        reloadClubs();
         setStyle("-fx-background-color: #f7f9fc;");
         setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
         eventsContent = buildEventsContent();
         requestContent = buildRequestContent();
         volunteerContent = buildVolunteerContent();
         registrationContent = buildRegistrationContent();
+        clubContent = buildClubContent();
         workspace.getChildren().setAll(eventsContent);
         configureLayout();
         refreshEvents(null);
         enterCreateMode(false);
+    }
+
+    /** Re-reads this account's clubs so ownership always comes from the database, not local settings. */
+    private void reloadClubs() {
+        actor = clubService.identityFor(account);
+        java.util.List<Club> owned = clubService.myClubs(account);
+        clubNames.clear();
+        owned.forEach(ownedClub -> clubNames.put(ownedClub.id().toString(), ownedClub.name()));
+        String selected = club.getValue();
+        club.getItems().setAll(owned.stream().map(ownedClub -> ownedClub.id().toString()).toList());
+        if (selected != null && club.getItems().contains(selected)) {
+            club.setValue(selected);
+        } else {
+            club.getSelectionModel().selectFirst();
+        }
+        myClubs.getItems().setAll(owned);
+        clubsHint.setText(owned.isEmpty()
+                ? "No clubs yet"
+                : "Clubs: " + String.join(", ", owned.stream().map(Club::name).toList()));
+        noClubNote.setText(owned.isEmpty()
+                ? "You don't own a club yet. Create one under Clubs before creating events."
+                : "");
+        noClubNote.setVisible(owned.isEmpty());
+        noClubNote.setManaged(owned.isEmpty());
     }
 
     private void configureLayout() {
@@ -179,25 +234,21 @@ public final class OrganizerEventView extends BorderPane {
         requestVenueNav.setOnAction(ignored -> showRequestVenueScreen());
         volunteersNav.setOnAction(ignored -> showVolunteersScreen());
         registrationsNav.setOnAction(ignored -> showRegistrationsScreen());
+        clubsNav.setOnAction(ignored -> showClubsScreen());
         highlightNavForScreen();
 
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
 
-        Label clubsHint = new Label("Clubs: " + String.join(", ", actor.ownedClubIds()));
         clubsHint.setStyle("-fx-text-fill: #93a4bd; -fx-font-size: 11px;");
         clubsHint.setWrapText(true);
-
-        Label identity = new Label("Signed in as\n" + actor.userId());
-        identity.setStyle("-fx-text-fill: #93a4bd; -fx-font-size: 11px;");
-        identity.setWrapText(true);
 
         Button home = navButton("← Home");
         home.setOnAction(ignored -> onHome.run());
 
         sidebar.getChildren().addAll(
-                brand, role, eventsNav, requestVenueNav, volunteersNav, registrationsNav,
-                spacer, clubsHint, identity, home);
+                brand, role, eventsNav, requestVenueNav, volunteersNav, registrationsNav, clubsNav,
+                spacer, clubsHint, home);
         return sidebar;
     }
 
@@ -300,7 +351,9 @@ public final class OrganizerEventView extends BorderPane {
         feedback.setWrapText(true);
         editorHeading.setStyle("-fx-text-fill: #172033; -fx-font-size: 16px; -fx-font-weight: bold;");
 
-        VBox editorCard = new VBox(16, editorHeading, form, feedback, actions);
+        noClubNote.setWrapText(true);
+        noClubNote.setStyle("-fx-text-fill: #b42318;");
+        VBox editorCard = new VBox(16, editorHeading, noClubNote, form, feedback, actions);
         editorCard.setPadding(new Insets(22));
         editorCard.setStyle(CARD_STYLE);
         editorCard.setMaxWidth(Double.MAX_VALUE);
@@ -568,6 +621,112 @@ public final class OrganizerEventView extends BorderPane {
         content.setMaxWidth(Double.MAX_VALUE);
         VBox.setVgrow(body, Priority.ALWAYS);
         return content;
+    }
+
+    private VBox buildClubContent() {
+        Label pageTitle = new Label("Clubs");
+        pageTitle.setStyle("-fx-text-fill: #61708a; -fx-font-size: 13px;");
+        Label contentTitle = new Label("Club Organizer — Clubs");
+        contentTitle.setStyle("-fx-text-fill: #172033; -fx-font-size: 24px; -fx-font-weight: bold;");
+
+        myClubs.setPlaceholder(new Label("You don't own any clubs yet"));
+        myClubs.setStyle(CARD_STYLE);
+        myClubs.setCellFactory(ignored -> new ListCell<>() {
+            @Override
+            protected void updateItem(Club ownedClub, boolean empty) {
+                super.updateItem(ownedClub, empty);
+                setText(empty || ownedClub == null
+                        ? null
+                        : ownedClub.name() + "\nCreated " + SingaporeDateTimes.display(ownedClub.createdAt()));
+            }
+        });
+        VBox listCard = new VBox(12, sectionLabel("Your clubs"), myClubs);
+        listCard.setPadding(new Insets(18));
+        listCard.setStyle(CARD_STYLE);
+        listCard.setMinWidth(280);
+        listCard.setPrefWidth(340);
+        listCard.setMaxWidth(380);
+        VBox.setVgrow(myClubs, Priority.ALWAYS);
+
+        Label heading = new Label("Create a club");
+        heading.setStyle("-fx-text-fill: #172033; -fx-font-size: 16px; -fx-font-weight: bold;");
+        Label help = new Label(
+                "You become the only organizer who can manage this club's events. "
+                        + "Club names must be unique across the system.");
+        help.setWrapText(true);
+        help.setStyle("-fx-text-fill: #61708a;");
+
+        clubName.setPromptText("e.g. Chess Club");
+        clubName.setMaxWidth(Double.MAX_VALUE);
+        clubName.setTextFormatter(new TextFormatter<>(change ->
+                change.getControlNewText().length() <= ClubService.MAX_NAME_LENGTH ? change : null));
+        clubName.textProperty().addListener((ignored, previous, text) -> createClub.setDisable(text.isBlank()));
+        clubName.setOnAction(ignored -> createSelectedClub());
+        createClub.setStyle(PRIMARY_BUTTON_STYLE);
+        createClub.setDisable(true);
+        createClub.setOnAction(ignored -> createSelectedClub());
+        clubFeedback.setWrapText(true);
+
+        GridPane form = new GridPane();
+        form.setHgap(16);
+        form.setVgap(14);
+        ColumnConstraints labels = new ColumnConstraints();
+        labels.setMinWidth(120);
+        ColumnConstraints fields = new ColumnConstraints();
+        fields.setHgrow(Priority.ALWAYS);
+        fields.setFillWidth(true);
+        form.getColumnConstraints().addAll(labels, fields);
+        form.add(fieldLabel("Club name"), 0, 0);
+        form.add(clubName, 1, 0);
+
+        HBox actions = new HBox(createClub);
+        actions.setAlignment(Pos.CENTER_RIGHT);
+
+        VBox formCard = new VBox(16, heading, help, form, clubFeedback, actions);
+        formCard.setPadding(new Insets(22));
+        formCard.setStyle(CARD_STYLE);
+        formCard.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(formCard, Priority.ALWAYS);
+
+        HBox body = new HBox(20, listCard, formCard);
+        body.setMaxWidth(Double.MAX_VALUE);
+        VBox.setVgrow(listCard, Priority.ALWAYS);
+
+        VBox content = new VBox(18, pageTitle, contentTitle, body);
+        content.setPadding(new Insets(28, 32, 28, 32));
+        content.setMaxWidth(Double.MAX_VALUE);
+        VBox.setVgrow(body, Priority.ALWAYS);
+        return content;
+    }
+
+    private void showClubsScreen() {
+        screen = Screen.CLUBS;
+        workspace.getChildren().setAll(clubContent);
+        highlightNavForScreen();
+        clubFeedback.setText("");
+        try {
+            reloadClubs();
+        } catch (RuntimeException exception) {
+            setClubFeedback("Could not load clubs: " + exception.getMessage(), true);
+        }
+        clubName.requestFocus();
+    }
+
+    private void createSelectedClub() {
+        try {
+            Club created = clubService.createClub(account, clubName.getText());
+            clubName.clear();
+            reloadClubs();
+            myClubs.getSelectionModel().select(created);
+            setClubFeedback("Club \"" + created.name() + "\" created. You can now create events for it.", false);
+        } catch (RuntimeException exception) {
+            setClubFeedback(exception.getMessage(), true);
+        }
+    }
+
+    private void setClubFeedback(String message, boolean error) {
+        clubFeedback.setText(message == null ? "Operation failed" : message);
+        clubFeedback.setStyle(error ? "-fx-text-fill: #b42318;" : "-fx-text-fill: #1b5e20;");
     }
 
     private static ListCell<AssignedVolunteer> volunteerCell() {
@@ -1012,6 +1171,7 @@ public final class OrganizerEventView extends BorderPane {
         requestVenueNav.setStyle(screen == Screen.REQUEST_VENUE ? NAV_BUTTON_ACTIVE_STYLE : NAV_BUTTON_STYLE);
         volunteersNav.setStyle(screen == Screen.VOLUNTEERS ? NAV_BUTTON_ACTIVE_STYLE : NAV_BUTTON_STYLE);
         registrationsNav.setStyle(screen == Screen.REGISTRATIONS ? NAV_BUTTON_ACTIVE_STYLE : NAV_BUTTON_STYLE);
+        clubsNav.setStyle(screen == Screen.CLUBS ? NAV_BUTTON_ACTIVE_STYLE : NAV_BUTTON_STYLE);
     }
 
     private void applyDetails(

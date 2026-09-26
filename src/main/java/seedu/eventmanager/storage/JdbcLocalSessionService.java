@@ -24,6 +24,9 @@ public final class JdbcLocalSessionService {
     }
 
     public String createUser(String username, String password, Role role) {
+        if (role == null) {
+            throw new IllegalArgumentException("Role is required.");
+        }
         String passwordHash = passwords.hash(password);
         return database.withConnection(connection -> {
             try (var statement = connection.prepareStatement("""
@@ -40,9 +43,26 @@ public final class JdbcLocalSessionService {
                 statement.executeUpdate();
                 return userId.toString();
             } catch (SQLException exception) {
+                if ("23505".equals(exception.getSQLState())) {
+                    throw new IllegalArgumentException("That username is already in use.");
+                }
                 throw new IllegalStateException("Could not create local user.", exception);
             }
         });
+    }
+
+    /** Public registration entry point; privileged roles cannot be self-assigned. */
+    public String registerNormalUser(String username, String password, Role role) {
+        if (username == null || username.isBlank()) {
+            throw new IllegalArgumentException("Username must not be blank.");
+        }
+        if (password == null || password.length() < 8) {
+            throw new IllegalArgumentException("Password must contain at least 8 characters.");
+        }
+        if (role != Role.CLUB_ORGANIZER && role != Role.ATTENDEE) {
+            throw new IllegalArgumentException("Public registration is limited to normal user roles.");
+        }
+        return createUser(username.trim(), password, role);
     }
 
     public Session login(String username, String password) {

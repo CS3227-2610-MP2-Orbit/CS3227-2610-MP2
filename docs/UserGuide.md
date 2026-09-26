@@ -55,8 +55,6 @@ The app is designed for users who:
    DATABASE_USER=your_postgres_username
    EVENT_MANAGER_DB_URL=jdbc:postgresql://localhost:5432/event_manager
    EVENT_MANAGER_DB_USER=your_postgres_username
-   EVENT_MANAGER_ORGANIZER_ID=demo-organizer
-   EVENT_MANAGER_CLUB_IDS=demo-club,chess-club
    ```
 
    Optional: `DATABASE_PASSWORD` / `EVENT_MANAGER_DB_PASSWORD` if your Postgres user requires a password.
@@ -77,7 +75,7 @@ The app is designed for users who:
 
 5. A home screen appears. Choose a workspace:
 
-   * **Club Organizer** — create/edit events and request venues (no login; identity from `.env`).
+   * **Club Organizer** — log in with a Club Organizer account, then create clubs, create/edit events, and request venues. Each account sees only its own clubs and their events.
    * **Venue Administrator** — local login, then dashboard, venues, and request review.
 
 6. Continue with [Features](#features).
@@ -89,6 +87,7 @@ The app is designed for users who:
 | Role | Action | Where in the UI |
 | --- | --- | --- |
 | Either | Open a role workspace | Home screen |
+| Organizer | Create a club | **Clubs** → enter **Club name** → **Create club** |
 | Organizer | Create draft event | **Events** → **+ New event** → fill form → **Save event** |
 | Organizer | Edit draft event | **Events** → select event → edit → **Save event** |
 | Organizer | Reset / revert form | **Reset** (new) or **Revert changes** (edit) |
@@ -117,13 +116,29 @@ Event Venue Manager uses one shared desktop shell:
 
 ## Club Organizer
 
-### Creating a draft event
+Everything in the Club Organizer workspace belongs to the signed-in account: you see and manage only the clubs you created and their events, venue requests, and volunteers.
 
-Creates a new draft event owned by one of your configured clubs.
+### Creating a club
 
 **Steps:**
 
-1. On the home screen, select **Club Organizer**.
+1. Log in with a Club Organizer account.
+2. In the sidebar, select **Clubs**.
+3. Enter a **Club name** (up to 80 characters) and select **Create club**.
+
+**Expected result:** The club appears in **Your clubs** and in the **Club** picker when creating events.
+
+> **Caution:** Club names are unique across the whole system, ignoring case, so `Chess Club` and `chess club` cannot both exist. Clubs cannot be renamed or deleted yet. Each club has exactly one owner: the account that created it.
+
+### Creating a draft event
+
+Creates a new draft event owned by one of your clubs.
+
+**Prerequisite:** You own at least one club (see [Creating a club](#creating-a-club)).
+
+**Steps:**
+
+1. Log in with a Club Organizer account.
 2. In the sidebar, select **Events**, then select **+ New event** above **Your events**.
 3. Choose a **Club**, enter **Title**, optional **Description**, start/end date and Singapore time (24-hour, e.g. `18:00`), and a positive **Capacity**.
 4. Select **Save event**.
@@ -132,7 +147,7 @@ Creates a new draft event owned by one of your configured clubs.
 
 > **Note:** Defaults for a new draft are start `18:00`, end `20:00`, and capacity `80`.
 
-> **Tip:** Clubs come from `EVENT_MANAGER_CLUB_IDS` in `.env` (comma-separated). There is no Clubs create UI yet.
+> **Tip:** If you have no clubs yet, the form shows a reminder to create one under **Clubs** first.
 
 ### Editing a draft event
 
@@ -261,8 +276,11 @@ A: Confirm both roles use the same `DATABASE_URL` / `EVENT_MANAGER_DB_*`. Open *
 **Q: Approve fails / forbidden.**  
 A: Select the venue → **Claim access**, or recreate the venue while logged in (auto-grant).
 
-**Q: How do I add clubs for the Organizer?**  
-A: Set `EVENT_MANAGER_CLUB_IDS` in `.env` and restart. There is no Clubs CRUD UI yet.
+**Q: How do I add clubs for the Organizer?**
+A: Log in as a Club Organizer and use **Clubs** → **Create club**. `EVENT_MANAGER_CLUB_IDS` / `EVENT_MANAGER_ORGANIZER_ID` in `.env` are no longer used.
+
+**Q: My old events disappeared after upgrading.**
+A: Events created under the former `.env` demo clubs (for example `demo-club`) are still in the database, but no account owns those clubs, so they are not shown. Create a club and new events under your account.
 
 **Q: Do Club Organizer and Venue Administrator share a login?**  
 A: Not yet. Organizer uses `.env` identity; Admin uses local login.

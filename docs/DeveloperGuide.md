@@ -102,6 +102,7 @@ The Organizer and Admin shells share visual tokens (sidebar `#172033`, page `#f7
 
 **Organizer**
 
+* `ClubService` — create/list clubs for the signed-in `CLUB_ORGANIZER` account (single owner, names unique ignoring case) and build its `OrganizerIdentity` from the clubs it owns in `organizer_club`.
 * `EventService` — create/list/get/edit draft events; club ownership checks; optimistic versioning.
 * `OrganizerVenueRequestService` — builds Jordan’s `VenueRequest` as `SUBMITTED` (UTC window, attendance = capacity).
 * `OrganizerIds` — transitional `String` → `UUID` mapping for `organizer_id`.
@@ -168,6 +169,16 @@ Shared utilities and cross-cutting types live under `seedu.eventmanager.common` 
 
 ### Team ownership
 
+Registration backend integration is documented in [RegistrationHandoff.md](RegistrationHandoff.md).
+The shared EventRegistrations/RegisteredAttendee contract comes unchanged from
+Joseph's feature-view-registration branch; Johannsen supplies its JDBC adapter.
+Use RegistrationDatabaseMigration for explicit startup, then
+RegistrationServiceFactory for authenticated commands. The factory shares one
+JdbcDatabase across state, audit and notification-outbox writes. Joseph still
+owns wiring the reader into Organizer consumers; no registration UI is added by
+this backend slice. Confirmed booking plus active venue and PUBLISHED future
+event are required for registration.
+
 | Role | Owns |
 | --- | --- |
 | Club Organizer (Joseph) | Events, volunteers/announcements (as scheduled), Organizer→venue submit |
@@ -216,9 +227,6 @@ Focused Organizer request tests:
 | `DATABASE_URL` / `EVENT_MANAGER_DB_URL` | JDBC URL |
 | `DATABASE_USER` / `EVENT_MANAGER_DB_USER` | DB user |
 | `DATABASE_PASSWORD` / `EVENT_MANAGER_DB_PASSWORD` | Optional password |
-| `EVENT_MANAGER_ORGANIZER_ID` | Organizer string identity |
-| `EVENT_MANAGER_CLUB_IDS` | Comma-separated club ids |
-
 ### Agentic SE workflow
 
 Project instructions: [`AGENTS.md`](../AGENTS.md). Skills under `.agents/skills/`:
@@ -248,7 +256,7 @@ See [Agentic SE](AgenticSE.md). Cursor project hooks (optional process guardrail
 | High | Club Organizer | request a venue for an event | Admin can approve a booking |
 | High | Venue Administrator | see submitted requests | I can approve or reject them |
 | Medium | Venue Administrator | manage venues and access | I only decide venues I control |
-| Low | Club Organizer | manage clubs in the UI | I am not limited to `.env` clubs *(not implemented)* |
+| Low | Club Organizer | create my own clubs in the UI | only my account manages my clubs' events *(create/list implemented; rename/delete not)* |
 
 ### Non-functional requirements (selected)
 
@@ -264,7 +272,7 @@ See [Agentic SE](AgenticSE.md). Cursor project hooks (optional process guardrail
 * Unified authentication across Organizer and Venue Administrator.
 * Human-readable event/venue names on the Admin request table.
 * Organizer supersede/withdraw of open requests.
-* Clubs CRUD UI.
+* Club rename/delete and multi-organizer clubs.
 * Attendee discovery, registration, and check-in.
 * Notification delivery worker (outbox already stores some Admin decisions).
 * Broader Postgres integration tests for the Organizer submit path.
@@ -308,4 +316,4 @@ See [Agentic SE](AgenticSE.md). Cursor project hooks (optional process guardrail
 
 **Implemented (selected):** draft event CRUD for Organizer; Organizer `SUBMITTED` venue requests; Admin login, venues, claim/create access, request approve/reject; Flyway + JDBC persistence; unit and in-process pipeline tests.
 
-**Not yet implemented (selected):** Attendee workspace; unified auth; Clubs CRUD; Organizer supersede/withdraw; email notification delivery; production deployment tooling.
+**Not yet implemented (selected):** Attendee workspace; club rename/delete; Organizer supersede/withdraw; email notification delivery; production deployment tooling.
