@@ -8,7 +8,8 @@ additional product requirements. Project-wide rules live in [`AGENTS.md`](../AGE
 
 The Venue Administrator `Users and access` screen supports creating and editing
 user accounts, including username, role, and active status. Venue-scope access
-is managed by the venue authorization workflow rather than from this screen.
+can be granted for specific venues from this screen and is enforced by the
+backend authorization workflow.
 The system does not currently provide a change-password or password-reset
 function; this is planned for a later secure and audited workflow.
 
