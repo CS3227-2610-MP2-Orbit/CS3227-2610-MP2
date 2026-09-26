@@ -20,7 +20,7 @@ import seedu.eventmanager.common.Role;
 import seedu.eventmanager.common.Actor;
 import seedu.eventmanager.service.UserAccessRepository;
 
-/** Local user and venue-scope management screen. */
+/** Local user management screen. */
 public final class UserAccessView {
     private final BorderPane root = new BorderPane();
     private final TableView<UserAccessRepository.UserSummary> table = new TableView<>();

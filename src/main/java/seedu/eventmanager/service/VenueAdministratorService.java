@@ -72,7 +72,8 @@ public final class VenueAdministratorService {
             metrics.increment(approve ? "venue_requests.approved" : "venue_requests.rejected");
             return result;
         } catch (ApplicationException exception) {
-            if ("FORBIDDEN".equals(exception.code()) || "UNAUTHENTICATED".equals(exception.code())) {
+            if ("FORBIDDEN".equals(exception.code())
+                    || "UNAUTHENTICATED".equals(exception.code())) {
                 metrics.increment("venue_requests.authorization_failures");
                 logger.warn("venue_request_authorization_failed", Map.of("correlationId", correlationId,
                         "requestId", String.valueOf(requestId), "action", action, "userId", userId(administrator),

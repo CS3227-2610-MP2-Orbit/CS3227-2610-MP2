@@ -11,7 +11,7 @@ import seedu.eventmanager.common.ApplicationException;
 import seedu.eventmanager.common.Role;
 import seedu.eventmanager.service.UserAccessRepository;
 
-/** PostgreSQL user and venue-scope persistence for local administration. */
+/** PostgreSQL user persistence for local administration. */
 public final class JdbcUserAccessRepository implements UserAccessRepository {
     private final JdbcDatabase database;
     private final PasswordHasher passwords;

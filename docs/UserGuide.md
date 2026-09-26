@@ -97,7 +97,7 @@ The app is designed for users who:
 | Venue Admin | View dashboard | **Dashboard** → pending requests, available venues, **Refresh** |
 | Venue Admin | Review / approve / reject | **Venue requests** → select row → **Approve** or **Reject** |
 | Venue Admin | Manage venues | **Venues** → view, create, edit, activate/deactivate |
-| Venue Admin | Manage users / venue scope | **Users and access** → view, create, edit, activate/deactivate, grant venue scope |
+| Venue Admin | Manage users | **Users and access** → view, create, edit, activate/deactivate |
 | Venue Admin | Sign out | **Log out** |
 
 ---
@@ -277,9 +277,9 @@ A: Create an ACTIVE venue under Venue Administrator → **Venues**, then reopen 
 A: Confirm both roles use the same `DATABASE_URL` / `EVENT_MANAGER_DB_*`. Open **Venue requests** again so the list reloads. Confirm submit showed a success message.
 
 **Q: Approve fails / forbidden.**  
-A: Confirm that the signed-in account is a Venue Administrator and has access
-to the requested venue. An administrator can grant venue scope from **Users and
-access**. The backend enforces this check independently of the UI.
+A: Confirm that the signed-in account is an active Venue Administrator. All
+Venue Administrators have the same access to all venues; the backend enforces
+the role check independently of the UI.
 
 **Q: How do I add clubs for the Organizer?**
 A: Log in as a Club Organizer and use **Clubs** → **Create club**. `EVENT_MANAGER_CLUB_IDS` / `EVENT_MANAGER_ORGANIZER_ID` in `.env` are no longer used.
@@ -310,7 +310,6 @@ A: Not yet. Organizer uses `.env` identity; Admin uses local login.
 | Venue Administrator | Role that manages venues and approves/rejects booking requests |
 | Draft event | Event that can still be edited in the Organizer workflow |
 | `SUBMITTED` request | Venue request waiting for Admin decision |
-| Venue scope | The set of venues an administrator is authorized to manage |
 | `.env` | Local config file for database URL/user and Organizer demo identity |
 
 ---
