@@ -169,6 +169,16 @@ Shared utilities and cross-cutting types live under `seedu.eventmanager.common` 
 
 ### Team ownership
 
+Registration backend integration is documented in [RegistrationHandoff.md](RegistrationHandoff.md).
+The shared EventRegistrations/RegisteredAttendee contract comes unchanged from
+Joseph's feature-view-registration branch; Johannsen supplies its JDBC adapter.
+Use RegistrationDatabaseMigration for explicit startup, then
+RegistrationServiceFactory for authenticated commands. The factory shares one
+JdbcDatabase across state, audit and notification-outbox writes. Joseph still
+owns wiring the reader into Organizer consumers; no registration UI is added by
+this backend slice. Confirmed booking plus active venue and PUBLISHED future
+event are required for registration.
+
 | Role | Owns |
 | --- | --- |
 | Club Organizer (Joseph) | Events, volunteers/announcements (as scheduled), Organizer→venue submit |

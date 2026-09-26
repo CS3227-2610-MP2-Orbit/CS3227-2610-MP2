@@ -2,18 +2,24 @@
 
 Registration records and related business rules belong here.
 
-## Proposed shared contract (pending agreement with the Attendee owner)
+## Shared contract agreed with Joseph
 
-`EventRegistrations` is a read-only view of who is registered for an event:
+`EventRegistrations` is the internal, read-only Organizer-facing view.
+`registeredAttendees(eventId)` returns `RegisteredAttendee(attendeeId, displayName)`:
 
-- `registeredAttendees(eventId)` returns `RegisteredAttendee(attendeeId, displayName)`
-  for each current registrant;
-- `findRegisteredAttendee(eventId, attendeeId)` has a default implementation.
+- `attendeeId` is `users.user_id`, and `displayName` is `users.username`.
+- Include CONFIRMED and CHECKED_IN registrations; exclude CANCELLED.
+- Include only active ATTENDEE accounts. Deactivation hides a user from this view
+  but does not delete history, cancel registration, or free a reserved place.
+- One row per event/account across cancellation and re-registration.
+- No ordering guarantee; Organizer consumers sort as needed.
+- The query selects only ID and username, never password hashes or session data.
+- Default `findRegisteredAttendee` uses exactly the same inclusion rules.
 
-Organizer volunteer assignment uses it today; View registrations and event
-announcements are expected to use it too. `attendeeId` is intended to be the
-shared `users.user_id` of an `ATTENDEE` account.
+`JdbcEventRegistrations` supplies the implementation. Organizer services must
+still authorize event ownership before reading the roster; this internal adapter
+is not a public unauthenticated endpoint. Joseph owns replacing his temporary
+`NoEventRegistrations` wiring. His interface and record signatures are unchanged.
 
-`NoEventRegistrations` is a placeholder implementation (nobody is registered)
-until the Attendee registration feature provides a real one. Registration
-storage and rules are not implemented in this checkout.
+See [Registration handoff](../../../../../../docs/RegistrationHandoff.md) for bootstrap,
+construction, backend commands, policy, test evidence and remaining integration.
