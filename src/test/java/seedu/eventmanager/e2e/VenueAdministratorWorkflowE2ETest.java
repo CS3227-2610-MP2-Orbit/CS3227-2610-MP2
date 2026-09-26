@@ -118,7 +118,7 @@ class VenueAdministratorWorkflowE2ETest {
         @Override public VenueAdministratorDashboardData loadDashboard() {
             List<VenueRequest> pending = store.getMap().values().stream()
                     .filter(request -> request.status() == VenueRequestStatus.SUBMITTED).toList();
-            return new VenueAdministratorDashboardData(pending, List.of(), List.of(), List.of(), List.of());
+            return new VenueAdministratorDashboardData(pending, List.of(), List.of());
         }
 
         @Override public VenueRequest approveRequest(UUID requestId) {
