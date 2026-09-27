@@ -20,6 +20,33 @@ class MyRegistrationsIntegrationTest extends RegistrationDatabaseTest {
                 new JdbcRegistrationEventInfoRepository(database), sessions::resolve, Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
+    @Test void ongoingDetailsAndMyRegistrationsShareCheckInEligibilityButRegistrationStaysClosed() throws Exception {
+        UUID alice = account("alice", Role.ATTENDEE);
+        UUID event = event("PUBLISHED", 1, NOW);
+        registration(event, alice, "CONFIRMED"); booking(event);
+        String token = login("alice");
+        assertTrue(service().getEvent(token, event).canCheckIn());
+        assertTrue(mine().list(token).getFirst().canCheckIn());
+        assertFalse(mine().list(token).getFirst().canCancel());
+        assertEquals(RegistrationEligibilityPolicy.Result.EVENT_NOT_REGISTERABLE,
+                service().getEvent(token, event).eligibility());
+        var commands = RegistrationServiceFactory.create(configuration, Clock.fixed(NOW, ZoneOffset.UTC));
+        account("bob", Role.ATTENDEE);
+        RegistrationServiceTest.code("EVENT_NOT_REGISTERABLE", () -> commands.register(login("bob"), event, -1));
+        sql("UPDATE venues SET status='MAINTENANCE'");
+        assertFalse(service().getEvent(token, event).canCheckIn());
+        assertFalse(mine().list(token).getFirst().canCheckIn());
+        sql("UPDATE venues SET status='ACTIVE'");
+        sql("UPDATE venue_bookings SET ends_at=ends_at+INTERVAL '1 minute'");
+        assertFalse(service().getEvent(token, event).canCheckIn());
+        assertFalse(mine().list(token).getFirst().canCheckIn());
+        sql("UPDATE venue_bookings SET ends_at=ends_at-INTERVAL '1 minute'");
+        commands.checkIn(token, event, 0);
+        assertFalse(service().getEvent(token, event).canCheckIn());
+        assertFalse(mine().list(token).getFirst().canCheckIn());
+        assertEquals(1, count("audit_logs")); assertEquals(0, count("notification_outbox"));
+    }
+
     @Test void listsOnlyOwnerIncludingPastUnpublishedCancelledAndCompletedVenue() throws Exception {
         UUID alice = account("alice", Role.ATTENDEE);
         UUID bob = account("bob", Role.ATTENDEE);

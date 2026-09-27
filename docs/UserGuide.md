@@ -78,7 +78,7 @@ The app is designed for users who:
 
    * **Club Organizer** — log in with a Club Organizer account, then create clubs, create/edit events, and request venues. Each account sees only its own clubs and their events.
    * **Venue Administrator** — local login, then dashboard, venues, and request review.
-   * **Attendee** — browse/search upcoming published events, register/cancel, view My Registrations and read Notifications.
+   * **Attendee** — browse/search upcoming and ongoing published events, register/cancel, check in, view My Registrations and read Notifications.
 
 6. Continue with [Features](#features).
 
@@ -92,6 +92,7 @@ The app is designed for users who:
 | Attendee | Browse/search published events | **Attendee** → **Browse events** |
 | Attendee | Register, cancel or re-register | **Browse events** → select event → action |
 | Attendee | View own bookings or cancel | **My Registrations** → select booking |
+| Attendee | Check into an ongoing registered event | **Browse events** or **My Registrations** → select event → **Check in** |
 | Attendee | Read registration updates and announcements | **Notifications** → refresh or mark read |
 | Organizer | Create a club | **Clubs** → enter **Club name** → **Create club** |
 | Organizer | Create draft event | **Events** → **+ New event** → fill form → **Save event** |
@@ -330,7 +331,7 @@ are planned for a later secure and audited implementation.
    These are inclusive event-start calendar dates in Singapore Time; either
    bound may be left blank. From must not be later than To.
 4. Select **Search / Refresh** (or press Enter in a text field). Only published
-   events whose start is still in the future are listed, ordered by start time
+   upcoming and ongoing events (strictly before their end) are listed, ordered by start time
    and then event ID. **Clear filters** resets all fields and reloads the list.
 5. Select an event for its latest title, description, club ID, SGT start/end
    times, venue/location, booking/venue status, remaining seats and your own
@@ -345,9 +346,10 @@ occupy seats. This can differ from the Organizer's active-account roster count.
 Availability is a snapshot, not a reservation. A missing/mismatched/unconfirmed
 booking or inactive venue prevents registration even if seats remain.
 
-Check-in and attendance history screens are not available
-yet. An event that has started or is no longer published
-cannot be reopened through the catalogue.
+Ongoing events show **Registration closed** and do not offer a Register or
+Re-register button. Ended or no-longer-published events cannot be reopened through
+the catalogue; your bookings remain available in My Registrations. A separate
+attendance-history screen is not available yet.
 
 ### Register, cancel and re-register
 
@@ -393,8 +395,27 @@ changes made elsewhere. To re-register, return to Browse events.
 Venue information reflects the current booking, or the most recent historic
 booking if there is no current one. It is not a stored snapshot of the venue when
 you originally registered. A missing booking is shown explicitly. Cancelled
-registrations remain visible; this list does not implement check-in or an
-attendance-history workflow.
+registrations remain visible. Check-in is available for eligible ongoing bookings;
+a separate attendance-history workflow is not implemented.
+
+### Normal self-check-in
+
+1. Select your ongoing event in **Browse events**, or select its booking in
+   **My Registrations** (the **Ongoing** filter can help).
+2. Select **Check in**. It appears only for your confirmed registration during
+   the event, with a published event and matching confirmed booking at an active
+   venue. Check-in opens exactly at start and closes exactly at end; no early/late
+   window and no QR code.
+3. Wait for confirmation and refreshed status **Checked in**. Navigation and
+   actions are disabled while the command runs. You cannot cancel after check-in.
+
+The button is a preview; the service checks every rule again, including your
+live session and displayed registration version. If timing, booking or status has
+changed, read the rejection and refresh. A duplicate/stale request cannot record
+a second check-in or change its timestamp. If the response is lost, refresh and
+check your status before retrying. Check-in records a business audit entry; it
+does not create a new inbox notification. Self-check-in records your declaration
+of attendance, not independently verified physical presence.
 
 ### Notifications
 
@@ -466,7 +487,7 @@ associated with the account that created the club.
 ## Known Issues
 
 * No supersede/withdraw of venue requests from the Organizer UI.
-* Attendee check-in and attendance history are not implemented yet.
+* A separate Attendee attendance-history screen is not implemented yet.
 * The inbox badge is refreshed on opening/refreshing Notifications and after read-status changes, not continuously.
 * Notification outbox stores Admin decisions but does not send email yet.
 

@@ -6,6 +6,7 @@ import java.util.Objects;
 import java.util.function.Supplier;
 import java.util.function.Function;
 import java.util.UUID;
+import java.time.Clock;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
@@ -54,15 +55,24 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
     private final Button registrationsNav = new Button("My Registrations");
     private final Button notificationsNav = new Button("Notifications");
     private final InboxView inbox;
+    private final Clock clock;
 
     public AttendeeBrowseView(Supplier<EventCatalogueService> services,
             Function<UUID, AttendeeEventDetails> detailReader, AttendeeRegistrationActions actions,
             InboxActions inboxActions, Runnable onHome) {
+        this(services, detailReader, actions, inboxActions, onHome, Clock.systemUTC());
+    }
+
+    AttendeeBrowseView(Supplier<EventCatalogueService> services,
+            Function<UUID, AttendeeEventDetails> detailReader, AttendeeRegistrationActions actions,
+            InboxActions inboxActions, Runnable onHome, Clock clock) {
+        this.clock = Objects.requireNonNull(clock);
         Objects.requireNonNull(services);
         controller = new AttendeeBrowseController(query -> services.get().search(query), detailReader, actions, this);
         browseContent = content();
         registrations = new MyRegistrationsView(controller::loadRegistrations,
-                row -> controller.cancelRegistration(row.eventId(), row.version()));
+                row -> controller.cancelRegistration(row.eventId(), row.version()),
+                row -> controller.checkIn(row.eventId(), row.version()), clock);
         inbox = new InboxView(inboxActions, count -> notificationsNav.setText(
                 count < 0 ? "Notifications (?)" : "Notifications (" + count + " unread)"));
         browseContent.disableProperty().bind(controller.busyProperty().or(inbox.busyProperty()));
@@ -203,7 +213,7 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
         body.setDividerPositions(0.42);
         VBox.setVgrow(body, Priority.ALWAYS);
         VBox content = new VBox(14, text("Attendee · Browse events", "#61708a", 13),
-                text("Upcoming events", "#172033", 26),
+                text("Upcoming and ongoing events", "#172033", 26),
                 text("Published events only. Dates and times are shown in Singapore Time.", "#61708a", 13),
                 filters, feedback, body);
         content.setPadding(new Insets(24));
@@ -222,9 +232,9 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
 
     @Override public void searched(List<CatalogueEvent> results) {
         events.getItems().setAll(results);
-        events.setPlaceholder(text("No matching upcoming published events.", "#61708a", 13));
+        events.setPlaceholder(text("No matching upcoming or ongoing published events.", "#61708a", 13));
         feedback.setText(results.isEmpty() ? "No matches. Try clearing filters. Draft events are not shown."
-                : results.size() + " upcoming event(s). Select one for details.");
+                : results.size() + " upcoming/ongoing event(s). Select one for details.");
     }
 
     @Override public void searchFailed(Throwable failure) {
@@ -266,9 +276,22 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
         register.setOnAction(ignored -> controller.register(event.id(), value.ownRegistrationVersion()));
         Button cancel = new Button("Cancel registration");
         cancel.setId("attendee-cancel");
-        // Details are returned only for future events. The command service rechecks the cutoff.
-        cancel.setDisable(value.ownStatus().orElse(null) != Registration.Status.CONFIRMED);
+        var now = clock.instant();
+        cancel.setDisable(value.ownStatus().orElse(null) != Registration.Status.CONFIRMED || !now.isBefore(event.startsAt()));
         cancel.setOnAction(ignored -> controller.cancelRegistration(event.id(), value.ownRegistrationVersion()));
+        FlowPane actions = new FlowPane(12, 12);
+        // Ongoing events are visible, but never offer Register/Re-register.
+        if (value.eligibility() != RegistrationEligibilityPolicy.Result.EVENT_NOT_REGISTERABLE && now.isBefore(event.startsAt())) {
+            actions.getChildren().add(register);
+        }
+        actions.getChildren().add(cancel);
+        if (value.canCheckIn() && !now.isBefore(event.startsAt()) && now.isBefore(event.endsAt())) {
+            Button checkIn = new Button("Check in");
+            checkIn.setId("attendee-check-in");
+            checkIn.setStyle("-fx-background-color: #2563eb; -fx-text-fill: white; -fx-padding: 9 14;");
+            checkIn.setOnAction(ignored -> controller.checkIn(event.id(), value.ownRegistrationVersion()));
+            actions.getChildren().add(checkIn);
+        }
         details.getChildren().setAll(
                 text(event.title(), "#172033", 22), text("Club: " + event.clubId(), "#61708a", 13),
                 text("Starts: " + SingaporeDateTimes.display(event.startsAt()), "#172033", 14),
@@ -282,7 +305,7 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
                 text("Your registration: " + ownStatus, "#172033", 14),
                 text(availability, "#172033", 14),
                 text("Availability is a snapshot, not a reserved seat. Use Refresh details for the latest information.", "#61708a", 13),
-                new FlowPane(12, 12, register, cancel));
+                actions);
     }
 
     @Override public void loadingRegistrations() { registrations.loading(); }

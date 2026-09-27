@@ -11,6 +11,8 @@ import seedu.eventmanager.common.Actor;
 import seedu.eventmanager.common.ApplicationException;
 import seedu.eventmanager.registration.AttendeeSessionGuard;
 import seedu.eventmanager.registration.Registration;
+import seedu.eventmanager.registration.RegistrationEvent;
+import seedu.eventmanager.registration.CheckInPolicy;
 
 /** Enriches the existing owner-only registration read, including cancelled and past records. */
 public final class MyRegistrationsService {
@@ -44,7 +46,10 @@ public final class MyRegistrationsService {
             var event = Objects.requireNonNull(metadata.get(row.eventId()), "Registered event metadata unavailable");
             return new MyRegistration(row.eventId(), event.title(), event.startsAt(), event.venue(),
                     row.status(), row.version(), row.status() == Registration.Status.CONFIRMED && now.isBefore(event.startsAt()),
-                    event.endsAt(), event.clubId(), event.description(), event.eventStatus());
+                    event.endsAt(), event.clubId(), event.description(), event.eventStatus(),
+                    CheckInPolicy.evaluate(new RegistrationEvent(row.eventId(), event.eventStatus(), 0,
+                            event.startsAt(), event.endsAt()), row.status(), event.confirmedActiveBooking(), now)
+                            == CheckInPolicy.Result.AVAILABLE);
         }).toList();
     }
 }

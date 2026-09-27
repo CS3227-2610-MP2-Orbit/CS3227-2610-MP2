@@ -54,13 +54,15 @@ class AttendeeEventDetailsServiceTest {
         assertEquals(0, reads);
     }
 
-    @Test void revalidatesVisibilityIncludingExactStartAndMissingEvent() {
+    @Test void ongoingDetailsRemainVisibleButEndBoundaryAndMissingEventsAreHidden() {
         for (String hidden : List.of("DRAFT", "COMPLETED")) {
             status = hidden;
             assertThrows(EntityNotFoundException.class, () -> service().getEvent("alice", eventId));
         }
         status = "PUBLISHED";
         start = now;
+        assertEquals(Result.EVENT_NOT_REGISTERABLE, service().getEvent("alice", eventId).eligibility());
+        start = now.minusSeconds(3600);
         assertThrows(EntityNotFoundException.class, () -> service().getEvent("alice", eventId));
         start = now.plusSeconds(1); missing = true;
         assertThrows(EntityNotFoundException.class, () -> service().getEvent("alice", eventId));

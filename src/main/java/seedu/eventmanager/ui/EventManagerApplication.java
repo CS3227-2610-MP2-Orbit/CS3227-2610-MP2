@@ -208,6 +208,7 @@ public final class EventManagerApplication extends Application {
                 new AttendeeRegistrationActions(
                         (id, version) -> services.get().commands().register(session.token(), id, version),
                         (id, version) -> services.get().commands().cancel(session.token(), id, version),
+                        (id, version) -> services.get().commands().checkIn(session.token(), id, version),
                         () -> services.get().registrations().list(session.token())),
                 new InboxActions(() -> services.get().inbox().list(session.token()),
                         id -> services.get().inbox().markRead(session.token(), id),

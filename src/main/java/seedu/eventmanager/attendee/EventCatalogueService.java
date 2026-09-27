@@ -32,7 +32,7 @@ public final class EventCatalogueService {
         String text = normalize(query.text()).toLowerCase(Locale.ROOT);
         String club = normalize(query.clubId());
         Instant now = clock.instant();
-        return repository.findUpcomingPublished(now).stream()
+        return repository.findPublishedNotEnded(now).stream()
                 .filter(event -> visible(event, now))
                 .filter(event -> club.isEmpty() || club.equals(event.clubId()))
                 .filter(event -> event.title().toLowerCase(Locale.ROOT).contains(text)
@@ -55,7 +55,7 @@ public final class EventCatalogueService {
     }
 
     private static boolean visible(Event event, Instant now) {
-        return event.status() == EventStatus.PUBLISHED && event.startsAt().isAfter(now);
+        return event.status() == EventStatus.PUBLISHED && event.endsAt().isAfter(now);
     }
 
     private static String normalize(String value) {

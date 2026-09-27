@@ -8,7 +8,7 @@ import seedu.eventmanager.event.Event;
 
 /** Read-only projection of Organizer events; never grants organizer write access. */
 public interface EventCatalogueRepository {
-    List<Event> findUpcomingPublished(Instant now);
+    List<Event> findPublishedNotEnded(Instant now);
 
     Optional<Event> findPublishedById(UUID id);
 }

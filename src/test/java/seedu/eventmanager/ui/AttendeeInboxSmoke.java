@@ -45,12 +45,13 @@ public final class AttendeeInboxSmoke {
         @Override public void start(Stage stage) {
             this.stage = stage;
             var catalogue = new EventCatalogueService(new EventCatalogueRepository() {
-                public List<Event> findUpcomingPublished(Instant now) { return List.of(); }
+                public List<Event> findPublishedNotEnded(Instant now) { return List.of(); }
                 public Optional<Event> findPublishedById(UUID id) { return Optional.empty(); }
             }, Clock.fixed(NOW, ZoneOffset.UTC));
             view = new AttendeeBrowseView(() -> catalogue, id -> { throw new AssertionError("Unused details"); },
                     new AttendeeRegistrationActions((id, v) -> { throw new AssertionError("Unused register"); },
-                            (id, v) -> { throw new AssertionError("Unused cancel"); }, List::of),
+                            (id, v) -> { throw new AssertionError("Unused cancel"); },
+                            (id, v) -> { throw new AssertionError("Unused check-in"); }, List::of),
                     new InboxActions(this::list, this::mark, () -> mark(null)), () -> { });
             stage.setTitle("Attendee inbox smoke — synthetic fixtures");
             stage.setScene(new Scene(view, 1280, 800)); stage.show();
