@@ -15,6 +15,11 @@ import seedu.eventmanager.storage.JdbcLocalSessionService;
 import seedu.eventmanager.storage.PasswordHasher;
 import seedu.eventmanager.storage.RegistrationDatabaseMigration;
 import seedu.eventmanager.common.Role;
+import seedu.eventmanager.storage.JdbcVenueRepository;
+import seedu.eventmanager.storage.JdbcVenueBookingRepository;
+import seedu.eventmanager.storage.JdbcVenueRequestRepository;
+import seedu.eventmanager.venue.Venue;
+import seedu.eventmanager.venue.VenueStatus;
 
 /** Each test owns one isolated schema in an explicitly configured disposable database. */
 abstract class RegistrationDatabaseTest {
@@ -90,6 +95,32 @@ abstract class RegistrationDatabaseTest {
                 """)) {
             p.setObject(1, UUID.randomUUID()); p.setObject(2, event); p.setObject(3, attendee);
             p.setString(4, status); p.setString(5, status); p.setString(6, status); p.executeUpdate();
+        }
+    }
+
+    void booking(UUID event) throws Exception {
+        booking(event, "Synthetic room");
+    }
+
+    void booking(UUID event, String name) throws Exception {
+        UUID venue = UUID.randomUUID(); UUID request = UUID.randomUUID();
+        new JdbcVenueRepository(database).save(new Venue(venue, name, "Level 2", 20, "", VenueStatus.ACTIVE));
+        try (var c = connection(); var p = c.prepareStatement("""
+                INSERT INTO venue_requests(request_id,event_id,venue_id,organizer_id,requested_starts_at,
+                    requested_ends_at,expected_attendance,status,submitted_at,decided_at,decided_by,created_at,updated_at)
+                SELECT ?,id,?,?::uuid,starts_at,ends_at,capacity,'APPROVED',now(),now(),?::uuid,now(),now()
+                FROM organizer_event WHERE id=?
+                """)) {
+            p.setObject(1, request); p.setObject(2, venue); p.setObject(3, UUID.randomUUID());
+            p.setObject(4, UUID.randomUUID()); p.setObject(5, event); p.executeUpdate();
+        }
+        new JdbcVenueBookingRepository(database).createFromApprovedRequest(
+                new JdbcVenueRequestRepository(database).get(request), UUID.randomUUID());
+    }
+
+    long count(String table) throws Exception {
+        try (var c = connection(); var s = c.createStatement(); var r = s.executeQuery("SELECT count(*) FROM " + table)) {
+            r.next(); return r.getLong(1);
         }
     }
 

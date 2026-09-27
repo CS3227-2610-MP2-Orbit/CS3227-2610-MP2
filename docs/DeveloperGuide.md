@@ -185,7 +185,7 @@ also enforces future-start visibility for both listing and direct-ID details.
 exact club ID and inclusive Singapore-calendar start dates. An injected clock
 defines "upcoming". `AttendeeBrowseController` uses cancellable JavaFX Tasks on virtual
 threads and ignores superseded results. Database/configuration work is off the
-UI thread; Home/app shutdown cancels pending work. Failures use safe messages and
+UI thread; Home/app shutdown cancels pending reads. Failures use safe messages and
 structured failure-type logging, not raw JDBC messages or business audit writes.
 
 `AttendeeEventDetailsService` authenticates a live attendee session before and
@@ -208,7 +208,7 @@ The Attendee route lazily runs existing `RegistrationDatabaseMigration` bootstra
 in background tasks, independently of Organizer navigation. Successful service
 initialization is reused and failure can be retried. No new migration, fixture
 insertion or publication operation is added. `EventService` still cannot publish
-events, so new drafts do not appear. Register/cancel UI remains the next slice.
+events, so new drafts do not appear. Register/cancel UI uses existing session-token commands.
 See the [Attendee User Guide](UserGuide.md#attendee-browse-and-search-events)
 for the implemented workflow and current limitations.
 
@@ -218,6 +218,7 @@ Focused verification:
 ./gradlew test --tests 'seedu.eventmanager.attendee.*'
 ./gradlew test --tests 'seedu.eventmanager.registration.*'
 ./gradlew attendeeUiSmoke
+./gradlew attendeeRegistrationUiSmoke
 ```
 
 The PostgreSQL catalogue/detail/registration tests require `EVENT_MANAGER_TEST_DB_URL`,
@@ -236,6 +237,48 @@ refresh, full state, expired session, delayed stale responses, clearing on Home,
 search/empty/validation/error/retry behavior and saves snapshots under
 `build/attendee-smoke/`. This is real UI interaction with fixture data, not
 database-connected or cross-role E2E coverage. It is not run in headless CI.
+
+### Attendee registration commands and My Registrations (#29)
+
+The composition root binds `RegistrationService.register`, `cancel` and
+`myRegistrations` to the current session token. Views never supply an attendee ID.
+`AttendeeEventDetails` includes the own record's version (including CANCELLED),
+or -1 only when absent. Controls submit that displayed version unchanged.
+`AttendeeBrowseController` shares one in-flight command gate across both screens,
+runs callbacks on virtual threads, ignores stale read results and refreshes the
+active screen after every command outcome. Navigation is disabled during writes;
+app shutdown detaches UI callbacks without pretending to roll back a database commit.
+`RegistrationFeedback` allowlists every existing service rejection code and treats
+unknown failures as uncertain outcomes, without exposing raw exceptions.
+
+`MyRegistrationsService` enriches `RegistrationService.myRegistrations` in one
+batch metadata query; it does not filter through the future-only public catalogue.
+It revalidates the session after enrichment and rejects non-owner records.
+`JdbcRegistrationEventInfoRepository` uses a bound UUID array and a lateral join
+from `RegistrationReadSql` that selects at most one venue booking per event:
+current CONFIRMED/AT_RISK first, otherwise latest `confirmed_at` with booking ID
+as tie-breaker. Thus completed/cancelled historic bookings remain displayable.
+This is current event metadata, not a historical registration-time snapshot.
+The same owner projection carries end time, club, description and event status
+for the My Registrations detail pane, without broadening public-catalogue visibility.
+`RegistrationListQuery` is a pure presentation filter/sort over these authorized
+snapshots, with explicit current-time input: upcoming before start, ongoing
+start-inclusive/end-exclusive, past from end, and cancelled in its own bucket
+(also included in All). Earliest/latest start order uses event ID to break ties.
+`MyRegistrationsView` uses the Browse-style horizontal split: bookings on the left,
+scrollable event details on the right, updated on selection. Changing filters,
+refreshing or failing a read clears the old details. Filter/sort choices persist
+across refresh; time groups are recomputed on filter/sort/refresh, not on a timer.
+The command service remains authoritative for ownership, time, capacity, versions,
+and atomic state/audit/outbox writes. No tables, migrations or new dependencies.
+
+`MyRegistrationsIntegrationTest` verifies real PostgreSQL owner-only enrichment,
+past/cancelled visibility, historic/current venue selection and a real
+register→cancel→re-register workflow with one row and three audit/outbox effects.
+`attendeeRegistrationUiSmoke` checks actual JavaFX controls with synthetic callbacks:
+exact submitted versions, double-click suppression, background execution, both
+cancel entry points, rejection feedback, refresh, expiry, empty states and layouts
+at 1280/1000px. It is not login-to-database E2E and requires a graphical desktop.
 
 Historical verification before this main sync: on the inspected local SGT environment, the two
 existing `PostgreSqlVenueAdministratorIntegrationTest` cases fail because record
@@ -264,7 +307,7 @@ event are required for registration.
 | --- | --- |
 | Club Organizer (Joseph) | Events, volunteers/announcements (as scheduled), Organizer→venue submit |
 | Venue Administrator (Jordan) | Venues, availability, request decide, bookings, Admin UI |
-| Attendee (Johannsen) | Catalogue/personalized details and registration backend; registration UI/check-in remain planned |
+| Attendee (Johannsen) | Catalogue/details, registration backend and register/cancel/My Registrations UI; check-in remains planned |
 
 ---
 
@@ -352,7 +395,7 @@ See [Agentic SE](AgenticSE.md). Cursor project hooks (optional process guardrail
 
 * Organizer supersede/withdraw of open requests.
 * Club rename/delete and multi-organizer clubs.
-* Attendee registration UI, notifications, check-in, and history.
+* Attendee notifications, check-in, and attendance history.
 * Notification delivery worker (outbox already stores some Admin decisions).
 * Broader Postgres integration tests for the Organizer submit path.
 
@@ -394,6 +437,6 @@ See [Agentic SE](AgenticSE.md). Cursor project hooks (optional process guardrail
 
 ## Appendix: Current implementation status
 
-**Implemented (selected):** shared role-based login; read-only Attendee catalogue and registration backend; Organizer account-owned clubs, draft events, venue requests, volunteers, registration overview and announcements; Admin venues, user management and request approve/reject; Flyway + JDBC persistence; unit and PostgreSQL integration tests.
+**Implemented (selected):** shared role-based login; Attendee catalogue, registration backend, register/cancel and My Registrations; Organizer account-owned clubs, draft events, venue requests, volunteers, registration overview and announcements; Admin venues, user management and request approve/reject; Flyway + JDBC persistence; unit and PostgreSQL integration tests.
 
-**Not yet implemented (selected):** Attendee registration UI, notifications, check-in, and history; club rename/delete; Organizer supersede/withdraw; email notification delivery; production deployment tooling.
+**Not yet implemented (selected):** Attendee notifications, check-in, and attendance history; club rename/delete; Organizer supersede/withdraw; email notification delivery; production deployment tooling.

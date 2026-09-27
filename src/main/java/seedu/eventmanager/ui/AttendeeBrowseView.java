@@ -30,8 +30,11 @@ import seedu.eventmanager.common.JavaUtilStructuredLogger;
 import seedu.eventmanager.common.StructuredLogger;
 import seedu.eventmanager.common.ValidationException;
 import seedu.eventmanager.common.ApplicationException;
+import seedu.eventmanager.attendee.MyRegistration;
+import seedu.eventmanager.registration.Registration;
+import seedu.eventmanager.registration.RegistrationEligibilityPolicy;
 
-/** Read-only Attendee workspace. All JDBC work runs outside the JavaFX thread. */
+/** Attendee workspace. All JDBC reads and commands run outside the JavaFX thread. */
 public final class AttendeeBrowseView extends BorderPane implements AutoCloseable, AttendeeBrowseController.View {
     private static final String CARD = "-fx-background-color: white; -fx-background-radius: 8;"
             + " -fx-border-color: #e2e8f0; -fx-border-radius: 8;";
@@ -44,39 +47,73 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
     private final ListView<CatalogueEvent> events = new ListView<>();
     private final VBox details = new VBox(12);
     private final Label feedback = text("", "#61708a", 13);
+    private final Label commandFeedback = text("", "#172033", 14);
+    private final VBox browseContent;
+    private final MyRegistrationsView registrations;
+    private final Button browseNav = new Button("Browse events");
+    private final Button registrationsNav = new Button("My Registrations");
 
     public AttendeeBrowseView(Supplier<EventCatalogueService> services,
-            Function<UUID, AttendeeEventDetails> detailReader, Runnable onHome) {
+            Function<UUID, AttendeeEventDetails> detailReader, AttendeeRegistrationActions actions, Runnable onHome) {
         Objects.requireNonNull(services);
-        controller = new AttendeeBrowseController(query -> services.get().search(query), detailReader, this);
+        controller = new AttendeeBrowseController(query -> services.get().search(query), detailReader, actions, this);
+        browseContent = content();
+        registrations = new MyRegistrationsView(controller::loadRegistrations,
+                row -> controller.cancelRegistration(row.eventId(), row.version()));
+        browseContent.disableProperty().bind(controller.busyProperty());
+        registrations.disableProperty().bind(controller.busyProperty());
         Objects.requireNonNull(onHome);
         setStyle("-fx-background-color: #f7f9fc;");
         setLeft(sidebar(() -> { close(); onHome.run(); }));
-        setCenter(content());
+        setCenter(browseContent);
+        commandFeedback.setId("attendee-command-feedback");
+        commandFeedback.setPadding(new Insets(12, 24, 12, 24));
+        setBottom(commandFeedback);
         refresh();
     }
 
     private VBox sidebar(Runnable onHome) {
         Label brand = text("EVENT VENUE\nMANAGER", "white", 16);
         Label role = text("Attendee", "#93a4bd", 13);
-        Button browse = new Button("Browse events");
+        Button browse = browseNav;
         browse.setMaxWidth(Double.MAX_VALUE);
         browse.setAlignment(Pos.CENTER_LEFT);
         browse.setStyle("-fx-background-color: #2563eb; -fx-text-fill: white; -fx-padding: 12;");
-        browse.setOnAction(ignored -> refresh());
+        browse.setId("attendee-browse-nav");
+        browse.setOnAction(ignored -> {
+            selectNavigation(false); commandFeedback.setText(""); setCenter(browseContent); refresh();
+        });
+        browse.disableProperty().bind(controller.busyProperty());
+        Button mine = registrationsNav;
+        mine.setId("attendee-registrations-nav");
+        mine.setMaxWidth(Double.MAX_VALUE);
+        mine.setAlignment(Pos.CENTER_LEFT);
+        mine.setStyle("-fx-background-color: #24334c; -fx-text-fill: #dce4f2; -fx-padding: 12;");
+        mine.disableProperty().bind(controller.busyProperty());
+        mine.setOnAction(ignored -> {
+            selectNavigation(true); commandFeedback.setText(""); setCenter(registrations); controller.loadRegistrations();
+        });
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
-        Label mode = text("Event catalogue\nRead-only access", "#93a4bd", 12);
+        Label mode = text("Browse events\nManage your bookings", "#93a4bd", 12);
         Button home = new Button("← Home");
         home.setId("attendee-home");
         home.setMaxWidth(Double.MAX_VALUE);
         home.setOnAction(ignored -> onHome.run());
-        VBox sidebar = new VBox(16, brand, role, browse, spacer, mode, home);
+        home.disableProperty().bind(controller.busyProperty());
+        VBox sidebar = new VBox(16, brand, role, browse, mine, spacer, mode, home);
         sidebar.setPadding(new Insets(24, 16, 24, 16));
         sidebar.setMinWidth(200);
         sidebar.setPrefWidth(220);
         sidebar.setStyle("-fx-background-color: #172033;");
         return sidebar;
+    }
+
+    private void selectNavigation(boolean mine) {
+        String active = "-fx-background-color: #2563eb; -fx-text-fill: white; -fx-padding: 12;";
+        String inactive = "-fx-background-color: #24334c; -fx-text-fill: #dce4f2; -fx-padding: 12;";
+        browseNav.setStyle(mine ? inactive : active);
+        registrationsNav.setStyle(mine ? active : inactive);
     }
 
     private VBox content() {
@@ -133,6 +170,7 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
             }
         });
         events.getSelectionModel().selectedItemProperty().addListener((ignored, previous, selected) -> {
+            commandFeedback.setText("");
             if (selected != null) {
                 controller.loadDetails(selected.id());
             } else {
@@ -204,6 +242,17 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
             case VENUE_NOT_CONFIRMED -> "Registration unavailable: no confirmed booking matching this event's schedule";
             case EVENT_NOT_REGISTERABLE -> "Registration closed";
         };
+        Button register = new Button(value.ownStatus().orElse(null) == Registration.Status.CANCELLED ? "Re-register" : "Register");
+        register.setId("attendee-register");
+        register.setStyle("-fx-background-color: #2563eb; -fx-text-fill: white; -fx-padding: 9 14;");
+        register.setDisable(value.eligibility() != RegistrationEligibilityPolicy.Result.AVAILABLE
+                || value.ownStatus().filter(status -> status != Registration.Status.CANCELLED).isPresent());
+        register.setOnAction(ignored -> controller.register(event.id(), value.ownRegistrationVersion()));
+        Button cancel = new Button("Cancel registration");
+        cancel.setId("attendee-cancel");
+        // Details are returned only for future events. The command service rechecks the cutoff.
+        cancel.setDisable(value.ownStatus().orElse(null) != Registration.Status.CONFIRMED);
+        cancel.setOnAction(ignored -> controller.cancelRegistration(event.id(), value.ownRegistrationVersion()));
         details.getChildren().setAll(
                 text(event.title(), "#172033", 22), text("Club: " + event.clubId(), "#61708a", 13),
                 text("Starts: " + SingaporeDateTimes.display(event.startsAt()), "#172033", 14),
@@ -217,8 +266,18 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
                 text("Your registration: " + ownStatus, "#172033", 14),
                 text(availability, "#172033", 14),
                 text("Availability is a snapshot, not a reserved seat. Use Refresh details for the latest information.", "#61708a", 13),
-                text("Register/cancel controls will be added in the next feature.", "#61708a", 13));
+                new FlowPane(12, 12, register, cancel));
     }
+
+    @Override public void loadingRegistrations() { registrations.loading(); }
+
+    @Override public void loadedRegistrations(List<MyRegistration> values) { registrations.loaded(values); }
+
+    @Override public void registrationsFailed(Throwable failure) {
+        registrations.failed(RegistrationFeedback.failure(failure));
+    }
+
+    @Override public void commandFeedback(String message) { commandFeedback.setText(message); }
 
     private void showDetailMessage(String message) {
         details.getChildren().setAll(text(message, "#61708a", 14));

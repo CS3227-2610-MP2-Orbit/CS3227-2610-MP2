@@ -1,0 +1,81 @@
+package seedu.eventmanager.registration;
+
+import static org.junit.jupiter.api.Assertions.*;
+import java.time.*;
+import java.util.*;
+import org.junit.jupiter.api.Test;
+import seedu.eventmanager.attendee.*;
+import seedu.eventmanager.common.*;
+import seedu.eventmanager.storage.*;
+
+/** Real owner-only service + PostgreSQL projection; inherits isolated-schema fixtures only. */
+class MyRegistrationsIntegrationTest extends RegistrationDatabaseTest {
+    AttendeeEventDetailsService service() {
+        return new AttendeeEventDetailsService(new JdbcAttendeeEventDetailsRepository(database),
+                sessions::resolve, Clock.fixed(NOW, ZoneOffset.UTC));
+    }
+    MyRegistrationsService mine() {
+        var commands = RegistrationServiceFactory.create(configuration, Clock.fixed(NOW, ZoneOffset.UTC));
+        return new MyRegistrationsService(commands::myRegistrations,
+                new JdbcRegistrationEventInfoRepository(database), sessions::resolve, Clock.fixed(NOW, ZoneOffset.UTC));
+    }
+
+    @Test void listsOnlyOwnerIncludingPastUnpublishedCancelledAndCompletedVenue() throws Exception {
+        UUID alice = account("alice", Role.ATTENDEE);
+        UUID bob = account("bob", Role.ATTENDEE);
+        UUID upcoming = event("PUBLISHED", 5, NOW.plusSeconds(3600));
+        UUID past = event("COMPLETED", 5, NOW.minusSeconds(7200));
+        UUID cancelled = event("DRAFT", 5, NOW.plusSeconds(7200));
+        UUID other = event("PUBLISHED", 5, NOW.plusSeconds(9000));
+        registration(upcoming, alice, "CONFIRMED");
+        registration(past, alice, "CHECKED_IN"); booking(past);
+        registration(cancelled, alice, "CANCELLED");
+        registration(other, bob, "CONFIRMED");
+        sql("UPDATE venue_bookings SET status='COMPLETED' WHERE event_id='" + past + "'");
+        sql("UPDATE event_registrations SET version=4 WHERE attendee_id='" + alice + "'");
+        sql("UPDATE organizer_event SET description='Past event full description' WHERE id='" + past + "'");
+        var rows = mine().list(login("alice"));
+        assertEquals(3, rows.size());
+        assertEquals(Set.of(upcoming, past, cancelled), rows.stream().map(MyRegistration::eventId).collect(java.util.stream.Collectors.toSet()));
+        var pastRow = rows.stream().filter(r -> r.eventId().equals(past)).findFirst().orElseThrow();
+        assertEquals("Synthetic room · Level 2", pastRow.venue());
+        assertFalse(pastRow.canCancel());
+        assertEquals(4, pastRow.version());
+        assertEquals(NOW, pastRow.endsAt());
+        assertEquals("test-club", pastRow.clubId());
+        assertEquals("Past event full description", pastRow.description());
+        assertEquals("COMPLETED", pastRow.eventStatus());
+        assertTrue(rows.stream().filter(r -> r.eventId().equals(upcoming)).findFirst().orElseThrow().canCancel());
+        assertEquals("", rows.stream().filter(r -> r.eventId().equals(cancelled)).findFirst().orElseThrow().venue());
+        assertEquals(1, mine().list(login("bob")).size());
+        assertEquals(0, count("audit_logs")); assertEquals(0, count("notification_outbox"));
+    }
+
+    @Test void realRegisterCancelAndReregisterRefreshProjectionAndKeepOneRecord() throws Exception {
+        account("alice", Role.ATTENDEE);
+        String token = login("alice");
+        UUID event = event("PUBLISHED", 5, NOW.plusSeconds(3600)); booking(event);
+        var commands = RegistrationServiceFactory.create(configuration, Clock.fixed(NOW, ZoneOffset.UTC));
+        commands.register(token, event, service().getEvent(token, event).ownRegistrationVersion());
+        var displayed = mine().list(token).getFirst();
+        assertEquals(Registration.Status.CONFIRMED, displayed.status());
+        commands.cancel(token, displayed.eventId(), displayed.version());
+        assertEquals(Registration.Status.CANCELLED, mine().list(token).getFirst().status());
+        commands.register(token, event, service().getEvent(token, event).ownRegistrationVersion());
+        assertEquals(2, mine().list(token).getFirst().version());
+        assertEquals(1, count("event_registrations"));
+        assertEquals(3, count("audit_logs")); assertEquals(3, count("notification_outbox"));
+    }
+
+    @Test void prefersCurrentVenueOverHistoricBookingsWithoutDuplicatingRegistration() throws Exception {
+        UUID alice = account("alice", Role.ATTENDEE);
+        UUID event = event("PUBLISHED", 5, NOW.plusSeconds(3600));
+        registration(event, alice, "CONFIRMED"); booking(event, "Old room");
+        sql("UPDATE venue_bookings SET status='CANCELLED',cancelled_at=now(),cancelled_by='" + UUID.randomUUID()
+                + "',cancellation_reason='Synthetic cancellation',confirmed_at=now()+INTERVAL '1 day'");
+        booking(event, "Current room");
+        var rows = mine().list(login("alice"));
+        assertEquals(1, rows.size());
+        assertEquals("Current room · Level 2", rows.getFirst().venue());
+    }
+}

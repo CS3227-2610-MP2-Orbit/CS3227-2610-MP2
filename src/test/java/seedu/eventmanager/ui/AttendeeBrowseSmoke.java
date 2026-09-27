@@ -77,7 +77,8 @@ public final class AttendeeBrowseSmoke {
                 return Optional.of(new AttendeeEventDetailsRepository.Snapshot(event, "PUBLISHED",
                         Optional.of(new AttendeeEventDetails.Venue("Campus Seminar Room", "COM1 Level 2", "CONFIRMED", "ACTIVE")),
                         RegistrationEligibilityPolicy.Booking.CONFIRMED_ACTIVE, occupied.get(),
-                        id.equals(new UUID(0, 1)) ? Optional.of(Registration.Status.CONFIRMED) : Optional.empty()));
+                        id.equals(new UUID(0, 1)) ? Optional.of(Registration.Status.CONFIRMED) : Optional.empty(),
+                        id.equals(new UUID(0, 1)) ? 0 : -1));
             }, token -> {
                 if (expired.get()) throw new IllegalArgumentException("Synthetic expired session");
                 return new Actor(new UUID(0, 100), Role.ATTENDEE);
@@ -103,7 +104,8 @@ public final class AttendeeBrowseSmoke {
                     finished.countDown();
                 }
                 return result;
-            }, homes::incrementAndGet);
+            }, new AttendeeRegistrationActions((id, version) -> { throw new AssertionError("Unexpected register"); },
+                    (id, version) -> { throw new AssertionError("Unexpected cancel"); }, List::of), homes::incrementAndGet);
             stage.setScene(new Scene(view, 1280, 800));
             stage.setTitle("Attendee smoke — synthetic fixtures");
             stage.show();
@@ -126,6 +128,8 @@ public final class AttendeeBrowseSmoke {
             fx(() -> {
                 require(detailText().contains("Campus Seminar Room · COM1 Level 2"), "venue detail");
                 require(detailText().contains("Your registration: Registered"), "own status");
+                require(view.lookup("#attendee-register") != null && view.lookup("#attendee-cancel") != null,
+                        "registration actions must replace the placeholder");
             });
             fx(() -> screenshot("browse-1280.png"));
             fx(() -> { stage.setWidth(1000); stage.setHeight(640); });

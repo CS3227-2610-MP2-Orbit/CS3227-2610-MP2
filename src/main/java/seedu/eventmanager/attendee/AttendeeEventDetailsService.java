@@ -41,7 +41,7 @@ public final class AttendeeEventDetailsService {
             throw unavailable();
         }
         return new AttendeeEventDetails(event, snapshot.venue(), snapshot.occupiedSeats(),
-                Math.max(0, event.capacity() - snapshot.occupiedSeats()), snapshot.ownStatus(),
+                Math.max(0, event.capacity() - snapshot.occupiedSeats()), snapshot.ownStatus(), snapshot.ownRegistrationVersion(),
                 RegistrationEligibilityPolicy.evaluate(registrationEvent, now, snapshot.booking(), snapshot.occupiedSeats()));
     }
 
