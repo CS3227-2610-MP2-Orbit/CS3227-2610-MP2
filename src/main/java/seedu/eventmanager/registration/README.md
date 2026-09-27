@@ -21,5 +21,8 @@ still authorize event ownership before reading the roster; this internal adapter
 is not a public unauthenticated endpoint. Joseph owns replacing his temporary
 `NoEventRegistrations` wiring. His interface and record signatures are unchanged.
 
+`EventManagerApplication` now passes `JdbcEventRegistrations` to the Organizer
+consumers `VolunteerService` and `event.RegistrationOverviewService`.
+
 See [Registration handoff](../../../../../../docs/RegistrationHandoff.md) for bootstrap,
 construction, backend commands, policy, test evidence and remaining integration.

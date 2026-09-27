@@ -19,13 +19,12 @@ writes an `ASSIGN_VOLUNTEER` / `REMOVE_VOLUNTEER` business audit record in
 stored; they are read from `EventRegistrations` at list time.
 
 The Organizer **Volunteers** screen (`OrganizerEventView`) calls this service;
-`EventManagerApplication` wires it with `NoEventRegistrations`.
+`EventManagerApplication` wires it with `JdbcEventRegistrations`.
 
 ## Not implemented / unresolved
 
-- Registered attendees come from `EventRegistrations`, which has no real
-  implementation until Attendee registration exists (see `registration/README.md`),
-  so the Volunteers screen currently has no attendees to assign.
+- There is no Attendee registration screen or Organizer event publication yet,
+  so in normal use the Volunteers screen has no attendees to assign.
 - Undecided team policy: what happens to an assignment when the attendee cancels
   their registration, volunteer caps, volunteer notifications, attendee sign-up,
   and whether volunteers may perform QR check-in.
