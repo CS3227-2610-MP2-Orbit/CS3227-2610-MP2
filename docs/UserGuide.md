@@ -94,10 +94,11 @@ The app is designed for users who:
 | Organizer | Request a venue | **Request venue** → select event + venue → **Submit request** |
 | Organizer | Assign / remove volunteers | **Volunteers** → select event → **Assign volunteer** or **Remove selected** (requires registered attendees) |
 | Venue Admin | Log in | Venue Administrator login screen |
-| Venue Admin | Create venue | **Venues** → **Create venue** |
-| Venue Admin | Claim access to a venue | **Venues** → select row → **Claim access** |
+| Venue Admin | View dashboard | **Dashboard** → pending requests, available venues, **Refresh** |
 | Venue Admin | Review / approve / reject | **Venue requests** → select row → **Approve** or **Reject** |
-| Venue Admin | Manage users / grants | **Users and access** |
+| Venue Admin | Manage venues | **Venues** → view, create, edit, activate/deactivate |
+| Venue Admin | Manage users | **Users and access** → view, create, edit, activate/deactivate |
+| Venue Admin | Sign out | **Log out** |
 
 ---
 
@@ -225,13 +226,17 @@ Assigns attendees who are registered for one of your events as volunteers, with 
 1. Sidebar → **Venues** → **Create venue**.
 2. Enter name, location, and positive capacity.
 
-**Expected result:** Venue appears as **ACTIVE**. Creating a venue also **grants you access** to approve requests for that venue.
+**Expected result:** Venue appears in the venue list as **ACTIVE**.
 
-### Claiming access to an existing venue
+### Editing and activating venues
 
-If a venue was created earlier (or by another admin) and Approve fails with no access:
+Use **Venues** to select an existing venue, edit its details, or toggle its
+administrative status between **ACTIVE** and **INACTIVE**. Inactive venues are
+not available for new organizer requests.
 
-1. **Venues** → select the venue → **Claim access**.
+An approved booking does not permanently deactivate the whole venue. Booking
+occupancy remains interval-based, so a venue can be available again after its
+confirmed booking interval ends.
 
 ### Reviewing venue requests
 
@@ -241,13 +246,25 @@ If a venue was created earlier (or by another admin) and Approve fails with no a
 2. Select a pending row.
 3. **Approve**, or **Reject** (rejection requires a reason).
 
+Rejection reasons are selected from the fixed list **Venue already booked** or
+**Requested capacity exceeds venue capacity**.
+
 **Expected result:** Approved/rejected requests leave the pending list. Dashboard pending count updates when you return to **Dashboard**.
 
-> **Note:** The table currently shows UUIDs for request, venue, event, and organizer. The data is linked in the database even when labels are not human-readable yet.
+The table presents readable request information: a short request reference,
+venue name and location, event title, organizer username, start time, and
+attendance. Internal UUIDs remain backend identifiers and are not required for
+normal administrator use.
 
 ### Users and access
 
-Use **Users and access** to create administrator users and grant venue access by venue id when needed.
+Use **Users and access** to view users, create accounts, edit usernames/roles,
+activate or deactivate accounts, and grant an administrator access to specific
+venues. Roles are selected from the supported role list rather than typed
+manually.
+
+Password change and password-reset workflows are not currently available and
+are planned for a later secure and audited implementation.
 
 ---
 
@@ -260,7 +277,9 @@ A: Create an ACTIVE venue under Venue Administrator → **Venues**, then reopen 
 A: Confirm both roles use the same `DATABASE_URL` / `EVENT_MANAGER_DB_*`. Open **Venue requests** again so the list reloads. Confirm submit showed a success message.
 
 **Q: Approve fails / forbidden.**  
-A: Select the venue → **Claim access**, or recreate the venue while logged in (auto-grant).
+A: Confirm that the signed-in account is an active Venue Administrator. All
+Venue Administrators have the same access to all venues; the backend enforces
+the role check independently of the UI.
 
 **Q: How do I add clubs for the Organizer?**
 A: Log in as a Club Organizer and use **Clubs** → **Create club**. `EVENT_MANAGER_CLUB_IDS` / `EVENT_MANAGER_ORGANIZER_ID` in `.env` are no longer used.
@@ -279,7 +298,6 @@ A: Not yet. Organizer uses `.env` identity; Admin uses local login.
 * Organizer string ids are mapped to UUIDs for venue requests (temporary until shared users auth).
 * No supersede/withdraw of venue requests from the Organizer UI.
 * No Attendee workspace in the home screen yet.
-* Admin request table shows raw UUIDs rather than event/venue names.
 * Notification outbox stores Admin decisions but does not send email yet.
 
 ---
@@ -292,7 +310,6 @@ A: Not yet. Organizer uses `.env` identity; Admin uses local login.
 | Venue Administrator | Role that manages venues and approves/rejects booking requests |
 | Draft event | Event that can still be edited in the Organizer workflow |
 | `SUBMITTED` request | Venue request waiting for Admin decision |
-| Claim access | Grants the logged-in Admin permission to decide requests for a venue |
 | `.env` | Local config file for database URL/user and Organizer demo identity |
 
 ---

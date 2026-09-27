@@ -47,14 +47,11 @@ public final class VenueManagementView {
         create.setOnAction(event -> createVenue());
         Button edit = new Button("Edit selected");
         edit.setOnAction(event -> editVenue());
-        Button deactivate = new Button("Deactivate selected");
-        deactivate.setOnAction(event -> deactivateVenue());
-        Button claimAccess = new Button("Claim access");
-        claimAccess.setOnAction(event -> claimAccess());
+        Button toggleAvailability = new Button("Toggle availability");
+        toggleAvailability.setOnAction(event -> toggleAvailability());
         Button refresh = new Button("Refresh");
         refresh.setOnAction(event -> reload());
-        javafx.scene.layout.HBox actions = new javafx.scene.layout.HBox(
-                10, create, edit, deactivate, claimAccess, refresh);
+        javafx.scene.layout.HBox actions = new javafx.scene.layout.HBox(10, create, edit, toggleAvailability, refresh);
         VBox content = new VBox(16, back, heading, actions, table);
         content.setPadding(new Insets(28));
         root.setCenter(content);
@@ -119,18 +116,21 @@ public final class VenueManagementView {
         }
     }
 
-    private void deactivateVenue() {
+    private void toggleAvailability() {
         Venue selected = table.getSelectionModel().getSelectedItem();
         if (selected == null) {
             showError("Select a venue first.");
             return;
         }
+        VenueStatus nextStatus = selected.status() == VenueStatus.ACTIVE
+                ? VenueStatus.INACTIVE : VenueStatus.ACTIVE;
+        String action = nextStatus == VenueStatus.ACTIVE ? "activate" : "deactivate";
         Alert confirmation = new Alert(Alert.AlertType.CONFIRMATION,
-                "Deactivate " + selected.name() + "?");
+                "Do you want to " + action + " " + selected.name() + "?");
         confirmation.showAndWait().ifPresent(button -> {
             if (button == javafx.scene.control.ButtonType.OK) {
                 venues.save(new Venue(selected.venueId(), selected.name(), selected.location(),
-                        selected.capacity(), selected.description(), VenueStatus.INACTIVE));
+                        selected.capacity(), selected.description(), nextStatus));
                 reload();
             }
         });

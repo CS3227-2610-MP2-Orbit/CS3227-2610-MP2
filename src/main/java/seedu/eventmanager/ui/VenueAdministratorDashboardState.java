@@ -1,6 +1,5 @@
 package seedu.eventmanager.ui;
 
-import seedu.eventmanager.venue.VenueRequest;
 import java.util.List;
 
 /** Explicit UI state for loading, empty, successful, and failed dashboard views. */
@@ -15,9 +14,7 @@ public record VenueAdministratorDashboardState(Status status,
 
     public static VenueAdministratorDashboardState ready(
             VenueAdministratorApiClient.VenueAdministratorDashboardData data) {
-        boolean empty = data.pendingRequests().isEmpty() && data.upcomingBookings().isEmpty()
-                && data.availability().isEmpty() && data.warnings().isEmpty()
-                && data.recentActivity().isEmpty();
+        boolean empty = data.pendingRequests().isEmpty() && data.approvedBookingDisplays().isEmpty();
         return new VenueAdministratorDashboardState(empty ? Status.EMPTY : Status.READY, data, null);
     }
 
@@ -27,6 +24,6 @@ public record VenueAdministratorDashboardState(Status status,
 
     private static VenueAdministratorApiClient.VenueAdministratorDashboardData emptyData() {
         return new VenueAdministratorApiClient.VenueAdministratorDashboardData(
-                List.of(), List.of(), List.of(), List.of(), List.of());
+                List.of(), List.of(), List.of());
     }
 }

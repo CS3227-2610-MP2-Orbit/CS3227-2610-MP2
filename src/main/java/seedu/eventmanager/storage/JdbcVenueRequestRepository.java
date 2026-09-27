@@ -9,6 +9,8 @@ import java.util.UUID;
 import java.util.List;
 import java.util.ArrayList;
 import seedu.eventmanager.service.VenueRequestRepository;
+import seedu.eventmanager.service.VenueRequestDisplay;
+import seedu.eventmanager.service.ApprovedBookingDisplay;
 import seedu.eventmanager.venue.VenueRequest;
 import seedu.eventmanager.venue.VenueRequestStatus;
 
@@ -58,6 +60,76 @@ public final class JdbcVenueRequestRepository implements VenueRequestRepository 
                 }
             } catch (SQLException exception) {
                 throw databaseFailure("Could not load submitted venue requests.", exception);
+            }
+        });
+    }
+
+    @Override
+    public List<VenueRequestDisplay> findSubmittedDisplay() {
+        return database.withConnection(connection -> {
+            try (var statement = connection.prepareStatement("""
+                    SELECT vr.request_id, vr.event_id, vr.venue_id, vr.organizer_id,
+                           vr.requested_starts_at, vr.requested_ends_at,
+                           vr.expected_attendance, vr.status,
+                           v.name AS venue_name, v.location AS venue_location,
+                           e.title AS event_title, u.username AS organizer_name
+                    FROM venue_requests vr
+                    JOIN venues v ON v.venue_id = vr.venue_id
+                    LEFT JOIN organizer_event e ON e.id = vr.event_id
+                    LEFT JOIN users u ON u.user_id = vr.organizer_id
+                    WHERE vr.status = 'SUBMITTED'
+                    ORDER BY vr.submitted_at, vr.created_at""")) {
+                try (ResultSet result = statement.executeQuery()) {
+                    List<VenueRequestDisplay> values = new ArrayList<>();
+                    while (result.next()) {
+                        values.add(new VenueRequestDisplay(map(result),
+                                result.getString("venue_name"),
+                                result.getString("venue_location"),
+                                result.getString("event_title"),
+                                result.getString("organizer_name")));
+                    }
+                    return values;
+                }
+            } catch (SQLException exception) {
+                throw databaseFailure("Could not load readable submitted venue requests.", exception);
+            }
+        });
+    }
+
+    @Override
+    public List<ApprovedBookingDisplay> findApprovedBookingDisplays() {
+        return database.withConnection(connection -> {
+            try (var statement = connection.prepareStatement("""
+                    SELECT b.booking_id, b.request_id, b.starts_at, b.ends_at, b.status,
+                           vr.expected_attendance,
+                           v.name AS venue_name, v.location AS venue_location,
+                           e.title AS event_title, u.username AS organizer_name
+                    FROM venue_bookings b
+                    JOIN venue_requests vr ON vr.request_id = b.request_id
+                    JOIN venues v ON v.venue_id = b.venue_id
+                    LEFT JOIN organizer_event e ON e.id = b.event_id
+                    LEFT JOIN users u ON u.user_id = vr.organizer_id
+                    WHERE b.status IN ('CONFIRMED', 'AT_RISK', 'COMPLETED')
+                    ORDER BY b.starts_at""")) {
+                try (ResultSet result = statement.executeQuery()) {
+                    List<ApprovedBookingDisplay> values = new ArrayList<>();
+                    while (result.next()) {
+                        values.add(new ApprovedBookingDisplay(
+                                result.getObject("booking_id", UUID.class),
+                                result.getObject("request_id", UUID.class),
+                                result.getString("venue_name"),
+                                result.getString("venue_location"),
+                                result.getString("event_title"),
+                                result.getString("organizer_name"),
+                                result.getObject("starts_at", OffsetDateTime.class),
+                                result.getObject("ends_at", OffsetDateTime.class),
+                                result.getInt("expected_attendance"),
+                                result.getString("status")));
+                    }
+                    return values;
+                }
+            } catch (SQLException exception) {
+                throw databaseFailure("Could not load approved venue bookings.", exception);
             }
         });
     }

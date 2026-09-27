@@ -44,6 +44,17 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Install PostgreSQL client
+        run: sudo apt-get update -y && sudo apt-get install -y postgresql-client
+
+      - name: Reset PostgreSQL test database
+        run: |
+          export PGPASSWORD=postgres
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -c "DROP DATABASE IF EXISTS \"CS3227\";"
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE DATABASE \"CS3227\";"
+
       # No formatter/checkstyle/PMD/SpotBugs plugin exists yet. Compilation is
       # the currently applicable type/static check and must pass before tests.
       - name: Compile and static/type check
@@ -61,17 +72,41 @@ jobs:
         run: ./gradlew test --tests 'seedu.eventmanager.common.*' --tests 'seedu.eventmanager.venue.*' --tests 'seedu.eventmanager.service.*' --tests 'seedu.eventmanager.MainTest'
 
       - name: Integration tests
-        run: ./gradlew test --tests 'seedu.eventmanager.integration.*'
+        run: |
+          export PGPASSWORD=postgres
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -c "DROP DATABASE IF EXISTS \"CS3227\";"
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE DATABASE \"CS3227\";"
+          ./gradlew test --tests 'seedu.eventmanager.integration.*'
 
       - name: E2E tests
-        run: ./gradlew test --tests 'seedu.eventmanager.e2e.*'
+        run: |
+          export PGPASSWORD=postgres
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -c "DROP DATABASE IF EXISTS \"CS3227\";"
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE DATABASE \"CS3227\";"
+          ./gradlew test --tests 'seedu.eventmanager.e2e.*'
 
       - name: Registration contract and workflow tests
         env:
           EVENT_MANAGER_TEST_DB_URL: jdbc:postgresql://localhost:5432/CS3227
           EVENT_MANAGER_TEST_DB_USER: postgres
           EVENT_MANAGER_TEST_DB_PASSWORD: postgres
-        run: ./gradlew test --tests 'seedu.eventmanager.registration.*'
+        run: |
+          export PGPASSWORD=postgres
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -c "DROP DATABASE IF EXISTS \"CS3227\";"
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE DATABASE \"CS3227\";"
+          ./gradlew test --tests 'seedu.eventmanager.registration.*'
 
       - name: Production build
-        run: ./gradlew build
+        run: |
+          export PGPASSWORD=postgres
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -c "DROP DATABASE IF EXISTS \"CS3227\";"
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE DATABASE \"CS3227\";"
+          ./gradlew build
