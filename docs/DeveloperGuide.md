@@ -209,7 +209,8 @@ in background tasks, independently of Organizer navigation. Successful service
 initialization is reused and failure can be retried. No new migration, fixture
 insertion or publication operation is added. `EventService` still cannot publish
 events, so new drafts do not appear. Register/cancel UI remains the next slice.
-See [the Attendee plan](AttendeePlan.md).
+See the [Attendee User Guide](UserGuide.md#attendee-browse-and-search-events)
+for the implemented workflow and current limitations.
 
 Focused verification:
 

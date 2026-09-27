@@ -15,4 +15,5 @@ asynchronous loading/cancellation and the view only renders results.
 
 Registration commands already exist under `registration`; register/cancel UI,
 notifications, check-in and attendance history remain future slices.
-See `docs/AttendeePlan.md` for policy and integration dependencies.
+See the [Developer Guide](../../../../../../docs/DeveloperGuide.md#attendee-catalogue-and-personalized-event-details)
+for implemented behavior and integration boundaries.
