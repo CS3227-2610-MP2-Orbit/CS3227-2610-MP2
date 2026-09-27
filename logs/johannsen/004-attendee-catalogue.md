@@ -1,4 +1,6 @@
-# 006 — Attendee catalogue first slice
+# 004 — Attendee catalogue first slice
+
+Renumbered from 006 on 27 September 2026.
 
 Date: 2026-09-25
 Contributor: Johannsen

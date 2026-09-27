@@ -1,16 +1,34 @@
-# 011 — Registration backend and Joseph's shared reader
+# 005 — Registration backend and Joseph's shared reader
+
+Renumbered from 011 on 27 September 2026. Historical references retain their
+original numbering where describing earlier interactions.
 
 Date: 26 September 2026
 Contributor: Johannsen
 Branch: attendee-registration-handoff, based on catalogue commit c5b9c06
 Agent: Codex desktop, single agent
 
-## Original request and policy replies
+## Request summary
+
+Publish the completed Attendee catalogue work as a pull request, then implement
+the registration backend and shared read-only registration adapter Joseph needs
+for volunteers, registration lists and announcements. Follow the agreed
+EventRegistrations contract and keep Organizer consumer wiring in Joseph's scope.
+The subsequent policy discussion confirmed that new registrations require a
+future PUBLISHED event, a matching CONFIRMED booking and an ACTIVE venue.
+
+Editorial note, 27 September 2026: this is a retrospective summary of the request,
+existing contract and subsequent clarification, not a replacement original prompt.
+Original wording and policy replies remain below; historical outcomes are unchanged.
+
+### Original request and policy replies (verbatim quotations with context)
 
 > can we push this as a pr then also do the thing that joseph's need such that he can continue to work as well
 
 User repeated Joseph's README during implementation; confirmed it is the intended
-contract. Earlier clarified contract is preserved in log 009.
+contract. The agreed contract is documented in
+[registration README](../../src/main/java/seedu/eventmanager/registration/README.md); the earlier clarification
+log 009 was removed in the user-requested log cleanup on 27 September 2026.
 
 Asked whether registration needs PUBLISHED + matching CONFIRMED booking + ACTIVE venue.
 The user first asked:

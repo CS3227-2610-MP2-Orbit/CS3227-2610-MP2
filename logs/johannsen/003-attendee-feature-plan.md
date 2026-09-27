@@ -1,4 +1,7 @@
-# 005 — Attendee feature plan
+# 003 — Attendee feature plan
+
+Renumbered from 005 on 27 September 2026. Historical command paths below retain
+their original numbering.
 
 Date: 2026-09-25
 Contributor: Johannsen

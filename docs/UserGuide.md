@@ -320,7 +320,7 @@ are planned for a later secure and audited implementation.
 
 1. On the shared login screen, create an **ATTENDEE** account if needed and
    log in. Your role opens the read-only catalogue. The catalogue contains only
-   public event fields, but the desktop workspace follows the shared login gate.
+   public event fields; selected details also show your own registration status.
 2. Enter text to search event titles/descriptions (case-insensitive literal
    substring), and optionally enter an exact, case-sensitive **Club ID**.
 3. Optionally choose **From date** and **To date** using the calendar controls.
@@ -330,18 +330,27 @@ are planned for a later secure and audited implementation.
    events whose start is still in the future are listed, ordered by start time
    and then event ID. **Clear filters** resets all fields and reloads the list.
 5. Select an event for its latest title, description, club ID, SGT start/end
-    times and configured capacity. **← Home** returns to the login screen.
+   times, venue/location, booking/venue status, remaining seats and your own
+   registration status. Full events remain visible, with an explanation of
+   registration availability. **Refresh details** reloads the selected event.
+6. **← Home** clears personal details and returns to the login screen. If your
+   session expires, the next detail read asks you to log in again.
 
-Configured capacity is **not remaining seats**. Venue/booking details,
-registration, personal notifications, check-in and attendance history are not
-connected yet; the details panel states these limits. An event that has started
-or is no longer published cannot be reopened through the catalogue.
+Remaining seats count confirmed and checked-in registrations, including inactive
+accounts whose seats have not been cancelled. Cancelled registrations do not
+occupy seats. This can differ from the Organizer's active-account roster count.
+Availability is a snapshot, not a reservation. A missing/mismatched/unconfirmed
+booking or inactive venue prevents registration even if seats remain.
 
-Browsing uses the same database settings as the other workspaces. It does not
-create or modify tables: initialize the Organizer schema by opening the Club
-Organizer workspace against your configured database first. On a connection or
-schema error, fix setup and use **Search / Refresh** to retry. Failures are shown
-without raw database exception messages.
+Register/cancel controls, personal notifications, check-in and attendance history
+screens are not available yet. An event that has started or is no longer published
+cannot be reopened through the catalogue.
+
+Browsing uses the same database settings as the other workspaces. The Attendee
+workspace initializes existing schema prerequisites in the background; opening
+Organizer first is no longer required. It does not seed or publish events.
+On a connection/schema error, fix setup and retry. Failures are shown without raw
+database exception messages.
 
 The Organizer currently creates drafts and has no publish action. Drafts are
 intentionally invisible here, so a freshly initialized database has no catalogue

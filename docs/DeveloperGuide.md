@@ -172,7 +172,7 @@ Shared utilities and cross-cutting types live under `seedu.eventmanager.common` 
 * Conflict detection remains on Admin approve (not on Organizer submit).
 * No supersede/withdraw in v1.
 
-### Attendee catalogue (first slice)
+### Attendee catalogue and personalized event details
 
 `EventCatalogueService` exposes a public read-only projection of the canonical
 Organizer events. Its `EventCatalogueRepository` boundary has a JDBC adapter in
@@ -183,37 +183,56 @@ also enforces future-start visibility for both listing and direct-ID details.
 
 `CatalogueQuery` combines literal, case-insensitive title/description search,
 exact club ID and inclusive Singapore-calendar start dates. An injected clock
-defines "upcoming". `AttendeeBrowseView` uses cancellable JavaFX Tasks on virtual
+defines "upcoming". `AttendeeBrowseController` uses cancellable JavaFX Tasks on virtual
 threads and ignores superseded results. Database/configuration work is off the
 UI thread; Home/app shutdown cancels pending work. Failures use safe messages and
 structured failure-type logging, not raw JDBC messages or business audit writes.
 
-The Attendee route does not run migrations or create fixtures. Organizer schema
-initialization remains with the existing bootstrap. Publication is not currently
-implemented by `EventService`, so new drafts do not appear. Venue data, available
-seats, personalized records and mutations are intentionally not claimed by this
-slice. After integrating shared authentication PR #22, the desktop catalogue is
-routed from an ATTENDEE login; its read service still exposes only public event
-fields. See [the Attendee plan](AttendeePlan.md).
+`AttendeeEventDetailsService` authenticates a live attendee session before and
+after a read, derives the owner ID internally and returns an immutable private
+projection separate from `CatalogueEvent`. The JDBC adapter reads canonical
+event, current booking, venue, occupied seats and only the caller's registration
+in one statement snapshot, with no write locks. Unique booking/registration keys
+and a separate aggregate prevent join multiplication. A service clock rechecks
+visibility after the read; query timeout is 15 seconds.
+
+`RegistrationEligibilityPolicy`, `AttendeeSessionGuard` and package-private
+`RegistrationReadSql` share rules with commands without making previews execute
+registration or acquire command locks. Occupancy includes CONFIRMED/CHECKED_IN
+records even for inactive users; Joseph's roster is not a capacity counter.
+Remaining seats are clamped at zero for display. Eligibility is advisory and
+separate from own status; existing command locks, version checks, post-lock time
+validation and transactional audit/outbox remain authoritative.
+
+The Attendee route lazily runs existing `RegistrationDatabaseMigration` bootstrap
+in background tasks, independently of Organizer navigation. Successful service
+initialization is reused and failure can be retried. No new migration, fixture
+insertion or publication operation is added. `EventService` still cannot publish
+events, so new drafts do not appear. Register/cancel UI remains the next slice.
+See [the Attendee plan](AttendeePlan.md).
 
 Focused verification:
 
 ```sh
 ./gradlew test --tests 'seedu.eventmanager.attendee.*'
+./gradlew test --tests 'seedu.eventmanager.registration.*'
 ./gradlew attendeeUiSmoke
 ```
 
-The three real PostgreSQL catalogue tests require `EVENT_MANAGER_TEST_DB_URL`,
+The PostgreSQL catalogue/detail/registration tests require `EVENT_MANAGER_TEST_DB_URL`,
 `EVENT_MANAGER_TEST_DB_USER` and optionally `EVENT_MANAGER_TEST_DB_PASSWORD`.
 Use a disposable test database, never the application database. Each new catalogue
 test creates and drops its own randomized schema; other existing integration
 tests may truncate their test tables. CI explicitly supplies the database settings
 for the Attendee test step. Without them, these database tests are skipped, not
-verified. Six service tests run without PostgreSQL.
+verified. Details integration tests live in the registration test package to reuse
+its isolated-schema fixtures; the CI registration step includes them. Catalogue
+and detail/policy service tests also run without PostgreSQL.
 
 `attendeeUiSmoke` is opt-in and requires a graphical desktop. It opens the actual
-JavaFX browse view with an in-memory synthetic repository, checks search/details,
-empty/validation/error/retry/Home behavior and saves snapshots under
+JavaFX browse view with synthetic repositories, checks venue/seats/own status,
+refresh, full state, expired session, delayed stale responses, clearing on Home,
+search/empty/validation/error/retry behavior and saves snapshots under
 `build/attendee-smoke/`. This is real UI interaction with fixture data, not
 database-connected or cross-role E2E coverage. It is not run in headless CI.
 
@@ -229,7 +248,8 @@ coordinated follow-up; no existing migration was modified or performance claim m
 
 ### Team ownership
 
-Registration backend integration is documented in [RegistrationHandoff.md](RegistrationHandoff.md).
+The shared registration contract is documented in the
+[registration README](../src/main/java/seedu/eventmanager/registration/README.md).
 The shared EventRegistrations/RegisteredAttendee contract comes unchanged from
 Joseph's feature-view-registration branch; Johannsen supplies its JDBC adapter.
 Use RegistrationDatabaseMigration for explicit startup, then
@@ -243,7 +263,7 @@ event are required for registration.
 | --- | --- |
 | Club Organizer (Joseph) | Events, volunteers/announcements (as scheduled), Organizer→venue submit |
 | Venue Administrator (Jordan) | Venues, availability, request decide, bookings, Admin UI |
-| Attendee (Johannsen) | Read-only discovery; registration and check-in remain planned |
+| Attendee (Johannsen) | Catalogue/personalized details and registration backend; registration UI/check-in remain planned |
 
 ---
 

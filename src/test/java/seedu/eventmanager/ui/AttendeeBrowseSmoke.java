@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.FutureTask;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -28,6 +29,13 @@ import javafx.scene.image.PixelFormat;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import seedu.eventmanager.attendee.CatalogueEvent;
+import seedu.eventmanager.attendee.AttendeeEventDetails;
+import seedu.eventmanager.attendee.AttendeeEventDetailsService;
+import seedu.eventmanager.attendee.AttendeeEventDetailsRepository;
+import seedu.eventmanager.common.Actor;
+import seedu.eventmanager.common.Role;
+import seedu.eventmanager.registration.Registration;
+import seedu.eventmanager.registration.RegistrationEligibilityPolicy;
 import seedu.eventmanager.attendee.EventCatalogueRepository;
 import seedu.eventmanager.attendee.EventCatalogueService;
 import seedu.eventmanager.event.Event;
@@ -44,12 +52,19 @@ public final class AttendeeBrowseSmoke {
         if (failure != null) {
             throw new AssertionError("Attendee JavaFX smoke failed", failure);
         }
-        System.out.println("Attendee JavaFX smoke PASS: browse, details, filters, empty, validation, error/retry, Home.");
+        System.out.println("Attendee JavaFX smoke PASS: personalized venue/seats/status, refresh, stale responses, session expiry, filters, error/retry, Home.");
     }
 
     public static final class SmokeApplication extends Application {
         private final AtomicBoolean failReads = new AtomicBoolean();
         private final AtomicInteger homes = new AtomicInteger();
+        private final AtomicBoolean failDetails = new AtomicBoolean();
+        private final AtomicBoolean expired = new AtomicBoolean();
+        private final AtomicInteger occupied = new AtomicInteger(3);
+        private final AtomicBoolean delayNext = new AtomicBoolean();
+        private volatile CountDownLatch entered;
+        private volatile CountDownLatch release;
+        private volatile CountDownLatch finished;
         private AttendeeBrowseView view;
         private Stage stage;
 
@@ -57,11 +72,37 @@ public final class AttendeeBrowseSmoke {
         public void start(Stage primaryStage) {
             stage = primaryStage;
             var service = fixtureService();
+            var detailService = new AttendeeEventDetailsService((id, attendee) -> {
+                var event = service.getEvent(id);
+                return Optional.of(new AttendeeEventDetailsRepository.Snapshot(event, "PUBLISHED",
+                        Optional.of(new AttendeeEventDetails.Venue("Campus Seminar Room", "COM1 Level 2", "CONFIRMED", "ACTIVE")),
+                        RegistrationEligibilityPolicy.Booking.CONFIRMED_ACTIVE, occupied.get(),
+                        id.equals(new UUID(0, 1)) ? Optional.of(Registration.Status.CONFIRMED) : Optional.empty()));
+            }, token -> {
+                if (expired.get()) throw new IllegalArgumentException("Synthetic expired session");
+                return new Actor(new UUID(0, 100), Role.ATTENDEE);
+            }, Clock.fixed(Instant.parse("2026-09-25T00:00:00Z"), ZoneOffset.UTC));
             view = new AttendeeBrowseView(() -> {
                 if (failReads.get()) {
                     throw new IllegalStateException("synthetic-sensitive-value");
                 }
                 return service;
+            }, id -> {
+                if (failDetails.get()) throw new IllegalStateException("synthetic-sensitive-value");
+                var result = detailService.getEvent("synthetic-session", id);
+                if (delayNext.compareAndSet(true, false)) {
+                    entered.countDown();
+                    // Simulate a driver returning after cancellation; it must never overwrite newer UI.
+                    boolean done = false;
+                    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+                    while (!done && System.nanoTime() < deadline) {
+                        try { done = release.await(5, TimeUnit.SECONDS); }
+                        catch (InterruptedException ignored) { }
+                    }
+                    if (!done) throw new AssertionError("Delayed smoke fixture was not released");
+                    finished.countDown();
+                }
+                return result;
             }, homes::incrementAndGet);
             stage.setScene(new Scene(view, 1280, 800));
             stage.setTitle("Attendee smoke — synthetic fixtures");
@@ -72,6 +113,7 @@ public final class AttendeeBrowseSmoke {
                 } catch (Throwable error) {
                     failure = error;
                 } finally {
+                    if (release != null) release.countDown();
                     Platform.runLater(() -> { view.close(); stage.close(); Platform.exit(); });
                 }
             });
@@ -80,11 +122,45 @@ public final class AttendeeBrowseSmoke {
         private void exercise() throws Exception {
             await(() -> list().getItems().size() == 2);
             fx(() -> list().getSelectionModel().selectFirst());
-            await(() -> detailText().contains("Event capacity: 20 (not remaining seats)"));
+            await(() -> detailText().contains("Remaining seats: 17 / 20"));
+            fx(() -> {
+                require(detailText().contains("Campus Seminar Room · COM1 Level 2"), "venue detail");
+                require(detailText().contains("Your registration: Registered"), "own status");
+            });
             fx(() -> screenshot("browse-1280.png"));
             fx(() -> { stage.setWidth(1000); stage.setHeight(640); });
             await(() -> view.getWidth() <= 1000 && view.getHeight() <= 640);
             fx(() -> { view.applyCss(); view.layout(); screenshot("browse-1000.png"); });
+
+            occupied.set(20);
+            fx(() -> button("attendee-refresh-details").fire());
+            await(() -> detailText().contains("Event is full"));
+            fx(() -> require(detailText().contains("Your registration: Registered"), "registered status survives fullness"));
+            occupied.set(3);
+            failDetails.set(true);
+            fx(() -> button("attendee-refresh-details").fire());
+            await(() -> detailText().startsWith("\nUnable to load events."));
+            fx(() -> require(!detailText().contains("synthetic-sensitive-value") && !detailText().contains("Your registration:"), "failure clears private state"));
+            failDetails.set(false);
+            fx(() -> button("attendee-refresh-details").fire());
+            await(() -> detailText().contains("Remaining seats: 17 / 20"));
+
+            entered = new CountDownLatch(1); release = new CountDownLatch(1); finished = new CountDownLatch(1);
+            delayNext.set(true);
+            fx(() -> button("attendee-refresh-details").fire());
+            require(entered.await(5, TimeUnit.SECONDS), "slow detail started");
+            fx(() -> list().getSelectionModel().select(1));
+            await(() -> detailText().contains("Campus music evening"));
+            release.countDown();
+            require(finished.await(5, TimeUnit.SECONDS), "cancelled read finished");
+            fx(() -> require(detailText().contains("Your registration: Not registered")
+                    && !detailText().contains("AI workshop"), "stale result ignored"));
+
+            expired.set(true);
+            fx(() -> button("attendee-refresh-details").fire());
+            await(() -> detailText().contains("Return Home and log in again"));
+            fx(() -> require(!detailText().contains("Your registration:"), "expired session clears status"));
+            expired.set(false);
 
             fx(() -> {
                 ((TextField) view.lookup("#attendee-search-text")).setText("workshop");
@@ -115,7 +191,14 @@ public final class AttendeeBrowseSmoke {
             failReads.set(false);
             fx(() -> button("attendee-search").fire());
             await(() -> list().getItems().size() == 2);
+            entered = new CountDownLatch(1); release = new CountDownLatch(1); finished = new CountDownLatch(1);
+            delayNext.set(true);
+            fx(() -> list().getSelectionModel().selectFirst());
+            require(entered.await(5, TimeUnit.SECONDS), "close during load");
             fx(() -> button("attendee-home").fire());
+            release.countDown();
+            require(finished.await(5, TimeUnit.SECONDS), "closed read finished");
+            fx(() -> require(!detailText().contains("Your registration:"), "Home clears personal state"));
             require(homes.get() == 1, "Home callback");
         }
 

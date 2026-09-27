@@ -4,7 +4,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
-import javafx.concurrent.Task;
+import java.util.function.Function;
+import java.util.UUID;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
@@ -21,18 +22,20 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import seedu.eventmanager.attendee.CatalogueEvent;
+import seedu.eventmanager.attendee.AttendeeEventDetails;
 import seedu.eventmanager.attendee.CatalogueQuery;
 import seedu.eventmanager.attendee.EventCatalogueService;
 import seedu.eventmanager.common.EntityNotFoundException;
 import seedu.eventmanager.common.JavaUtilStructuredLogger;
 import seedu.eventmanager.common.StructuredLogger;
 import seedu.eventmanager.common.ValidationException;
+import seedu.eventmanager.common.ApplicationException;
 
 /** Read-only Attendee workspace. All JDBC work runs outside the JavaFX thread. */
-public final class AttendeeBrowseView extends BorderPane implements AutoCloseable {
+public final class AttendeeBrowseView extends BorderPane implements AutoCloseable, AttendeeBrowseController.View {
     private static final String CARD = "-fx-background-color: white; -fx-background-radius: 8;"
             + " -fx-border-color: #e2e8f0; -fx-border-radius: 8;";
-    private final Supplier<EventCatalogueService> services;
+    private final AttendeeBrowseController controller;
     private final StructuredLogger logger = new JavaUtilStructuredLogger(AttendeeBrowseView.class);
     private final TextField search = new TextField();
     private final TextField club = new TextField();
@@ -41,12 +44,11 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
     private final ListView<CatalogueEvent> events = new ListView<>();
     private final VBox details = new VBox(12);
     private final Label feedback = text("", "#61708a", 13);
-    private Task<List<CatalogueEvent>> searchTask;
-    private Task<CatalogueEvent> detailTask;
-    private boolean closed;
 
-    public AttendeeBrowseView(Supplier<EventCatalogueService> services, Runnable onHome) {
-        this.services = Objects.requireNonNull(services);
+    public AttendeeBrowseView(Supplier<EventCatalogueService> services,
+            Function<UUID, AttendeeEventDetails> detailReader, Runnable onHome) {
+        Objects.requireNonNull(services);
+        controller = new AttendeeBrowseController(query -> services.get().search(query), detailReader, this);
         Objects.requireNonNull(onHome);
         setStyle("-fx-background-color: #f7f9fc;");
         setLeft(sidebar(() -> { close(); onHome.run(); }));
@@ -101,9 +103,13 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
             to.setValue(null);
             refresh();
         });
+        Button refreshDetails = new Button("Refresh details");
+        refreshDetails.setId("attendee-refresh-details");
+        refreshDetails.disableProperty().bind(events.getSelectionModel().selectedItemProperty().isNull());
+        refreshDetails.setOnAction(ignored -> controller.loadDetails(events.getSelectionModel().getSelectedItem().id()));
         FlowPane filters = new FlowPane(12, 12,
                 field("Search", search), field("Club ID", club),
-                field("From date (SGT)", from), field("To date (SGT)", to), submit, clear);
+                field("From date (SGT)", from), field("To date (SGT)", to), submit, clear, refreshDetails);
         filters.setAlignment(Pos.BOTTOM_LEFT);
         feedback.setId("attendee-feedback");
         events.setId("attendee-events");
@@ -128,7 +134,9 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
         });
         events.getSelectionModel().selectedItemProperty().addListener((ignored, previous, selected) -> {
             if (selected != null) {
-                loadDetails(selected);
+                controller.loadDetails(selected.id());
+            } else {
+                controller.clearDetails();
             }
         });
         details.setId("attendee-details");
@@ -149,76 +157,67 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
     }
 
     private void refresh() {
-        if (closed) {
-            return;
-        }
-        cancel(searchTask);
-        cancel(detailTask);
-        detailTask = null;
+        controller.search(new CatalogueQuery(search.getText(), club.getText(), from.getValue(), to.getValue()));
+    }
+
+    @Override public void searching() {
         events.getItems().clear();
-        showDetailMessage("Select an event to view its details.");
         events.setPlaceholder(text("Loading events…", "#61708a", 13));
         feedback.setText("Loading events…");
-        CatalogueQuery query = new CatalogueQuery(search.getText(), club.getText(), from.getValue(), to.getValue());
-        Task<List<CatalogueEvent>> task = new Task<>() {
-            @Override
-            protected List<CatalogueEvent> call() {
-                return services.get().search(query);
-            }
-        };
-        searchTask = task;
-        task.setOnSucceeded(ignored -> {
-            if (closed || searchTask != task) {
-                return;
-            }
-            events.getItems().setAll(task.getValue());
-            events.setPlaceholder(text("No matching upcoming published events.", "#61708a", 13));
-            feedback.setText(task.getValue().isEmpty()
-                    ? "No matches. Try clearing filters. Draft events are not shown."
-                    : task.getValue().size() + " upcoming event(s). Select one for details.");
-        });
-        task.setOnFailed(ignored -> {
-            if (!closed && searchTask == task) {
-                feedback.setText(safeFailure(task.getException()));
-                events.setPlaceholder(text("Events could not be loaded. Use Search / Refresh to retry.", "#b42318", 13));
-            }
-        });
-        Thread.ofVirtual().name("attendee-catalogue-search").start(task);
     }
 
-    private void loadDetails(CatalogueEvent selected) {
-        cancel(detailTask);
+    @Override public void searched(List<CatalogueEvent> results) {
+        events.getItems().setAll(results);
+        events.setPlaceholder(text("No matching upcoming published events.", "#61708a", 13));
+        feedback.setText(results.isEmpty() ? "No matches. Try clearing filters. Draft events are not shown."
+                : results.size() + " upcoming event(s). Select one for details.");
+    }
+
+    @Override public void searchFailed(Throwable failure) {
+        feedback.setText(safeFailure(failure));
+        events.setPlaceholder(text("Events could not be loaded. Use Search / Refresh to retry.", "#b42318", 13));
+    }
+
+    @Override public void clearedDetails() {
+        showDetailMessage("Select an event to view its details.");
+    }
+
+    @Override public void loadingDetails() {
         showDetailMessage("Loading current event details…");
-        Task<CatalogueEvent> task = new Task<>() {
-            @Override
-            protected CatalogueEvent call() {
-                return services.get().getEvent(selected.id());
-            }
-        };
-        detailTask = task;
-        task.setOnSucceeded(ignored -> {
-            if (!closed && detailTask == task) {
-                showDetails(task.getValue());
-            }
-        });
-        task.setOnFailed(ignored -> {
-            if (!closed && detailTask == task) {
-                showDetailMessage(safeFailure(task.getException()));
-            }
-        });
-        Thread.ofVirtual().name("attendee-catalogue-details").start(task);
     }
 
-    private void showDetails(CatalogueEvent event) {
+    @Override public void detailFailed(Throwable failure) {
+        showDetailMessage(safeFailure(failure));
+    }
+
+    @Override public void loadedDetails(AttendeeEventDetails value) {
+        CatalogueEvent event = value.event();
+        String ownStatus = value.ownStatus().map(status -> switch (status) {
+            case CONFIRMED -> "Registered";
+            case CANCELLED -> "Cancelled";
+            case CHECKED_IN -> "Checked in";
+        }).orElse("Not registered");
+        String availability = switch (value.eligibility()) {
+            case AVAILABLE -> "Open for registration";
+            case EVENT_FULL -> "Event is full";
+            case VENUE_INACTIVE -> "Registration unavailable: venue is not active";
+            case VENUE_NOT_CONFIRMED -> "Registration unavailable: no confirmed booking matching this event's schedule";
+            case EVENT_NOT_REGISTERABLE -> "Registration closed";
+        };
         details.getChildren().setAll(
                 text(event.title(), "#172033", 22), text("Club: " + event.clubId(), "#61708a", 13),
                 text("Starts: " + SingaporeDateTimes.display(event.startsAt()), "#172033", 14),
                 text("Ends: " + SingaporeDateTimes.display(event.endsAt()), "#172033", 14),
                 text(event.description().isBlank() ? "No description provided." : event.description(), "#172033", 14),
-                text("Event capacity: " + event.capacity() + " (not remaining seats)", "#61708a", 13),
-                text("Venue: booking details are not connected yet.", "#61708a", 13),
-                text("Registration, personal notifications, check-in and attendance history are not available yet.",
-                        "#61708a", 13));
+                text(value.venue().map(v -> "Venue: " + v.name() + " · " + v.location())
+                        .orElse("Venue: no current booking"), "#172033", 14),
+                text(value.venue().map(v -> "Booking: " + v.bookingStatus() + " · Venue status: " + v.venueStatus())
+                        .orElse("Booking: not confirmed"), "#61708a", 13),
+                text("Remaining seats: " + value.remainingSeats() + " / " + event.capacity(), "#172033", 14),
+                text("Your registration: " + ownStatus, "#172033", 14),
+                text(availability, "#172033", 14),
+                text("Availability is a snapshot, not a reserved seat. Use Refresh details for the latest information.", "#61708a", 13),
+                text("Register/cancel controls will be added in the next feature.", "#61708a", 13));
     }
 
     private void showDetailMessage(String message) {
@@ -226,6 +225,10 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
     }
 
     private String safeFailure(Throwable failure) {
+        if (failure instanceof ApplicationException application
+                && ("UNAUTHENTICATED".equals(application.code()) || "FORBIDDEN".equals(application.code()))) {
+            return "Your attendee session is no longer valid. Return Home and log in again.";
+        }
         if (failure instanceof ValidationException) {
             return "Check the date range: From must be on or before To.";
         }
@@ -234,8 +237,7 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
         }
         logger.warn("attendee_catalogue_load_failed", Map.of(
                 "failureType", failure == null ? "unknown" : failure.getClass().getSimpleName()));
-        return "Unable to load events. Check database setup and try Search / Refresh."
-                + " The Organizer event schema must already be initialized.";
+        return "Unable to load events. Try Refresh details or Search / Refresh. If this continues, check database setup.";
     }
 
     private static VBox field(String label, javafx.scene.control.Control control) {
@@ -255,16 +257,8 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
         return label;
     }
 
-    private static void cancel(Task<?> task) {
-        if (task != null) {
-            task.cancel();
-        }
-    }
-
     @Override
     public void close() {
-        closed = true;
-        cancel(searchTask);
-        cancel(detailTask);
+        controller.close();
     }
 }

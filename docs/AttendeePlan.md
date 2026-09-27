@@ -1,5 +1,22 @@
 # Attendee implementation plan
 
+## Implementation update — 27 September 2026
+
+Issue #28 now adds authenticated event details: current venue/location and booking
+state, remaining seats, own registration status and registration-eligibility
+messages. A separate private projection preserves the public catalogue boundary.
+Shared session, eligibility and SQL predicates avoid duplicating command rules;
+the UI controller owns asynchronous reads only. Existing migrations initialize
+on the Attendee route; no new table or column is required.
+
+Register/cancel backend is implemented and integrated with Organizer consumers;
+register/cancel UI and My Registrations are issue #29. Notifications, normal
+self-check-in and history remain later slices. Publication still depends on
+Joseph; fixture publication is not an implemented publish workflow. Historical
+implementation-status and QR sections below do not override these updates or
+the no-QR decision. See [log 006](../logs/johannsen/006-browse-details-plan-and-implementation.md)
+for this slice's planning and actual verification evidence.
+
 ## Current decisions — 26 September 2026 (supersede the historical proposal below)
 
 - QR is out of scope. Plan a normal attendee self-check-in button; confirm the
@@ -13,7 +30,9 @@
 - First PR: catalogue and authentication routing integration. Next handoff:
   registration persistence/read adapter and authenticated register/cancel workflow.
 - Earlier evidence tables and QR-specific acceptance rows below are historical
-  planning context, not current implementation authority. Logs 009/010 track updates.
+  planning context, not current implementation authority. See the current decisions
+  above and the [registration README](../src/main/java/seedu/eventmanager/registration/README.md)
+  for the shared contract.
 
 ## Historical planning record (25 September)
 
@@ -35,7 +54,8 @@ revalidated public details. ATT-01/02 are covered by service/database tests;
 ATT-03 covers only existing public fields, not venue/seats/own registration.
 ATT-15 is exercised for this browse view only. No authenticated mutations exist.
 The current shared publication workflow remains missing, so cross-role slice-1
-integration is pending. See User/Developer Guides and log 006 for actual checks.
+integration is pending. See User/Developer Guides and
+[log 004](../logs/johannsen/004-attendee-catalogue.md) for actual checks.
 
 ## Scope and authority
 

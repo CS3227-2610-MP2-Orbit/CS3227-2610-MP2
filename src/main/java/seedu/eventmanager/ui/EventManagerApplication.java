@@ -19,6 +19,7 @@ import seedu.eventmanager.club.ClubService;
 import seedu.eventmanager.club.JdbcClubRepository;
 import seedu.eventmanager.event.EventService;
 import seedu.eventmanager.attendee.EventCatalogueService;
+import seedu.eventmanager.attendee.AttendeeEventDetailsService;
 import seedu.eventmanager.event.JdbcEventRepository;
 import seedu.eventmanager.event.OrganizerVenueRequestService;
 import seedu.eventmanager.event.RegistrationOverviewService;
@@ -30,6 +31,7 @@ import seedu.eventmanager.storage.DatabaseMigration;
 import seedu.eventmanager.storage.DriverManagerDataSource;
 import seedu.eventmanager.storage.JdbcDatabase;
 import seedu.eventmanager.storage.JdbcEventCatalogueRepository;
+import seedu.eventmanager.storage.JdbcAttendeeEventDetailsRepository;
 import seedu.eventmanager.storage.JdbcEventRegistrations;
 import seedu.eventmanager.storage.JdbcNotificationService;
 import seedu.eventmanager.storage.RegistrationDatabaseMigration;
@@ -82,7 +84,7 @@ public final class EventManagerApplication extends Application {
         } else if (session.actor().role() == Role.CLUB_ORGANIZER) {
             showOrganizer(root, session.actor());
         } else {
-            showAttendee(root);
+            showAttendee(root, session);
         }
     }
 
@@ -151,17 +153,33 @@ public final class EventManagerApplication extends Application {
                 new VenueAdministratorFxApplication().createRoot(session));
     }
 
-    private void showAttendee(BorderPane root) {
+    private void showAttendee(BorderPane root, JdbcLocalSessionService.Session session) {
         closeAttendee();
         root.setPadding(Insets.EMPTY);
         root.setTop(null);
-        attendeeView = new AttendeeBrowseView(() -> {
-            // Configuration and JDBC are resolved by the view's background task.
-            DatabaseConfiguration configuration = DatabaseBootstrap.configuration();
-            var dataSource = new DriverManagerDataSource(new DatabaseConfig(
-                    configuration.url(), configuration.username(), configuration.password()));
-            return new EventCatalogueService(new JdbcEventCatalogueRepository(dataSource), Clock.systemUTC());
-        }, () -> showHome(root));
+        record ReadServices(EventCatalogueService catalogue, AttendeeEventDetailsService details) { }
+        // Lazy bootstrap runs only on background read tasks; a failed initialization can be retried.
+        var services = new java.util.function.Supplier<ReadServices>() {
+            private ReadServices value;
+
+            @Override public synchronized ReadServices get() {
+                if (value == null) {
+                    DatabaseConfiguration configuration = DatabaseBootstrap.configuration();
+                    RegistrationDatabaseMigration.migrate(configuration);
+                    var dataSource = new DriverManagerDataSource(new DatabaseConfig(
+                            configuration.url(), configuration.username(), configuration.password()));
+                    var database = new JdbcDatabase(configuration);
+                    var sessions = new JdbcLocalSessionService(database, new PasswordHasher());
+                    value = new ReadServices(
+                            new EventCatalogueService(new JdbcEventCatalogueRepository(dataSource), Clock.systemUTC()),
+                            new AttendeeEventDetailsService(new JdbcAttendeeEventDetailsRepository(database),
+                                    sessions::resolve, Clock.systemUTC()));
+                }
+                return value;
+            }
+        };
+        attendeeView = new AttendeeBrowseView(() -> services.get().catalogue(),
+                id -> services.get().details().getEvent(session.token(), id), () -> showHome(root));
         root.setCenter(attendeeView);
     }
 
