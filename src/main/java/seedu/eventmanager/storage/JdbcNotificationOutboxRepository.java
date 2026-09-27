@@ -1,7 +1,6 @@
 package seedu.eventmanager.storage;
 
 import java.sql.SQLException;
-import java.time.OffsetDateTime;
 import java.util.Objects;
 import java.util.UUID;
 import seedu.eventmanager.notification.NotificationOutboxRepository;

@@ -1,6 +1,5 @@
 package seedu.eventmanager.notification;
 
-import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public interface NotificationOutboxRepository {

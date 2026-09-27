@@ -13,6 +13,8 @@ import java.util.Map;
 import java.util.UUID;
 
 public final class VenueAdministratorService {
+    public static final String REASON_VENUE_BOOKED = "Venue already booked";
+    public static final String REASON_CAPACITY_EXCEEDED = "Requested capacity exceeds venue capacity";
     private final VenueRequestRepository requests;
     private final VenueBookingRepository bookings;
     private final AuthorizationService authorization;
@@ -47,6 +49,12 @@ public final class VenueAdministratorService {
     }
 
     public VenueRequest reject(Actor administrator, UUID requestId, String reason) {
+        if (reason == null || reason.isBlank()) {
+            throw new ApplicationException("REJECTION_REASON_REQUIRED", "A rejection reason is required.");
+        }
+        if (!REASON_VENUE_BOOKED.equals(reason) && !REASON_CAPACITY_EXCEEDED.equals(reason)) {
+            throw new ApplicationException("INVALID_DECISION_REASON", "Select a supported rejection reason.");
+        }
         return decideWithObservability(administrator, requestId, false, reason);
     }
 
@@ -67,7 +75,8 @@ public final class VenueAdministratorService {
             metrics.increment(approve ? "venue_requests.approved" : "venue_requests.rejected");
             return result;
         } catch (ApplicationException exception) {
-            if ("FORBIDDEN".equals(exception.code()) || "UNAUTHENTICATED".equals(exception.code())) {
+            if ("FORBIDDEN".equals(exception.code())
+                    || "UNAUTHENTICATED".equals(exception.code())) {
                 metrics.increment("venue_requests.authorization_failures");
                 logger.warn("venue_request_authorization_failed", Map.of("correlationId", correlationId,
                         "requestId", String.valueOf(requestId), "action", action, "userId", userId(administrator),

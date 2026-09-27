@@ -55,8 +55,6 @@ The app is designed for users who:
    DATABASE_USER=your_postgres_username
    EVENT_MANAGER_DB_URL=jdbc:postgresql://localhost:5432/event_manager
    EVENT_MANAGER_DB_USER=your_postgres_username
-   EVENT_MANAGER_ORGANIZER_ID=demo-organizer
-   EVENT_MANAGER_CLUB_IDS=demo-club,chess-club
    ```
 
    Optional: `DATABASE_PASSWORD` / `EVENT_MANAGER_DB_PASSWORD` if your Postgres user requires a password.
@@ -78,7 +76,7 @@ The app is designed for users who:
 5. A shared login screen appears. Log in with your role's account (or create a
    normal Attendee/Organizer account); the app routes you to that workspace:
 
-   * **Club Organizer** — create/edit events and request venues (club ownership still comes from `.env`).
+   * **Club Organizer** — log in with a Club Organizer account, then create clubs, create/edit events, and request venues. Each account sees only its own clubs and their events.
    * **Venue Administrator** — local login, then dashboard, venues, and request review.
    * **Attendee** — read-only browse/search of upcoming published events after login.
 
@@ -90,17 +88,23 @@ The app is designed for users who:
 
 | Role | Action | Where in the UI |
 | --- | --- | --- |
-| All | Open a role workspace | Home screen |
+| All | Open a role workspace | Shared login |
 | Attendee | Browse/search published events | **Attendee** → **Browse events** |
+| Organizer | Create a club | **Clubs** → enter **Club name** → **Create club** |
 | Organizer | Create draft event | **Events** → **+ New event** → fill form → **Save event** |
 | Organizer | Edit draft event | **Events** → select event → edit → **Save event** |
 | Organizer | Reset / revert form | **Reset** (new) or **Revert changes** (edit) |
 | Organizer | Request a venue | **Request venue** → select event + venue → **Submit request** |
+| Organizer | View registrations | **Registrations** → select event |
+| Organizer | Post an announcement | **Announcements** → select event → write message → **Send announcement** |
+| Organizer | Delete an announcement | **Announcements** → select event → select announcement → **Delete selected** → **OK** |
+| Organizer | Assign / remove volunteers | **Volunteers** → select event → **Assign volunteer** or **Remove selected** (requires registered attendees) |
 | Venue Admin | Log in | Venue Administrator login screen |
-| Venue Admin | Create venue | **Venues** → **Create venue** |
-| Venue Admin | Claim access to a venue | **Venues** → select row → **Claim access** |
+| Venue Admin | View dashboard | **Dashboard** → pending requests, available venues, **Refresh** |
 | Venue Admin | Review / approve / reject | **Venue requests** → select row → **Approve** or **Reject** |
-| Venue Admin | Manage users / grants | **Users and access** |
+| Venue Admin | Manage venues | **Venues** → view, create, edit, activate/deactivate |
+| Venue Admin | Manage users | **Users and access** → view, create, edit, activate/deactivate |
+| Venue Admin | Sign out | **Log out** |
 
 ---
 
@@ -118,13 +122,29 @@ Event Venue Manager uses one shared desktop shell:
 
 ## Club Organizer
 
-### Creating a draft event
+Everything in the Club Organizer workspace belongs to the signed-in account: you see and manage only the clubs you created and their events, venue requests, and volunteers.
 
-Creates a new draft event owned by one of your configured clubs.
+### Creating a club
 
 **Steps:**
 
-1. Log in with a **Club Organizer** account.
+1. Log in with a Club Organizer account.
+2. In the sidebar, select **Clubs**.
+3. Enter a **Club name** (up to 80 characters) and select **Create club**.
+
+**Expected result:** The club appears in **Your clubs** and in the **Club** picker when creating events.
+
+> **Caution:** Club names are unique across the whole system, ignoring case, so `Chess Club` and `chess club` cannot both exist. Clubs cannot be renamed or deleted yet. Each club has exactly one owner: the account that created it.
+
+### Creating a draft event
+
+Creates a new draft event owned by one of your clubs.
+
+**Prerequisite:** You own at least one club (see [Creating a club](#creating-a-club)).
+
+**Steps:**
+
+1. Log in with a Club Organizer account.
 2. In the sidebar, select **Events**, then select **+ New event** above **Your events**.
 3. Choose a **Club**, enter **Title**, optional **Description**, start/end date and Singapore time (24-hour, e.g. `18:00`), and a positive **Capacity**.
 4. Select **Save event**.
@@ -133,7 +153,7 @@ Creates a new draft event owned by one of your configured clubs.
 
 > **Note:** Defaults for a new draft are start `18:00`, end `20:00`, and capacity `80`.
 
-> **Tip:** Clubs come from `EVENT_MANAGER_CLUB_IDS` in `.env` (comma-separated). There is no Clubs create UI yet.
+> **Tip:** If you have no clubs yet, the form shows a reminder to create one under **Clubs** first.
 
 ### Editing a draft event
 
@@ -177,6 +197,63 @@ Submits a `SUBMITTED` venue booking request so a Venue Administrator can approve
 
 > **Tip:** After Admin decides, return to **Request venue** and select the event again to see the updated status.
 
+### Viewing registrations
+
+Shows who is registered for one of your events.
+
+**Steps:**
+
+1. In the sidebar, select **Registrations**.
+2. Select an event in **Your events**.
+
+**Expected result:** The panel shows the count as *registered / capacity* (for example `12 / 80 registered`) and lists registered attendees by name, sorted alphabetically. Select the event again to refresh.
+
+> **Caution:** The list reads real registrations from the database and counts confirmed and checked-in attendees with active accounts. This build has no Attendee screen for registering, and Organizers cannot publish events yet, so events normally show `0 / capacity registered` and *No attendees have registered for this event yet.* The list is read-only; registrations cannot be changed here.
+
+### Posting announcements
+
+Saves a message for one of your events and queues a notification for each registered attendee.
+
+**Steps:**
+
+1. In the sidebar, select **Announcements**.
+2. Select an event in **Your events**. **Posted announcements** lists earlier announcements, newest first.
+3. Write a message (up to 1000 characters; the counter shows how many you have used).
+4. Select **Send announcement**.
+
+**Expected result:** The announcement appears at the top of **Posted announcements**, and feedback reports how many notifications were queued (for example *Notification queued for 12 registered attendees*).
+
+> **Caution:** Announcements cannot be edited after sending. Notifications are only **queued** in the shared notification outbox; attendees cannot see them yet, because in-app notification delivery is not available in this build. Recipients are the event's current registrants; this build has no Attendee screen for registering, so feedback normally shows *No registered attendees to notify yet.*
+
+### Deleting announcements
+
+Permanently removes one of your event's announcements.
+
+**Steps:**
+
+1. In the sidebar, select **Announcements**, then select the event.
+2. In **Posted announcements**, select the announcement.
+3. Select **Delete selected**, then **OK** to confirm (or **Cancel** to keep it).
+
+**Expected result:** The announcement disappears from **Posted announcements** and feedback shows *Announcement deleted.*
+
+> **Caution:** Deletion cannot be undone. Notifications already queued for attendees when the announcement was sent are **not** withdrawn.
+
+### Assigning volunteers
+
+Assigns attendees who are registered for one of your events as volunteers, with an optional role.
+
+**Steps:**
+
+1. In the sidebar, select **Volunteers**.
+2. Select an event in **Your events**. **Assigned volunteers** lists current volunteers.
+3. Under **Assign a volunteer**, choose an **Attendee**, optionally enter a **Role** (up to 60 characters, e.g. `Usher`), and select **Assign volunteer**.
+4. To remove a volunteer, select them in **Assigned volunteers** and select **Remove selected**.
+
+**Expected result:** Feedback confirms the assignment or removal and the list updates. Assigning the same attendee twice is rejected.
+
+> **Caution:** Only attendees **registered** for the event can be assigned. This build has no Attendee screen for registering, so the attendee picker is normally empty and shows *No registered attendees available to assign*.
+
 ---
 
 ## Venue Administrator
@@ -197,13 +274,17 @@ Submits a `SUBMITTED` venue booking request so a Venue Administrator can approve
 1. Sidebar → **Venues** → **Create venue**.
 2. Enter name, location, and positive capacity.
 
-**Expected result:** Venue appears as **ACTIVE**. Creating a venue also **grants you access** to approve requests for that venue.
+**Expected result:** Venue appears in the venue list as **ACTIVE**.
 
-### Claiming access to an existing venue
+### Editing and activating venues
 
-If a venue was created earlier (or by another admin) and Approve fails with no access:
+Use **Venues** to select an existing venue, edit its details, or toggle its
+administrative status between **ACTIVE** and **INACTIVE**. Inactive venues are
+not available for new organizer requests.
 
-1. **Venues** → select the venue → **Claim access**.
+An approved booking does not permanently deactivate the whole venue. Booking
+occupancy remains interval-based, so a venue can be available again after its
+confirmed booking interval ends.
 
 ### Reviewing venue requests
 
@@ -213,13 +294,25 @@ If a venue was created earlier (or by another admin) and Approve fails with no a
 2. Select a pending row.
 3. **Approve**, or **Reject** (rejection requires a reason).
 
+Rejection reasons are selected from the fixed list **Venue already booked** or
+**Requested capacity exceeds venue capacity**.
+
 **Expected result:** Approved/rejected requests leave the pending list. Dashboard pending count updates when you return to **Dashboard**.
 
-> **Note:** The table currently shows UUIDs for request, venue, event, and organizer. The data is linked in the database even when labels are not human-readable yet.
+The table presents readable request information: a short request reference,
+venue name and location, event title, organizer username, start time, and
+attendance. Internal UUIDs remain backend identifiers and are not required for
+normal administrator use.
 
 ### Users and access
 
-Use **Users and access** to create administrator users and grant venue access by venue id when needed.
+Use **Users and access** to view users, create accounts, edit usernames/roles,
+activate or deactivate accounts, and grant an administrator access to specific
+venues. Roles are selected from the supported role list rather than typed
+manually.
+
+Password change and password-reset workflows are not currently available and
+are planned for a later secure and audited implementation.
 
 ---
 
@@ -267,24 +360,26 @@ A: Create an ACTIVE venue under Venue Administrator → **Venues**, then reopen 
 A: Confirm both roles use the same `DATABASE_URL` / `EVENT_MANAGER_DB_*`. Open **Venue requests** again so the list reloads. Confirm submit showed a success message.
 
 **Q: Approve fails / forbidden.**  
-A: Select the venue → **Claim access**, or recreate the venue while logged in (auto-grant).
+A: Confirm that the signed-in account is an active Venue Administrator. All
+Venue Administrators have the same access to all venues; the backend enforces
+the role check independently of the UI.
 
-**Q: How do I add clubs for the Organizer?**  
-A: Set `EVENT_MANAGER_CLUB_IDS` in `.env` and restart. There is no Clubs CRUD UI yet.
+**Q: How do I add clubs for the Organizer?**
+A: Log in as a Club Organizer and use **Clubs** → **Create club**. `EVENT_MANAGER_CLUB_IDS` / `EVENT_MANAGER_ORGANIZER_ID` in `.env` are no longer used.
+
+**Q: My old events disappeared after upgrading.**
+A: Events created under the former `.env` demo clubs (for example `demo-club`) are still in the database, but no account owns those clubs, so they are not shown. Create a club and new events under your account.
 
 **Q: Do Club Organizer and Venue Administrator share a login?**  
-A: Yes, the shared login routes by account role. Organizer club ownership still
-uses `.env` configuration; this is not yet unified with account-based club ownership.
+A: Yes, the shared login routes by account role. Organizer club ownership is now
+associated with the account that created the club.
 
 ---
 
 ## Known Issues
 
-* Shared login is implemented, but Organizer club ownership still uses `.env` configuration.
-* Organizer string ids are mapped to UUIDs for venue requests (temporary until shared users auth).
 * No supersede/withdraw of venue requests from the Organizer UI.
-* Attendee registration, notifications, check-in, and history are not implemented yet.
-* Admin request table shows raw UUIDs rather than event/venue names.
+* Attendee registration UI, notifications, check-in, and history are not implemented yet.
 * Notification outbox stores Admin decisions but does not send email yet.
 
 ---
@@ -297,7 +392,6 @@ uses `.env` configuration; this is not yet unified with account-based club owner
 | Venue Administrator | Role that manages venues and approves/rejects booking requests |
 | Draft event | Event that can still be edited in the Organizer workflow |
 | `SUBMITTED` request | Venue request waiting for Admin decision |
-| Claim access | Grants the logged-in Admin permission to decide requests for a venue |
 | `.env` | Local config file for database URL/user and Organizer demo identity |
 
 ---

@@ -2,7 +2,6 @@ package seedu.eventmanager.ui;
 
 import java.util.Objects;
 import java.util.Optional;
-import java.util.UUID;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.scene.control.Alert;
@@ -21,7 +20,7 @@ import seedu.eventmanager.common.Role;
 import seedu.eventmanager.common.Actor;
 import seedu.eventmanager.service.UserAccessRepository;
 
-/** Local user and venue-scope management screen. */
+/** Local user management screen. */
 public final class UserAccessView {
     private final BorderPane root = new BorderPane();
     private final TableView<UserAccessRepository.UserSummary> table = new TableView<>();
@@ -43,11 +42,9 @@ public final class UserAccessView {
         create.setOnAction(event -> createUser());
         Button edit = new Button("Edit account");
         edit.setOnAction(event -> editUser());
-        Button grant = new Button("Grant venue access");
-        grant.setOnAction(event -> grantAccess());
         Button refresh = new Button("Refresh");
         refresh.setOnAction(event -> reload());
-        HBox actions = new HBox(10, create, edit, grant, refresh);
+        HBox actions = new HBox(10, create, edit, refresh);
         VBox content = new VBox(16, back, heading, actions, table);
         content.setPadding(new Insets(28));
         root.setCenter(content);
@@ -87,42 +84,23 @@ public final class UserAccessView {
         }
     }
 
-    private void grantAccess() {
-        UserAccessRepository.UserSummary selected = table.getSelectionModel().getSelectedItem();
-        Optional<String> venueId = prompt("Grant venue access", "Venue ID", "");
-        if (selected == null || venueId.isEmpty()) return;
-        try {
-            users.grantVenueAccess(actor, selected.userId(), UUID.fromString(venueId.get().trim()));
-        } catch (RuntimeException exception) {
-            showError(exception.getMessage());
-        }
-    }
-
     private void editUser() {
         UserAccessRepository.UserSummary selected = table.getSelectionModel().getSelectedItem();
         if (selected == null) {
             showError("Select a user account first.");
             return;
         }
-        if (selected.role() == Role.VENUE_ADMINISTRATOR) {
-            showError("Venue Administrator accounts cannot be edited here.");
-            return;
-        }
         TextInputDialog username = new TextInputDialog(selected.username());
         username.setTitle("Edit account");
-        username.setHeaderText("Update username");
         username.setContentText("Username:");
         Optional<String> updatedUsername = username.showAndWait();
         if (updatedUsername.isEmpty()) return;
-
         ChoiceDialog<Role> role = new ChoiceDialog<>(selected.role(),
-                java.util.List.of(Role.ATTENDEE, Role.CLUB_ORGANIZER));
+                java.util.List.of(Role.ATTENDEE, Role.CLUB_ORGANIZER, Role.VENUE_ADMINISTRATOR));
         role.setTitle("Edit account");
-        role.setHeaderText("Update normal-user role");
         role.setContentText("Role:");
         Optional<Role> updatedRole = role.showAndWait();
         if (updatedRole.isEmpty()) return;
-
         CheckBox active = new CheckBox("Account active");
         active.setSelected(selected.active());
         Alert status = new Alert(Alert.AlertType.CONFIRMATION);
