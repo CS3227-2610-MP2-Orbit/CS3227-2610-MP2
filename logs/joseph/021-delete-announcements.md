@@ -117,6 +117,29 @@ delete and its audit record commit or roll back together. The main gap is that t
 confirmation dialog and button were not exercised; a short manual run is the next
 step.
 
+## Follow-up: PR #27 conflicts
+
+Prompt (verbatim):
+
+> there are some conflicts actually ... https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/pull/27
+
+Cause: 6b9e673 was recorded as a normal (single-parent) commit, so git did not
+know the branch already contained #23 and `main`; GitHub reported
+`CONFLICTING`.
+
+Fix (left uncommitted for the user):
+
+```bash
+git merge --no-ff --no-commit origin/feature-view-registration   # affc504, unchanged since the earlier merge
+# CONFLICT in 7 files; all resolved with this branch's version (it already contains #23's changes)
+git checkout --ours -- <7 conflicted files> && git add -A
+git diff --cached --stat HEAD   # empty: the merge changes no file contents
+```
+
+Read-only check: a throwaway commit object built from the resolved tree (not on
+any branch) merged with `origin/main` via `git merge-tree --write-tree` without
+conflicts. Tests were not re-run because file contents are unchanged from 86aae80.
+
 ## Student review
 
 - [ ] I confirmed that the original prompts are accurate.
