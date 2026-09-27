@@ -221,6 +221,7 @@ Focused verification:
 ./gradlew attendeeRegistrationUiSmoke
 ./gradlew attendeeInboxUiSmoke
 ./gradlew attendeeCheckInUiSmoke
+./gradlew attendeeHistoryUiSmoke
 ```
 
 The PostgreSQL catalogue/detail/registration tests require `EVENT_MANAGER_TEST_DB_URL`,
@@ -403,6 +404,39 @@ snapshots, including no Register on ongoing events and safe rejection messages.
 This is separate from PostgreSQL integration, not real-login desktop E2E. There is
 no QR verification, location/proximity check or proof of physical presence.
 
+### Attendance history (#32)
+
+`AttendanceHistoryService.list(sessionToken)` resolves the existing live attendee
+session before and after its repository read. No caller-supplied attendee ID is
+accepted at this service boundary. `JdbcAttendanceHistoryRepository` binds the
+resolved owner and joins active ATTENDEE users, CHECKED_IN registrations, event
+metadata and one venue from `RegistrationReadSql.displayBooking`. A single SQL
+statement provides the history snapshot, with a 15-second statement timeout and
+no write locks. It uses the existing owner index; no migrations or duplicated
+attendance table. Results are newest check-in first, registration ID breaking
+ties. No public-catalogue time/status filter is applied: history includes ongoing,
+ended and no-longer-published events with a stored check-in. Read failures remain
+failures rather than being converted to empty history.
+
+`AttendanceRecord` contains only display metadata and check-in time, not account
+secrets or mutation versions. Event and venue details reflect current records,
+not immutable attendance-time snapshots. The existing foreign keys retain event
+references; the shared venue lookup falls back to the latest recorded booking.
+
+The dedicated `AttendanceHistoryController` follows Browse's virtual-thread Task,
+cancellation and latest-result checks. Refresh clears old private details;
+navigation away/Home invalidates pending responses even when a driver ignores
+interruption. `AttendanceHistoryView` is a read-only list with side-by-side
+details in the existing attendee shell. Application wiring binds the login token
+to the history callback. Reads produce no business audit/outbox effects.
+
+Service tests cover session validation, immutable/empty results and in-flight
+revocation/account switches. PostgreSQL tests cover owner isolation, status
+filtering, order, metadata/venue fallback, a real #31 check-in, and no write side
+effects. `attendeeHistoryUiSmoke` covers actual JavaFX controls with synthetic
+callbacks, not real-login/database desktop E2E. Pagination and immutable event
+snapshots are outside this slice; no large-data performance claim is made.
+
 ### Team ownership
 
 The shared registration contract is documented in the
@@ -420,7 +454,7 @@ event are required for registration.
 | --- | --- |
 | Club Organizer (Joseph) | Events, volunteers/announcements (as scheduled), Organizer→venue submit |
 | Venue Administrator (Jordan) | Venues, availability, request decide, bookings, Admin UI |
-| Attendee (Johannsen) | Catalogue/details, registration backend, register/cancel/My Registrations, persistent Notifications and normal self-check-in |
+| Attendee (Johannsen) | Catalogue/details, registration backend, register/cancel/My Registrations, persistent Notifications, normal self-check-in and attendance history |
 
 ---
 
@@ -508,7 +542,6 @@ See [Agentic SE](AgenticSE.md). Cursor project hooks (optional process guardrail
 
 * Organizer supersede/withdraw of open requests.
 * Club rename/delete and multi-organizer clubs.
-* A separate Attendee attendance-history screen.
 * Delivery routes for non-attendee outbox events and email (attendee in-app delivery is implemented).
 * Broader Postgres integration tests for the Organizer submit path.
 
@@ -550,6 +583,6 @@ See [Agentic SE](AgenticSE.md). Cursor project hooks (optional process guardrail
 
 ## Appendix: Current implementation status
 
-**Implemented (selected):** shared role-based login; Attendee catalogue, registration backend, register/cancel, My Registrations, normal self-check-in and persistent Notifications inbox; Organizer account-owned clubs, draft events, venue requests, volunteers, registration overview and announcements; Admin venues, user management and request approve/reject; Flyway + JDBC persistence; unit and PostgreSQL integration tests.
+**Implemented (selected):** shared role-based login; Attendee catalogue, registration backend, register/cancel, My Registrations, normal self-check-in, attendance history and persistent Notifications inbox; Organizer account-owned clubs, draft events, venue requests, volunteers, registration overview and announcements; Admin venues, user management and request approve/reject; Flyway + JDBC persistence; unit and PostgreSQL integration tests.
 
-**Not yet implemented (selected):** a separate Attendee attendance-history screen; club rename/delete; Organizer supersede/withdraw; email notification delivery; production deployment tooling.
+**Not yet implemented (selected):** club rename/delete; Organizer supersede/withdraw; email notification delivery; production deployment tooling.

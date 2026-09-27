@@ -32,6 +32,7 @@ import seedu.eventmanager.common.StructuredLogger;
 import seedu.eventmanager.common.ValidationException;
 import seedu.eventmanager.common.ApplicationException;
 import seedu.eventmanager.attendee.MyRegistration;
+import seedu.eventmanager.attendee.AttendanceRecord;
 import seedu.eventmanager.registration.Registration;
 import seedu.eventmanager.registration.RegistrationEligibilityPolicy;
 
@@ -55,6 +56,8 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
     private final Button registrationsNav = new Button("My Registrations");
     private final Button notificationsNav = new Button("Notifications");
     private final InboxView inbox;
+    private final Button historyNav = new Button("Attendance history");
+    private final AttendanceHistoryView history;
     private final Clock clock;
 
     public AttendeeBrowseView(Supplier<EventCatalogueService> services,
@@ -66,6 +69,18 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
     AttendeeBrowseView(Supplier<EventCatalogueService> services,
             Function<UUID, AttendeeEventDetails> detailReader, AttendeeRegistrationActions actions,
             InboxActions inboxActions, Runnable onHome, Clock clock) {
+        this(services, detailReader, actions, inboxActions, List::of, onHome, clock);
+    }
+
+    public AttendeeBrowseView(Supplier<EventCatalogueService> services,
+            Function<UUID, AttendeeEventDetails> detailReader, AttendeeRegistrationActions actions,
+            InboxActions inboxActions, Supplier<List<AttendanceRecord>> historyReader, Runnable onHome) {
+        this(services, detailReader, actions, inboxActions, historyReader, onHome, Clock.systemUTC());
+    }
+
+    private AttendeeBrowseView(Supplier<EventCatalogueService> services,
+            Function<UUID, AttendeeEventDetails> detailReader, AttendeeRegistrationActions actions,
+            InboxActions inboxActions, Supplier<List<AttendanceRecord>> historyReader, Runnable onHome, Clock clock) {
         this.clock = Objects.requireNonNull(clock);
         Objects.requireNonNull(services);
         controller = new AttendeeBrowseController(query -> services.get().search(query), detailReader, actions, this);
@@ -75,6 +90,8 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
                 row -> controller.checkIn(row.eventId(), row.version()), clock);
         inbox = new InboxView(inboxActions, count -> notificationsNav.setText(
                 count < 0 ? "Notifications (?)" : "Notifications (" + count + " unread)"));
+        history = new AttendanceHistoryView(historyReader);
+        history.disableProperty().bind(controller.busyProperty().or(inbox.busyProperty()));
         browseContent.disableProperty().bind(controller.busyProperty().or(inbox.busyProperty()));
         registrations.disableProperty().bind(controller.busyProperty().or(inbox.busyProperty()));
         Objects.requireNonNull(onHome);
@@ -118,6 +135,15 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
         notificationsNav.setOnAction(ignored -> {
             selectNavigation(notificationsNav); commandFeedback.setText(""); setCenter(inbox); inbox.refresh();
         });
+        historyNav.setId("attendee-history-nav");
+        historyNav.setMaxWidth(Double.MAX_VALUE);
+        historyNav.setAlignment(Pos.CENTER_LEFT);
+        historyNav.setWrapText(true);
+        historyNav.setStyle("-fx-background-color: #24334c; -fx-text-fill: #dce4f2; -fx-padding: 12;");
+        historyNav.disableProperty().bind(controller.busyProperty().or(inbox.busyProperty()));
+        historyNav.setOnAction(ignored -> {
+            selectNavigation(historyNav); commandFeedback.setText(""); setCenter(history); history.refresh();
+        });
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
         Label mode = text("Browse events\nManage your bookings", "#93a4bd", 12);
@@ -126,7 +152,7 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
         home.setMaxWidth(Double.MAX_VALUE);
         home.setOnAction(ignored -> onHome.run());
         home.disableProperty().bind(controller.busyProperty().or(inbox.busyProperty()));
-        VBox sidebar = new VBox(16, brand, role, browse, mine, notificationsNav, spacer, mode, home);
+        VBox sidebar = new VBox(16, brand, role, browse, mine, notificationsNav, historyNav, spacer, mode, home);
         sidebar.setPadding(new Insets(24, 16, 24, 16));
         sidebar.setMinWidth(200);
         sidebar.setPrefWidth(220);
@@ -135,9 +161,10 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
     }
 
     private void selectNavigation(Button selected) {
+        if (selected != historyNav) history.suspend();
         String active = "-fx-background-color: #2563eb; -fx-text-fill: white; -fx-padding: 12;";
         String inactive = "-fx-background-color: #24334c; -fx-text-fill: #dce4f2; -fx-padding: 12;";
-        for (Button button : List.of(browseNav, registrationsNav, notificationsNav)) {
+        for (Button button : List.of(browseNav, registrationsNav, notificationsNav, historyNav)) {
             button.setStyle(button == selected ? active : inactive);
         }
     }
@@ -359,5 +386,6 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
     public void close() {
         controller.close();
         inbox.close();
+        history.close();
     }
 }

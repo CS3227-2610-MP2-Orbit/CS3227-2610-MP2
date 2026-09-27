@@ -24,6 +24,8 @@ import seedu.eventmanager.attendee.MyRegistrationsService;
 import seedu.eventmanager.attendee.InboxDispatcher;
 import seedu.eventmanager.attendee.InboxNotificationDelivery;
 import seedu.eventmanager.attendee.InboxService;
+import seedu.eventmanager.attendee.AttendanceHistoryService;
+import seedu.eventmanager.storage.JdbcAttendanceHistoryRepository;
 import seedu.eventmanager.notification.NotificationOutboxWorker;
 import seedu.eventmanager.event.JdbcEventRepository;
 import seedu.eventmanager.event.OrganizerVenueRequestService;
@@ -172,7 +174,7 @@ public final class EventManagerApplication extends Application {
         root.setTop(null);
         record AttendeeServices(EventCatalogueService catalogue, AttendeeEventDetailsService details,
                 RegistrationService commands, MyRegistrationsService registrations,
-                InboxService inbox) { }
+                InboxService inbox, AttendanceHistoryService history) { }
         // Lazy bootstrap runs only on background tasks; a failed initialization can be retried.
         var services = new java.util.function.Supplier<AttendeeServices>() {
             private AttendeeServices value;
@@ -195,7 +197,8 @@ public final class EventManagerApplication extends Application {
                                     new JdbcRegistrationEventInfoRepository(database),
                                     sessions::resolve, Clock.systemUTC()),
                             new InboxService(inbox, sessions::resolve,
-                                    new JdbcTransactionManager(database), Clock.systemUTC()));
+                                    new JdbcTransactionManager(database), Clock.systemUTC()),
+                            new AttendanceHistoryService(new JdbcAttendanceHistoryRepository(database), sessions::resolve));
                     inboxDispatcher.start(new NotificationOutboxWorker(
                             new JdbcNotificationOutboxRepository(database, InboxNotificationDelivery.EVENT_TYPES),
                             new InboxNotificationDelivery(inbox::deliver)));
@@ -212,7 +215,8 @@ public final class EventManagerApplication extends Application {
                         () -> services.get().registrations().list(session.token())),
                 new InboxActions(() -> services.get().inbox().list(session.token()),
                         id -> services.get().inbox().markRead(session.token(), id),
-                        () -> services.get().inbox().markAllRead(session.token())), () -> showHome(root));
+                        () -> services.get().inbox().markAllRead(session.token())),
+                () -> services.get().history().list(session.token()), () -> showHome(root));
         root.setCenter(attendeeView);
     }
 
