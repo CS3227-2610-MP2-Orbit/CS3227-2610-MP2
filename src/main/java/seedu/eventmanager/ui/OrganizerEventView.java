@@ -9,7 +9,9 @@ import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.geometry.VPos;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
@@ -31,6 +33,9 @@ import seedu.eventmanager.club.Club;
 import seedu.eventmanager.club.ClubService;
 import seedu.eventmanager.common.Actor;
 import seedu.eventmanager.event.CapacityUpdateResult;
+import seedu.eventmanager.announcement.Announcement;
+import seedu.eventmanager.announcement.AnnouncementResult;
+import seedu.eventmanager.announcement.AnnouncementService;
 import seedu.eventmanager.event.Event;
 import seedu.eventmanager.event.EventDetails;
 import seedu.eventmanager.event.EventService;
@@ -49,7 +54,7 @@ import seedu.eventmanager.volunteer.VolunteerService;
 
 /**
  * JavaFX screen for an organizer to create/edit draft events, submit venue requests,
- * assign volunteers, view registrations, and create clubs. Visual layout follows the Venue Administrator shell
+ * assign volunteers, view registrations, post announcements, and create clubs. Visual layout follows the Venue Administrator shell
  * (dark sidebar + card content).
  */
 public final class OrganizerEventView extends BorderPane {
@@ -67,12 +72,13 @@ public final class OrganizerEventView extends BorderPane {
             "-fx-background-color: white; -fx-text-fill: #b42318; -fx-border-color: #e2e8f0;"
                     + " -fx-border-radius: 4px; -fx-background-radius: 4px; -fx-padding: 8px 16px;";
 
-    private enum Screen { EVENTS, REQUEST_VENUE, VOLUNTEERS, REGISTRATIONS, CLUBS }
+    private enum Screen { EVENTS, REQUEST_VENUE, VOLUNTEERS, REGISTRATIONS, ANNOUNCEMENTS, CLUBS }
 
     private final EventService service;
     private final OrganizerVenueRequestService venueRequestService;
     private final VolunteerService volunteerService;
     private final RegistrationOverviewService registrationService;
+    private final AnnouncementService announcementService;
     private final VenueRepository venueRepository;
     private final ClubService clubService;
     private final Actor account;
@@ -97,6 +103,7 @@ public final class OrganizerEventView extends BorderPane {
     private final Button requestVenueNav = navButton("Request venue");
     private final Button volunteersNav = navButton("Volunteers");
     private final Button registrationsNav = navButton("Registrations");
+    private final Button announcementsNav = navButton("Announcements");
     private final Button clubsNav = navButton("Clubs");
     private final Label clubsHint = new Label();
 
@@ -129,10 +136,20 @@ public final class OrganizerEventView extends BorderPane {
     private final ListView<RegisteredAttendee> registrants = new ListView<>();
     private final Label registrationFeedback = new Label();
 
+    private final ListView<Event> announcementEvents = new ListView<>();
+    private final Label announcementHeading = new Label("Announcements");
+    private final ListView<Announcement> announcementHistory = new ListView<>();
+    private final TextArea announcementMessage = new TextArea();
+    private final Label announcementCounter = new Label();
+    private final Label announcementFeedback = new Label();
+    private final Button deleteAnnouncement = new Button("Delete selected");
+    private final Button sendAnnouncement = new Button("Send announcement");
+
     private final VBox eventsContent;
     private final VBox requestContent;
     private final VBox volunteerContent;
     private final VBox registrationContent;
+    private final VBox announcementContent;
     private final VBox clubContent;
     private final StackPane workspace = new StackPane();
 
@@ -145,6 +162,7 @@ public final class OrganizerEventView extends BorderPane {
             OrganizerVenueRequestService venueRequestService,
             VolunteerService volunteerService,
             RegistrationOverviewService registrationService,
+            AnnouncementService announcementService,
             ClubService clubService,
             VenueRepository venueRepository,
             Actor account,
@@ -153,6 +171,7 @@ public final class OrganizerEventView extends BorderPane {
         this.venueRequestService = Objects.requireNonNull(venueRequestService, "venueRequestService");
         this.volunteerService = Objects.requireNonNull(volunteerService, "volunteerService");
         this.registrationService = Objects.requireNonNull(registrationService, "registrationService");
+        this.announcementService = Objects.requireNonNull(announcementService, "announcementService");
         this.clubService = Objects.requireNonNull(clubService, "clubService");
         this.venueRepository = Objects.requireNonNull(venueRepository, "venueRepository");
         this.account = Objects.requireNonNull(account, "account");
@@ -175,6 +194,7 @@ public final class OrganizerEventView extends BorderPane {
         requestContent = buildRequestContent();
         volunteerContent = buildVolunteerContent();
         registrationContent = buildRegistrationContent();
+        announcementContent = buildAnnouncementContent();
         clubContent = buildClubContent();
         workspace.getChildren().setAll(eventsContent);
         configureLayout();
@@ -234,6 +254,7 @@ public final class OrganizerEventView extends BorderPane {
         requestVenueNav.setOnAction(ignored -> showRequestVenueScreen());
         volunteersNav.setOnAction(ignored -> showVolunteersScreen());
         registrationsNav.setOnAction(ignored -> showRegistrationsScreen());
+        announcementsNav.setOnAction(ignored -> showAnnouncementsScreen());
         clubsNav.setOnAction(ignored -> showClubsScreen());
         highlightNavForScreen();
 
@@ -247,8 +268,8 @@ public final class OrganizerEventView extends BorderPane {
         home.setOnAction(ignored -> onHome.run());
 
         sidebar.getChildren().addAll(
-                brand, role, eventsNav, requestVenueNav, volunteersNav, registrationsNav, clubsNav,
-                spacer, clubsHint, home);
+                brand, role, eventsNav, requestVenueNav, volunteersNav, registrationsNav, announcementsNav,
+                clubsNav, spacer, clubsHint, home);
         return sidebar;
     }
 
@@ -623,6 +644,115 @@ public final class OrganizerEventView extends BorderPane {
         return content;
     }
 
+    private VBox buildAnnouncementContent() {
+        Label pageTitle = new Label("Announcements");
+        pageTitle.setStyle("-fx-text-fill: #61708a; -fx-font-size: 13px;");
+        Label contentTitle = new Label("Club Organizer — Announcements");
+        contentTitle.setStyle("-fx-text-fill: #172033; -fx-font-size: 24px; -fx-font-weight: bold;");
+
+        announcementEvents.setMinWidth(260);
+        announcementEvents.setPrefWidth(320);
+        announcementEvents.setMaxWidth(360);
+        announcementEvents.setPlaceholder(new Label("No events yet"));
+        announcementEvents.setStyle(CARD_STYLE);
+        announcementEvents.setCellFactory(ignored -> eventCell());
+        announcementEvents.getSelectionModel().selectedItemProperty()
+                .addListener((ignored, previous, selected) -> {
+                    announcementFeedback.setText("");
+                    loadAnnouncements(selected);
+                });
+
+        VBox listCard = new VBox(12, sectionLabel("Your events"), announcementEvents);
+        listCard.setPadding(new Insets(18));
+        listCard.setStyle(CARD_STYLE);
+        listCard.setMinWidth(280);
+        listCard.setPrefWidth(340);
+        listCard.setMaxWidth(380);
+        VBox.setVgrow(announcementEvents, Priority.ALWAYS);
+
+        announcementHeading.setStyle("-fx-text-fill: #172033; -fx-font-size: 16px; -fx-font-weight: bold;");
+        Label help = new Label(
+                "Announcements are queued as notifications for every attendee registered for the event "
+                        + "at the time you send. Deleting one later does not withdraw those notifications.");
+        help.setWrapText(true);
+        help.setStyle("-fx-text-fill: #61708a;");
+
+        announcementMessage.setPromptText("Write an announcement, e.g. Doors open at 6pm.");
+        announcementMessage.setWrapText(true);
+        announcementMessage.setPrefRowCount(4);
+        announcementMessage.setTextFormatter(new TextFormatter<>(change ->
+                change.getControlNewText().length() <= AnnouncementService.MAX_MESSAGE_LENGTH ? change : null));
+        announcementMessage.textProperty().addListener((ignored, previous, text) -> updateAnnouncementControls());
+        announcementCounter.setStyle("-fx-text-fill: #61708a; -fx-font-size: 11px;");
+        announcementFeedback.setWrapText(true);
+
+        sendAnnouncement.setStyle(PRIMARY_BUTTON_STYLE);
+        sendAnnouncement.setOnAction(ignored -> sendSelectedAnnouncement());
+        HBox sendActions = new HBox(12, announcementCounter, spacer(), sendAnnouncement);
+        sendActions.setAlignment(Pos.CENTER_LEFT);
+
+        announcementHistory.setPlaceholder(new Label("No announcements posted yet"));
+        announcementHistory.setStyle(CARD_STYLE);
+        announcementHistory.setCellFactory(ignored -> announcementCell());
+        announcementHistory.getSelectionModel().selectedItemProperty()
+                .addListener((ignored, previous, selected) -> deleteAnnouncement.setDisable(selected == null));
+        VBox.setVgrow(announcementHistory, Priority.ALWAYS);
+        deleteAnnouncement.setStyle(SECONDARY_BUTTON_STYLE);
+        deleteAnnouncement.setDisable(true);
+        deleteAnnouncement.setOnAction(ignored -> deleteSelectedAnnouncement());
+        HBox deleteActions = new HBox(deleteAnnouncement);
+        deleteActions.setAlignment(Pos.CENTER_RIGHT);
+
+        VBox detailCard = new VBox(16,
+                announcementHeading,
+                help,
+                sectionLabel("New announcement"),
+                announcementMessage,
+                sendActions,
+                announcementFeedback,
+                sectionLabel("Posted announcements"),
+                announcementHistory,
+                deleteActions);
+        detailCard.setPadding(new Insets(22));
+        detailCard.setStyle(CARD_STYLE);
+        detailCard.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(detailCard, Priority.ALWAYS);
+
+        HBox body = new HBox(20, listCard, detailCard);
+        body.setMaxWidth(Double.MAX_VALUE);
+        VBox.setVgrow(listCard, Priority.ALWAYS);
+        VBox.setVgrow(detailCard, Priority.ALWAYS);
+
+        VBox content = new VBox(18, pageTitle, contentTitle, body);
+        content.setPadding(new Insets(28, 32, 28, 32));
+        content.setMaxWidth(Double.MAX_VALUE);
+        VBox.setVgrow(body, Priority.ALWAYS);
+        updateAnnouncementControls();
+        return content;
+    }
+
+    private static Region spacer() {
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        return spacer;
+    }
+
+    private static ListCell<Announcement> announcementCell() {
+        return new ListCell<>() {
+            @Override
+            protected void updateItem(Announcement announcement, boolean empty) {
+                super.updateItem(announcement, empty);
+                if (empty || announcement == null) {
+                    setText(null);
+                    return;
+                }
+                setWrapText(true);
+                setPrefWidth(0);
+                setText(SingaporeDateTimes.display(announcement.createdAt()) + "\n" + announcement.message());
+            }
+        };
+    }
+
     private VBox buildClubContent() {
         Label pageTitle = new Label("Clubs");
         pageTitle.setStyle("-fx-text-fill: #61708a; -fx-font-size: 13px;");
@@ -857,6 +987,102 @@ public final class OrganizerEventView extends BorderPane {
         }
     }
 
+    private void showAnnouncementsScreen() {
+        screen = Screen.ANNOUNCEMENTS;
+        workspace.getChildren().setAll(announcementContent);
+        refreshEvents(null);
+        highlightNavForScreen();
+        announcementFeedback.setText("");
+        if (announcementEvents.getSelectionModel().getSelectedItem() == null
+                && !announcementEvents.getItems().isEmpty()) {
+            announcementEvents.getSelectionModel().selectFirst();
+        } else {
+            loadAnnouncements(announcementEvents.getSelectionModel().getSelectedItem());
+        }
+    }
+
+    private void loadAnnouncements(Event event) {
+        if (event == null) {
+            announcementHeading.setText("Announcements");
+            announcementHistory.getItems().clear();
+            updateAnnouncementControls();
+            return;
+        }
+        announcementHeading.setText("Announcements — " + event.title());
+        try {
+            announcementHistory.getItems().setAll(announcementService.list(actor, event.id()));
+        } catch (RuntimeException exception) {
+            announcementHistory.getItems().clear();
+            setAnnouncementFeedback("Could not load announcements: " + exception.getMessage(), true);
+        }
+        updateAnnouncementControls();
+    }
+
+    private void updateAnnouncementControls() {
+        String text = announcementMessage.getText() == null ? "" : announcementMessage.getText();
+        announcementCounter.setText(text.length() + " / " + AnnouncementService.MAX_MESSAGE_LENGTH);
+        boolean eventSelected = announcementEvents.getSelectionModel().getSelectedItem() != null;
+        announcementMessage.setDisable(!eventSelected);
+        sendAnnouncement.setDisable(!eventSelected || text.isBlank());
+    }
+
+    private void sendSelectedAnnouncement() {
+        Event event = announcementEvents.getSelectionModel().getSelectedItem();
+        if (event == null) {
+            setAnnouncementFeedback("Select an event first.", true);
+            return;
+        }
+        try {
+            AnnouncementResult result = announcementService.post(actor, event.id(), announcementMessage.getText());
+            announcementMessage.clear();
+            loadAnnouncements(event);
+            setAnnouncementFeedback(announcementOutcome(result), result.notificationFailures() > 0);
+        } catch (RuntimeException exception) {
+            setAnnouncementFeedback(exception.getMessage(), true);
+        }
+    }
+
+    private void deleteSelectedAnnouncement() {
+        Event event = announcementEvents.getSelectionModel().getSelectedItem();
+        Announcement selected = announcementHistory.getSelectionModel().getSelectedItem();
+        if (event == null || selected == null) {
+            setAnnouncementFeedback("Select an announcement to delete.", true);
+            return;
+        }
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                "Permanently delete this announcement? Notifications already queued for attendees are not withdrawn.",
+                ButtonType.CANCEL, ButtonType.OK);
+        confirm.setHeaderText("Delete announcement");
+        if (confirm.showAndWait().filter(ButtonType.OK::equals).isEmpty()) {
+            return;
+        }
+        try {
+            announcementService.delete(actor, event.id(), selected.id());
+            loadAnnouncements(event);
+            setAnnouncementFeedback("Announcement deleted.", false);
+        } catch (RuntimeException exception) {
+            loadAnnouncements(event);
+            setAnnouncementFeedback(exception.getMessage(), true);
+        }
+    }
+
+    private static String announcementOutcome(AnnouncementResult result) {
+        String outcome = result.notificationsQueued() == 0 && result.notificationFailures() == 0
+                ? "Announcement saved. No registered attendees to notify yet."
+                : "Announcement saved. Notification queued for " + result.notificationsQueued()
+                        + " registered attendee" + (result.notificationsQueued() == 1 ? "" : "s") + ".";
+        if (result.notificationFailures() > 0) {
+            outcome += " " + result.notificationFailures() + " notification"
+                    + (result.notificationFailures() == 1 ? "" : "s") + " could not be queued.";
+        }
+        return outcome;
+    }
+
+    private void setAnnouncementFeedback(String message, boolean error) {
+        announcementFeedback.setText(message == null ? "Operation failed" : message);
+        announcementFeedback.setStyle(error ? "-fx-text-fill: #b42318;" : "-fx-text-fill: #1b5e20;");
+    }
+
     private void showRegistrationsScreen() {
         screen = Screen.REGISTRATIONS;
         workspace.getChildren().setAll(registrationContent);
@@ -1088,6 +1314,7 @@ public final class OrganizerEventView extends BorderPane {
         requestEvents.getItems().setAll(listed);
         volunteerEvents.getItems().setAll(listed);
         registrationEvents.getItems().setAll(listed);
+        announcementEvents.getItems().setAll(listed);
         if (selectedId != null) {
             listed.stream()
                     .filter(event -> event.id().equals(selectedId))
@@ -1097,6 +1324,7 @@ public final class OrganizerEventView extends BorderPane {
                         requestEvents.getSelectionModel().select(event);
                         volunteerEvents.getSelectionModel().select(event);
                         registrationEvents.getSelectionModel().select(event);
+                        announcementEvents.getSelectionModel().select(event);
                     });
         }
     }
@@ -1171,6 +1399,7 @@ public final class OrganizerEventView extends BorderPane {
         requestVenueNav.setStyle(screen == Screen.REQUEST_VENUE ? NAV_BUTTON_ACTIVE_STYLE : NAV_BUTTON_STYLE);
         volunteersNav.setStyle(screen == Screen.VOLUNTEERS ? NAV_BUTTON_ACTIVE_STYLE : NAV_BUTTON_STYLE);
         registrationsNav.setStyle(screen == Screen.REGISTRATIONS ? NAV_BUTTON_ACTIVE_STYLE : NAV_BUTTON_STYLE);
+        announcementsNav.setStyle(screen == Screen.ANNOUNCEMENTS ? NAV_BUTTON_ACTIVE_STYLE : NAV_BUTTON_STYLE);
         clubsNav.setStyle(screen == Screen.CLUBS ? NAV_BUTTON_ACTIVE_STYLE : NAV_BUTTON_STYLE);
     }
 

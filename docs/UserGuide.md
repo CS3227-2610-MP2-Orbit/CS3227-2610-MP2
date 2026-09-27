@@ -93,6 +93,8 @@ The app is designed for users who:
 | Organizer | Reset / revert form | **Reset** (new) or **Revert changes** (edit) |
 | Organizer | Request a venue | **Request venue** → select event + venue → **Submit request** |
 | Organizer | View registrations | **Registrations** → select event |
+| Organizer | Post an announcement | **Announcements** → select event → write message → **Send announcement** |
+| Organizer | Delete an announcement | **Announcements** → select event → select announcement → **Delete selected** → **OK** |
 | Organizer | Assign / remove volunteers | **Volunteers** → select event → **Assign volunteer** or **Remove selected** (requires registered attendees) |
 | Venue Admin | Log in | Venue Administrator login screen |
 | Venue Admin | View dashboard | **Dashboard** → pending requests, available venues, **Refresh** |
@@ -204,6 +206,35 @@ Shows who is registered for one of your events.
 **Expected result:** The panel shows the count as *registered / capacity* (for example `12 / 80 registered`) and lists registered attendees by name, sorted alphabetically. Select the event again to refresh.
 
 > **Caution:** The list reads real registrations from the database and counts confirmed and checked-in attendees with active accounts. This build has no Attendee screen for registering, and Organizers cannot publish events yet, so events normally show `0 / capacity registered` and *No attendees have registered for this event yet.* The list is read-only; registrations cannot be changed here.
+
+### Posting announcements
+
+Saves a message for one of your events and queues a notification for each registered attendee.
+
+**Steps:**
+
+1. In the sidebar, select **Announcements**.
+2. Select an event in **Your events**. **Posted announcements** lists earlier announcements, newest first.
+3. Write a message (up to 1000 characters; the counter shows how many you have used).
+4. Select **Send announcement**.
+
+**Expected result:** The announcement appears at the top of **Posted announcements**, and feedback reports how many notifications were queued (for example *Notification queued for 12 registered attendees*).
+
+> **Caution:** Announcements cannot be edited after sending. Notifications are only **queued** in the shared notification outbox; attendees cannot see them yet, because in-app notification delivery is not available in this build. Recipients are the event's current registrants; this build has no Attendee screen for registering, so feedback normally shows *No registered attendees to notify yet.*
+
+### Deleting announcements
+
+Permanently removes one of your event's announcements.
+
+**Steps:**
+
+1. In the sidebar, select **Announcements**, then select the event.
+2. In **Posted announcements**, select the announcement.
+3. Select **Delete selected**, then **OK** to confirm (or **Cancel** to keep it).
+
+**Expected result:** The announcement disappears from **Posted announcements** and feedback shows *Announcement deleted.*
+
+> **Caution:** Deletion cannot be undone. Notifications already queued for attendees when the announcement was sent are **not** withdrawn.
 
 ### Assigning volunteers
 

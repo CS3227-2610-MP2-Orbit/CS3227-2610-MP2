@@ -1,6 +1,7 @@
 # Event
 
-Event creation, editing, capacity management, and announcements belong here.
+Event creation, editing, and capacity management belong here. Announcements live
+in the `announcement` package.
 
 ## Implemented
 
