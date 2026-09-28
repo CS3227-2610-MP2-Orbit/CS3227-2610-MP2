@@ -20,7 +20,22 @@ registrants (sorted by name) with a registered/capacity count, read from
 `OrganizerIds` maps string organizer ids to UUIDs for the venue pipeline until
 shared authentication is unified.
 
-`JdbcEventRepository` persists each event mutation and its sanitized business
-audit record in one PostgreSQL transaction. Publication and
-registration-aware capacity policy remain future features. Clubs are still
+`EventService.publishEvent` moves an owned, not-yet-started draft to `PUBLISHED`
+when `EventBookingCheck` confirms a CONFIRMED booking at an ACTIVE venue with the
+event's exact times (`storage.JdbcEventBookingCheck` shares the Attendee
+registration SQL predicate). Published events cannot be edited; unpublishing is
+not supported. After a venue request is approved, `editEvent` only accepts the
+booked start/end times, so the booking and the event cannot drift apart. To move
+an approved draft, `OrganizerVenueRequestService.releaseApprovedVenue` cancels the
+booking and withdraws the request through `VenueRelease` (`storage.JdbcVenueRelease`),
+after which the times unlock and a new request can be submitted.
+
+`EventService.deleteEvent` soft-deletes an owned draft (status `DELETED`) through
+`DraftEventDeletion` (`storage.JdbcDraftEventDeletion`), which also withdraws a
+submitted venue request and releases an approved booking in the same transaction.
+`EventService` treats deleted events as not found and hides them from listings.
+
+`JdbcEventRepository` persists each other event mutation (create, edit, publish) and its
+sanitized business audit record in one PostgreSQL transaction.
+Registration-aware capacity policy remains a future feature. Clubs are still
 configured via env IDs (no Clubs CRUD here).

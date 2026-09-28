@@ -13,6 +13,8 @@ public record EventAuditRecord(
 
     public enum Action {
         CREATE_EVENT,
-        EDIT_EVENT
+        EDIT_EVENT,
+        PUBLISH_EVENT,
+        DELETE_EVENT
     }
 }

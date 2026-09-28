@@ -108,7 +108,7 @@ The Organizer and Admin shells share visual tokens (sidebar `#172033`, page `#f7
 **Organizer**
 
 * `ClubService` — create/list clubs for the signed-in `CLUB_ORGANIZER` account (single owner, names unique ignoring case) and build its `OrganizerIdentity` from the clubs it owns in `organizer_club`.
-* `EventService` — create/list/get/edit draft events; club ownership checks; optimistic versioning.
+* `EventService` — create/list/get/edit draft events and publish them; club ownership checks; optimistic versioning.
 * `OrganizerVenueRequestService` — builds Jordan’s `VenueRequest` as `SUBMITTED` (UTC window, attendance = capacity).
 * `OrganizerIds` — transitional `String` → `UUID` mapping for `organizer_id`.
 
@@ -151,6 +151,75 @@ Shared utilities and cross-cutting types live under `seedu.eventmanager.common` 
 3. `EventRepository` persists event + business audit in one transaction.
 
 **Key classes:** `EventService`, `JdbcEventRepository`, `OrganizerEventView`.
+
+### Publish events
+
+**Problem:** Attendee browse, registration and check-in only consider `PUBLISHED`
+events, so Organizer drafts must be promoted under the same booking rule the
+Attendee side enforces.
+
+**Approach:**
+
+1. `EventService.publishEvent(actor, eventId, expectedVersion)` checks, in order:
+   existence, club ownership, expected version, `DRAFT` status, `now < startsAt`,
+   then `EventBookingCheck.hasConfirmedActiveBooking(eventId, startsAt, endsAt)`.
+2. `JdbcEventBookingCheck` (in `storage`) reuses the package-private
+   `RegistrationReadSql.matchingConfirmedBooking` and `ACTIVE_VENUE` predicates,
+   so publishing and registration cannot drift apart. It only reads Jordan's
+   `venue_bookings` / `venues` tables.
+3. The event is saved as `PUBLISHED` with the next version through the existing
+   `JdbcEventRepository.update`, with a `PUBLISH_EVENT` audit record in the same
+   transaction. No schema change was needed.
+4. Without a configured `EventBookingCheck`, publishing fails closed with
+   `IllegalStateException`.
+5. `EventBookingCheck.findActiveBooking` returns the event's CONFIRMED/AT_RISK
+   booking window and venue status. `editEvent` uses it to reject time changes
+   after approval unless the new times equal the booked window (so drifted legacy
+   drafts can be restored), and `publishEvent` uses it to explain refusals.
+
+**Team decisions:** a confirmed matching booking at an ACTIVE venue is required;
+published events are not editable (`editEvent` stays draft-only); unpublishing is
+out of scope; events cannot be published at or after their start time; event
+times are locked to the booked window once a venue request is approved.
+
+**Releasing an approved venue:** `OrganizerVenueRequestService.releaseApprovedVenue`
+checks ownership and `DRAFT` status, then calls the `VenueRelease` port.
+`JdbcVenueRelease` runs one transaction that locks the draft event row
+(`FOR UPDATE`, refusing non-drafts), cancels the CONFIRMED/AT_RISK booking with
+`cancelled_by`/`cancelled_at`/`cancellation_reason`, marks the approved request
+`WITHDRAWN`, and inserts a `VENUE_BOOKING_RELEASED` row (actor role
+`CLUB_ORGANIZER`) into the shared `audit_logs` table. This frees the unique active
+booking per event, so a resubmitted request can be approved. It writes Jordan's
+venue tables from the Organizer side without changing his classes. Until then,
+`OrganizerVenueRequestService.submit` refuses a new request while the event's
+latest request is `APPROVED`; otherwise the admin's approval would hit
+`idx_one_active_booking_per_event` and fail with a raw database error.
+
+**Deleting drafts:** `EventService.deleteEvent` checks ownership, version and
+`DRAFT` status, then calls the `DraftEventDeletion` port (fails closed when absent).
+Deletion is a soft delete: status `DELETED`, kept for the audit trail. `EventService`
+treats `DELETED` events as not found and omits them from `listEvents`, so every
+Organizer workflow built on it (venue requests, roster, volunteers, announcements)
+refuses them. `JdbcDraftEventDeletion` runs one transaction: a guarded
+`UPDATE ... WHERE version=? AND status='DRAFT'` (a mismatch raises
+`EventVersionConflictException`), then it withdraws `SUBMITTED` requests (audited as
+`VENUE_REQUEST_WITHDRAWN`), releases an active booking through the helper shared with
+`JdbcVenueRelease` (reason code `EVENT_DELETED`), and records `DELETE_EVENT`.
+Team decisions: drafts only; soft delete; venue clean-up in the same transaction.
+Organizer-created requests are never `DRAFT`, so only `SUBMITTED` requests are
+withdrawn (a `WITHDRAWN` row requires `submitted_at`).
+
+**Limitations:** a booking cancelled or venue deactivated after publishing leaves
+the event `PUBLISHED`; registration and check-in then refuse it. Published events
+cannot release their venue. A publish that is already past its booking check when
+a release commits can still complete, leaving a published event without a booking.
+
+**Verification:** `EventServiceTest` (publish rules with in-memory fakes) and
+`EventPublishIntegrationTest` (real Organizer and Venue schemas in a dropped
+per-test schema: persistence plus audit, booking-rule cases, audit-failure
+rollback, stale version, and visibility through `JdbcEventCatalogueRepository`).
+
+**Key classes:** `EventService`, `EventBookingCheck`, `JdbcEventBookingCheck`, `OrganizerEventView`.
 
 ### Request venues (Organizer → Admin pipeline)
 
@@ -230,8 +299,8 @@ validation and transactional audit/outbox remain authoritative.
 The Attendee route lazily runs `InboxDatabaseMigration`, which first delegates to
 the existing `RegistrationDatabaseMigration` bootstrap, in background tasks,
 independently of Organizer navigation. Successful service initialization is reused
-and failure can be retried. No fixture insertion or publication operation is added. `EventService` still cannot publish
-events, so new drafts do not appear. Register/cancel UI uses existing session-token commands.
+and failure can be retried. No fixture insertion or publication operation is added here; drafts appear only
+after the Organizer publishes them (see [Publish events](#publish-events)). Register/cancel UI uses existing session-token commands.
 See the [Attendee User Guide](UserGuide.md#attendee-browse-and-search-events)
 for the implemented workflow and current limitations.
 
@@ -256,6 +325,18 @@ for the Attendee test step. Without them, these database tests are skipped, not
 verified. Details integration tests live in the registration test package to reuse
 its isolated-schema fixtures; the CI registration step includes them. Catalogue
 and detail/policy service tests also run without PostgreSQL.
+
+`e2e/CrossRoleWorkflowIntegrationTest` is the whole-product integration suite. It
+runs every migration stream into one randomized schema and wires the real Organizer,
+Venue Administrator and Attendee services and JDBC repositories together; only the
+clocks are fixed. It covers the full lifecycle (draft, venue approval, publish,
+catalogue, registration, roster, volunteer, announcement delivered through the outbox
+to the inbox, check-in, attendance history, and both audit trails), release and
+re-request, admin rejection and booking conflict, cross-organizer access denial,
+capacity with cancellation, a venue deactivated after publishing, and draft deletion
+(freed slot re-approved for another club, withdrawn request no longer approvable,
+published events not deletable). It needs the
+same database variables and is skipped without them. It does not exercise JavaFX.
 
 `attendeeUiSmoke` is opt-in and requires a graphical desktop. It opens the actual
 JavaFX browse view with synthetic repositories, checks venue/seats/own status,

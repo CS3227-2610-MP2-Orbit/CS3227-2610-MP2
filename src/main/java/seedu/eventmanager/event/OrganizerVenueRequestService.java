@@ -21,16 +21,47 @@ public final class OrganizerVenueRequestService {
     private final VenueRepository venues;
     private final VenueRequestRepository requests;
     private final EventService.IdGenerator idGenerator;
+    private final VenueRelease release;
 
     public OrganizerVenueRequestService(
             EventService eventService,
             VenueRepository venues,
             VenueRequestRepository requests,
             EventService.IdGenerator idGenerator) {
+        this(eventService, venues, requests, idGenerator, null);
+    }
+
+    /** Without a {@code release}, releasing an approved venue fails closed. */
+    public OrganizerVenueRequestService(
+            EventService eventService,
+            VenueRepository venues,
+            VenueRequestRepository requests,
+            EventService.IdGenerator idGenerator,
+            VenueRelease release) {
         this.eventService = Objects.requireNonNull(eventService, "eventService");
         this.venues = Objects.requireNonNull(venues, "venues");
         this.requests = Objects.requireNonNull(requests, "requests");
         this.idGenerator = Objects.requireNonNull(idGenerator, "idGenerator");
+        this.release = release;
+    }
+
+    /**
+     * Gives up an owned draft's approved venue so its times can change and a new request can be
+     * submitted. Published events keep their booking.
+     */
+    public void releaseApprovedVenue(OrganizerIdentity actor, UUID eventId) {
+        Objects.requireNonNull(actor, "actor");
+        Objects.requireNonNull(eventId, "eventId");
+        Event event = eventService.getEvent(actor, eventId);
+        if (event.status() != EventStatus.DRAFT) {
+            throw new ValidationException("Published events keep their venue booking");
+        }
+        if (release == null) {
+            throw new IllegalStateException("Venue release is not configured");
+        }
+        if (!release.releaseApprovedBooking(eventId, OrganizerIds.toUuid(actor.userId()))) {
+            throw new ValidationException("This event has no approved venue booking to release");
+        }
     }
 
     public VenueRequest submit(OrganizerIdentity actor, UUID eventId, UUID venueId) {
@@ -48,6 +79,12 @@ public final class OrganizerVenueRequestService {
         }
         if (requests.findOpenByEventId(eventId).isPresent()) {
             throw new ValidationException("This event already has an open venue request");
+        }
+        if (requests.findLatestByEventId(eventId)
+                .filter(latest -> latest.status() == VenueRequestStatus.APPROVED)
+                .isPresent()) {
+            throw new ValidationException(
+                    "This event already has an approved venue. Release it under Request venue first.");
         }
 
         VenueRequest request = new VenueRequest(

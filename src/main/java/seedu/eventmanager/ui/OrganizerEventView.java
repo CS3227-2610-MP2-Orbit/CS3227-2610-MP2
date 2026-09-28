@@ -39,6 +39,7 @@ import seedu.eventmanager.announcement.AnnouncementService;
 import seedu.eventmanager.event.Event;
 import seedu.eventmanager.event.EventDetails;
 import seedu.eventmanager.event.EventService;
+import seedu.eventmanager.event.EventStatus;
 import seedu.eventmanager.event.OrganizerIdentity;
 import seedu.eventmanager.event.OrganizerVenueRequestService;
 import seedu.eventmanager.event.RegistrationOverview;
@@ -98,6 +99,9 @@ public final class OrganizerEventView extends BorderPane {
     private final Label feedback = new Label();
     private final Label editorHeading = new Label("Create draft event");
     private final Button reset = new Button("Reset");
+    private final Button saveEvent = new Button("Save event");
+    private final Button publishEvent = new Button("Publish");
+    private final Button deleteEvent = new Button("Delete");
     private final Button eventsNav = navButton("Events");
     private final Button newEvent = new Button("+ New event");
     private final Button requestVenueNav = navButton("Request venue");
@@ -119,6 +123,7 @@ public final class OrganizerEventView extends BorderPane {
     private final Label requestSummary = new Label();
     private final Label requestStatus = new Label();
     private final Button submitRequest = new Button("Submit request");
+    private final Button releaseVenue = new Button("Release venue");
 
     private final ListView<Event> volunteerEvents = new ListView<>();
     private final Label volunteerHeading = new Label("Volunteers");
@@ -361,12 +366,15 @@ public final class OrganizerEventView extends BorderPane {
         form.add(fieldLabel("Capacity"), 0, 5);
         form.add(capacity, 1, 5);
 
-        Button save = new Button("Save event");
-        save.setDefaultButton(true);
-        save.setStyle(PRIMARY_BUTTON_STYLE);
-        save.setOnAction(ignored -> saveEvent());
+        saveEvent.setDefaultButton(true);
+        saveEvent.setStyle(PRIMARY_BUTTON_STYLE);
+        saveEvent.setOnAction(ignored -> saveEvent());
         reset.setOnAction(ignored -> resetForm());
-        HBox actions = new HBox(10, save, reset);
+        publishEvent.setStyle(SECONDARY_BUTTON_STYLE);
+        publishEvent.setOnAction(ignored -> publishSelectedEvent());
+        deleteEvent.setStyle(SECONDARY_BUTTON_STYLE);
+        deleteEvent.setOnAction(ignored -> deleteSelectedEvent());
+        HBox actions = new HBox(10, deleteEvent, publishEvent, saveEvent, reset);
         actions.setAlignment(Pos.CENTER_RIGHT);
 
         feedback.setWrapText(true);
@@ -431,14 +439,17 @@ public final class OrganizerEventView extends BorderPane {
 
         submitRequest.setStyle(PRIMARY_BUTTON_STYLE);
         submitRequest.setOnAction(ignored -> submitVenueRequest());
-        HBox actions = new HBox(submitRequest);
+        releaseVenue.setStyle(SECONDARY_BUTTON_STYLE);
+        releaseVenue.setOnAction(ignored -> releaseSelectedVenue());
+        showReleaseVenue(false);
+        HBox actions = new HBox(10, releaseVenue, submitRequest);
         actions.setAlignment(Pos.CENTER_RIGHT);
 
         Label heading = new Label("Submit venue booking request");
         heading.setStyle("-fx-text-fill: #172033; -fx-font-size: 16px; -fx-font-weight: bold;");
         Label help = new Label(
                 "Uses the event's schedule and capacity. Status updates after Venue Admin decides "
-                        + "(pending / approved / rejected). This screen does not auto-publish events.");
+                        + "(pending / approved / rejected). Once approved, publish the event from the Events screen.");
         help.setWrapText(true);
         help.setStyle("-fx-text-fill: #61708a;");
 
@@ -892,8 +903,18 @@ public final class OrganizerEventView extends BorderPane {
                 super.updateItem(event, empty);
                 setText(empty || event == null
                         ? null
-                        : event.title() + "\n" + SingaporeDateTimes.display(event.startsAt()));
+                        : event.title() + "\n" + SingaporeDateTimes.display(event.startsAt())
+                                + "\n" + statusLabel(event.status()));
             }
+        };
+    }
+
+    private static String statusLabel(EventStatus status) {
+        return switch (status) {
+            case DRAFT -> "Draft";
+            case PUBLISHED -> "Published";
+            case COMPLETED -> "Completed";
+            case DELETED -> "Deleted";
         };
     }
 
@@ -1211,8 +1232,10 @@ public final class OrganizerEventView extends BorderPane {
             requestSummary.setText("Select an event from the list.");
             requestStatus.setText("—");
             submitRequest.setDisable(true);
+            showReleaseVenue(false);
             return;
         }
+        showReleaseVenue(false);
         requestSummary.setText(
                 event.title()
                         + "\n"
@@ -1240,6 +1263,8 @@ public final class OrganizerEventView extends BorderPane {
                     || request.status() == VenueRequestStatus.DRAFT
                     || request.status() == VenueRequestStatus.APPROVED;
             submitRequest.setDisable(blockSubmit);
+            showReleaseVenue(request.status() == VenueRequestStatus.APPROVED
+                    && event.status() == EventStatus.DRAFT);
         } catch (RuntimeException exception) {
             requestStatus.setText("Could not load status: " + exception.getMessage());
             submitRequest.setDisable(true);
@@ -1268,6 +1293,36 @@ public final class OrganizerEventView extends BorderPane {
             setRequestFeedback(exception.getMessage(), true);
             updateRequestSummary(event);
         }
+    }
+
+    private void showReleaseVenue(boolean visible) {
+        releaseVenue.setVisible(visible);
+        releaseVenue.setManaged(visible);
+    }
+
+    private void releaseSelectedVenue() {
+        Event event = requestEvents.getSelectionModel().getSelectedItem();
+        if (event == null) {
+            setRequestFeedback("Select an event first.", true);
+            return;
+        }
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                "Release the approved venue for this event? The booking is cancelled, you can then change the "
+                        + "event times and must submit a new request for Venue Admin approval.",
+                ButtonType.CANCEL, ButtonType.OK);
+        confirm.setHeaderText("Release venue");
+        if (confirm.showAndWait().filter(ButtonType.OK::equals).isEmpty()) {
+            return;
+        }
+        try {
+            venueRequestService.releaseApprovedVenue(actor, event.id());
+            setRequestFeedback("Venue released. Edit the event times under Events, then submit a new request.",
+                    false);
+        } catch (RuntimeException exception) {
+            setRequestFeedback(exception.getMessage(), true);
+        }
+        requestEvents.refresh();
+        updateRequestSummary(event);
     }
 
     private void setRequestFeedback(String message, boolean error) {
@@ -1342,9 +1397,78 @@ public final class OrganizerEventView extends BorderPane {
                 SingaporeDateTimes.dateOf(event.endsAt()),
                 SingaporeDateTimes.timeOf(event.endsAt()),
                 Integer.toString(event.capacity()));
-        editorHeading.setText("Edit draft event — " + event.title());
+        boolean draft = event.status() == EventStatus.DRAFT;
+        setFormEditable(draft);
+        showPublish(draft);
+        editorHeading.setText(draft
+                ? "Edit draft event — " + event.title()
+                : statusLabel(event.status()) + " event — " + event.title() + " (read-only)");
         reset.setText("Revert changes");
         feedback.setText("");
+    }
+
+    private void setFormEditable(boolean editable) {
+        title.setEditable(editable);
+        description.setEditable(editable);
+        startDate.setDisable(!editable);
+        startTime.setEditable(editable);
+        endDate.setDisable(!editable);
+        endTime.setEditable(editable);
+        capacity.setEditable(editable);
+        saveEvent.setDisable(!editable);
+        reset.setDisable(!editable);
+    }
+
+    private void showPublish(boolean visible) {
+        publishEvent.setVisible(visible);
+        publishEvent.setManaged(visible);
+        deleteEvent.setVisible(visible);
+        deleteEvent.setManaged(visible);
+    }
+
+    private void deleteSelectedEvent() {
+        if (editingEventId == null) {
+            setFeedback("Select a draft event to delete.", true);
+            return;
+        }
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                "Delete this draft? It disappears from your events, any pending venue request is withdrawn "
+                        + "and any approved venue booking is released. This cannot be undone.",
+                ButtonType.CANCEL, ButtonType.OK);
+        confirm.setHeaderText("Delete event");
+        if (confirm.showAndWait().filter(ButtonType.OK::equals).isEmpty()) {
+            return;
+        }
+        try {
+            Event deleted = service.deleteEvent(actor, editingEventId, editingVersion);
+            refreshEvents(null);
+            enterCreateMode(false);
+            setFeedback("Deleted \"" + deleted.title() + "\".", false);
+        } catch (RuntimeException exception) {
+            setFeedback(exception.getMessage(), true);
+        }
+    }
+
+    private void publishSelectedEvent() {
+        if (editingEventId == null) {
+            setFeedback("Select a draft event to publish.", true);
+            return;
+        }
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                "Publish this event? Attendees will be able to browse and register, and it can no longer be edited.",
+                ButtonType.CANCEL, ButtonType.OK);
+        confirm.setHeaderText("Publish event");
+        if (confirm.showAndWait().filter(ButtonType.OK::equals).isEmpty()) {
+            return;
+        }
+        try {
+            Event published = service.publishEvent(actor, editingEventId, editingVersion);
+            refreshEvents(published.id());
+            loadEvent(published);
+            setFeedback("Event published. Attendees can now browse and register.", false);
+        } catch (RuntimeException exception) {
+            setFeedback(exception.getMessage(), true);
+        }
     }
 
     private void resetForm() {
@@ -1380,6 +1504,8 @@ public final class OrganizerEventView extends BorderPane {
         editingEventId = null;
         editingVersion = 0;
         club.setDisable(false);
+        setFormEditable(true);
+        showPublish(false);
         if (!club.getItems().isEmpty() && club.getSelectionModel().getSelectedItem() == null) {
             club.getSelectionModel().selectFirst();
         }

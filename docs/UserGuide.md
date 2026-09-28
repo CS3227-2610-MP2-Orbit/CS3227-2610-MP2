@@ -100,6 +100,9 @@ The app is designed for users who:
 | Organizer | Edit draft event | **Events** → select event → edit → **Save event** |
 | Organizer | Reset / revert form | **Reset** (new) or **Revert changes** (edit) |
 | Organizer | Request a venue | **Request venue** → select event + venue → **Submit request** |
+| Organizer | Release an approved venue (drafts) | **Request venue** → select approved draft → **Release venue** → **OK** |
+| Organizer | Publish an event | **Events** → select approved draft → **Publish** → **OK** |
+| Organizer | Delete a draft event | **Events** → select draft → **Delete** → **OK** |
 | Organizer | View registrations | **Registrations** → select event |
 | Organizer | Post an announcement | **Announcements** → select event → write message → **Send announcement** |
 | Organizer | Delete an announcement | **Announcements** → select event → select announcement → **Delete selected** → **OK** |
@@ -176,6 +179,8 @@ approved/rejected requests are left alone.
 
 > **Caution:** Only **draft** events can be edited in this workflow. Concurrent edits use optimistic versioning; a stale save is rejected.
 
+> **Caution:** Once a venue request is **approved**, the start and end times are locked to the booked window; saving different times is refused with a message naming the booked times. Title, description and capacity stay editable. To change the times, first [release the venue](#releasing-an-approved-venue). If an older event's times already differ from its booking, set them back to the booked times to publish it.
+
 ### Reset and revert
 
 * **Reset** (while creating): clears the form back to create defaults.
@@ -198,9 +203,56 @@ Submits a `SUBMITTED` venue booking request so a Venue Administrator can approve
 
 **Expected result:** Success message includes a request id. Attendance comes from the event capacity. Submit stays disabled while status is pending (`SUBMITTED`/`DRAFT`) or `APPROVED`; after `REJECTED` you may submit again.
 
-> **Caution:** An event may have only **one open** request (`DRAFT` or `SUBMITTED`) at a time. Booking conflicts are checked when the administrator **approves**, not at submit time. Events are **not** auto-published when a venue is approved.
+> **Caution:** An event may have only **one open** request (`DRAFT` or `SUBMITTED`) at a time. While its latest request is `APPROVED`, a new request is refused until you [release the venue](#releasing-an-approved-venue). Booking conflicts are checked when the administrator **approves**, not at submit time. Events are **not** auto-published when a venue is approved; see [Publishing an event](#publishing-an-event).
 
 > **Tip:** After Admin decides, return to **Request venue** and select the event again to see the updated status.
+
+### Releasing an approved venue
+
+Gives up an approved venue booking for an unpublished draft so you can change its times and request a venue again.
+
+**Steps:**
+
+1. Open **Request venue** and select a **Draft** event whose status is `APPROVED`.
+2. Select **Release venue**, then **OK** in the confirmation.
+3. Under **Events**, change the start/end times and select **Save event**.
+4. Back in **Request venue**, select a venue and **Submit request** again, then have a Venue Administrator approve it.
+
+**Expected result:** The request status changes to `WITHDRAWN`, the booking is cancelled (freeing the venue for that slot), and **Submit request** is enabled again. The release is recorded in the venue audit log.
+
+> **Caution:** Releasing is only available for events that are not yet published; published events keep their booking. The released slot may be booked by someone else before your new request is approved.
+
+### Publishing an event
+
+Makes a draft visible to Attendees so they can browse, register and later check in.
+
+**Prerequisites:** You own the event's club, the event is still a **Draft** that has not started, and a Venue Administrator has **approved** its venue request, giving a confirmed booking at an **ACTIVE** venue with exactly the same start and end times as the event.
+
+**Steps:**
+
+1. Select **Events**, then pick a draft in **Your events** (each card shows **Draft** or **Published**).
+2. Select **Publish**, then **OK** in the confirmation.
+
+**Expected result:** Feedback confirms the event was published, its card shows **Published**, and the form becomes read-only. The event now appears in the Attendee **Browse** list.
+
+If a prerequisite is missing, publishing is refused and the event stays a draft. The message explains why, for example *Publishing needs a confirmed venue booking…* (no approved request yet), *The venue is booked for … Change the event times back to match before publishing.*, *The booked venue is not active…*, or *Events can only be published before they start*.
+
+> **Caution:** Published events cannot be edited or unpublished. If the booking is later cancelled or the venue made inactive, the event stays published but new registrations and check-in are refused.
+
+### Deleting a draft event
+
+Removes a draft you no longer need, together with its venue request or booking.
+
+**Prerequisites:** You own the event's club and the event is still a **Draft**.
+
+**Steps:**
+
+1. Select **Events**, then pick the draft in **Your events**.
+2. Select **Delete**, then **OK** in the confirmation.
+
+**Expected result:** Feedback confirms the deletion and the event disappears from every Organizer screen. A pending (`SUBMITTED`) venue request is withdrawn, so it leaves the Venue Administrator's queue, and an approved booking is released, freeing that venue slot for other events.
+
+> **Caution:** Deletion cannot be undone from the application. Published events cannot be deleted; the **Delete** button only appears for drafts.
 
 ### Viewing registrations
 
@@ -213,7 +265,7 @@ Shows who is registered for one of your events.
 
 **Expected result:** The panel shows the count as *registered / capacity* (for example `12 / 80 registered`) and lists registered attendees by name, sorted alphabetically. Select the event again to refresh.
 
-> **Caution:** The list reads real registrations from the database and counts confirmed and checked-in attendees with active accounts. Attendees can register for eligible published events, but Organizers cannot publish events yet, so a fresh database has no eligible catalogue events. This Organizer list is read-only; registrations cannot be changed here.
+> **Caution:** The list reads real registrations from the database and counts confirmed and checked-in attendees with active accounts. Attendees can register only after you [publish the event](#publishing-an-event). This Organizer list is read-only; registrations cannot be changed here.
 
 ### Posting announcements
 
@@ -506,9 +558,10 @@ Organizer first is no longer required. It does not seed or publish events.
 On a connection/schema error, fix setup and retry. Failures are shown without raw
 database exception messages.
 
-The Organizer currently creates drafts and has no publish action. Drafts are
-intentionally invisible here, so a freshly initialized database has no catalogue
-results. There is no hidden publish action or automatic demo-data insertion.
+Drafts are intentionally invisible here. An event appears only after its
+Organizer publishes it (see [Publishing an event](#publishing-an-event)), so a
+freshly initialized database has no catalogue results. There is no automatic
+demo-data insertion.
 Developers can run the separately labelled synthetic UI smoke test described in
 the Developer Guide; those fixtures are not real published events.
 
@@ -554,6 +607,7 @@ associated with the account that created the club.
 | Club Organizer | Role that creates/edits club events and submits venue requests |
 | Venue Administrator | Role that manages venues and approves/rejects booking requests |
 | Draft event | Event that can still be edited in the Organizer workflow |
+| Published event | Event visible to Attendees for browsing, registration and check-in; no longer editable |
 | `SUBMITTED` request | Venue request waiting for Admin decision |
 | `.env` | Local config file for database URL/user and Organizer demo identity |
 

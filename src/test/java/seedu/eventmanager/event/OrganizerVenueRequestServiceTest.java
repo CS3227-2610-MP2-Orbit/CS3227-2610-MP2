@@ -40,6 +40,7 @@ class OrganizerVenueRequestServiceTest {
     private InMemoryEventRepository events;
     private FakeVenueRepository venues;
     private FakeVenueRequestRepository requests;
+    private FakeVenueRelease release;
     private EventService eventService;
     private OrganizerVenueRequestService service;
 
@@ -48,9 +49,10 @@ class OrganizerVenueRequestServiceTest {
         events = new InMemoryEventRepository();
         venues = new FakeVenueRepository();
         requests = new FakeVenueRequestRepository();
+        release = new FakeVenueRelease();
         eventService = new EventService(events, () -> EVENT_ID, Clock.fixed(NOW, ZoneOffset.UTC));
         service = new OrganizerVenueRequestService(
-                eventService, venues, requests, () -> REQUEST_ID);
+                eventService, venues, requests, () -> REQUEST_ID, release);
 
         EventDetails details = new EventDetails(
                 "Campus Night",
@@ -78,6 +80,54 @@ class OrganizerVenueRequestServiceTest {
         assertEquals(VenueRequestStatus.SUBMITTED, saved.status());
         assertEquals(1, requests.saved.size());
         assertEquals(saved, requests.saved.getFirst());
+    }
+
+    @Test
+    void releaseApprovedVenue_ownedDraftWithBooking_releasesForOrganizer() {
+        release.bookedEvents.add(EVENT_ID);
+
+        service.releaseApprovedVenue(ORGANIZER, EVENT_ID);
+
+        assertEquals(List.of(List.of(EVENT_ID, OrganizerIds.toUuid("demo-organizer"))), release.calls);
+        assertTrue(release.bookedEvents.isEmpty());
+    }
+
+    @Test
+    void releaseApprovedVenue_unownedEvent_rejectedWithoutRelease() {
+        release.bookedEvents.add(EVENT_ID);
+
+        assertThrows(AccessDeniedException.class, () -> service.releaseApprovedVenue(OTHER, EVENT_ID));
+
+        assertTrue(release.calls.isEmpty());
+    }
+
+    @Test
+    void releaseApprovedVenue_publishedEvent_rejectedWithoutRelease() {
+        release.bookedEvents.add(EVENT_ID);
+        Event draft = events.findById(EVENT_ID).orElseThrow();
+        events.update(new Event(draft.id(), draft.clubId(), draft.organizerId(), draft.title(), draft.description(),
+                draft.startsAt(), draft.endsAt(), draft.capacity(), EventStatus.PUBLISHED, 1), 0,
+                new EventAuditRecord(NOW, "demo-organizer", EventAuditRecord.Action.PUBLISH_EVENT, EVENT_ID, 1));
+
+        assertThrows(ValidationException.class, () -> service.releaseApprovedVenue(ORGANIZER, EVENT_ID));
+
+        assertTrue(release.calls.isEmpty());
+    }
+
+    @Test
+    void releaseApprovedVenue_noApprovedBooking_rejected() {
+        ValidationException rejected = assertThrows(
+                ValidationException.class, () -> service.releaseApprovedVenue(ORGANIZER, EVENT_ID));
+
+        assertTrue(rejected.getMessage().contains("no approved venue booking"), rejected.getMessage());
+    }
+
+    @Test
+    void releaseApprovedVenue_withoutReleaseConfigured_failsClosed() {
+        OrganizerVenueRequestService unconfigured =
+                new OrganizerVenueRequestService(eventService, venues, requests, () -> REQUEST_ID);
+
+        assertThrows(IllegalStateException.class, () -> unconfigured.releaseApprovedVenue(ORGANIZER, EVENT_ID));
     }
 
     @Test
@@ -120,6 +170,36 @@ class OrganizerVenueRequestServiceTest {
                 () -> service.submit(ORGANIZER, EVENT_ID, VENUE_ID));
         assertEquals(1, requests.saved.size());
         assertEquals(first, requests.saved.getFirst());
+    }
+
+    @Test
+    void submit_whileLatestRequestApproved_rejectedUntilReleased() {
+        service.submit(ORGANIZER, EVENT_ID, VENUE_ID);
+        decideLatest(VenueRequestStatus.APPROVED);
+
+        ValidationException refused = assertThrows(ValidationException.class,
+                () -> service.submit(ORGANIZER, EVENT_ID, VENUE_ID));
+        assertTrue(refused.getMessage().contains("Release it under Request venue first"), refused.getMessage());
+        assertEquals(2, requests.saved.size(), "only the original request and its decision are saved");
+    }
+
+    @Test
+    void submit_afterRejectedOrWithdrawn_allowsNewRequest() {
+        service.submit(ORGANIZER, EVENT_ID, VENUE_ID);
+        decideLatest(VenueRequestStatus.REJECTED);
+        service.submit(ORGANIZER, EVENT_ID, VENUE_ID);
+        decideLatest(VenueRequestStatus.WITHDRAWN);
+
+        service.submit(ORGANIZER, EVENT_ID, VENUE_ID);
+
+        assertEquals(VenueRequestStatus.SUBMITTED,
+                service.latestRequest(ORGANIZER, EVENT_ID).orElseThrow().status());
+    }
+
+    private void decideLatest(VenueRequestStatus status) {
+        VenueRequest latest = requests.findLatestByEventId(EVENT_ID).orElseThrow();
+        requests.save(new VenueRequest(latest.requestId(), latest.eventId(), latest.venueId(),
+                latest.organizerId(), latest.startsAt(), latest.endsAt(), latest.expectedAttendance(), status));
     }
 
     @Test
@@ -188,6 +268,17 @@ class OrganizerVenueRequestServiceTest {
         }
     }
 
+    private static final class FakeVenueRelease implements VenueRelease {
+        private final List<UUID> bookedEvents = new ArrayList<>();
+        private final List<List<UUID>> calls = new ArrayList<>();
+
+        @Override
+        public boolean releaseApprovedBooking(UUID eventId, UUID organizerId) {
+            calls.add(List.of(eventId, organizerId));
+            return bookedEvents.remove(eventId);
+        }
+    }
+
     private static final class FakeVenueRepository implements VenueRepository {
         private final Map<UUID, Venue> byId = new HashMap<>();
 
@@ -224,7 +315,7 @@ class OrganizerVenueRequestServiceTest {
 
         @Override
         public Optional<VenueRequest> findOpenByEventId(UUID eventId) {
-            return saved.stream()
+            return byId.values().stream()
                     .filter(request -> request.eventId().equals(eventId))
                     .filter(request -> request.status() == VenueRequestStatus.SUBMITTED
                             || request.status() == VenueRequestStatus.DRAFT)

@@ -4,5 +4,7 @@ package seedu.eventmanager.event;
 public enum EventStatus {
     DRAFT,
     PUBLISHED,
-    COMPLETED
+    COMPLETED,
+    /** Soft-deleted draft: kept for the audit trail, hidden from every workflow. */
+    DELETED
 }
