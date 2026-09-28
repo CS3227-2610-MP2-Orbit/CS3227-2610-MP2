@@ -225,6 +225,7 @@ PostgreSQL integration tests run when their database environment variables are s
 | `DATABASE_USER` / `EVENT_MANAGER_DB_USER` | Database user |
 | `DATABASE_PASSWORD` / `EVENT_MANAGER_DB_PASSWORD` | Optional password |
 | `EVENT_MANAGER_LOG_DIR` | Optional diagnostic log folder (process environment only, not `.env`) |
+| `EVENT_MANAGER_TEST_DB_URL` / `_USER` / `_PASSWORD` | Disposable PostgreSQL database for the database test suites (process environment). Without them those suites skip; CI sets them and fails on skipped tests |
 
 ### Demo data
 
