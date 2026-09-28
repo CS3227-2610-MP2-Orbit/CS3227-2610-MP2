@@ -17,7 +17,13 @@ Registration commands live under `registration`. Register/cancel, My Registratio
 persistent notifications and normal self-check-in are implemented. Check-in uses
 the shared deterministic policy in the existing registration service and permits
 only an eligible own confirmed registration from start (inclusive) to end
-(exclusive). Ongoing events never offer Register/Re-register. A separate
-attendance-history screen remains a future slice.
+(exclusive). Ongoing events never offer Register/Re-register.
+
+`AttendanceHistoryService` provides a separate read-only, session-owned view of
+CHECKED_IN registrations, newest check-in first, including ended events. It
+revalidates the session after a single-statement repository snapshot. History
+shows the stored check-in time and current event/venue metadata, not historical
+metadata snapshots. The history screen shares the attendee sidebar and uses
+side-by-side details; it cannot change a registration.
 See the [Developer Guide](../../../../../../docs/DeveloperGuide.md#attendee-catalogue-and-personalized-event-details)
 for implemented behavior and integration boundaries.

@@ -93,6 +93,7 @@ The app is designed for users who:
 | Attendee | Register, cancel or re-register | **Browse events** → select event → action |
 | Attendee | View own bookings or cancel | **My Registrations** → select booking |
 | Attendee | Check into an ongoing registered event | **Browse events** or **My Registrations** → select event → **Check in** |
+| Attendee | View attended events and check-in times | **Attendance history** → select event |
 | Attendee | Read registration updates and announcements | **Notifications** → refresh or mark read |
 | Organizer | Create a club | **Clubs** → enter **Club name** → **Create club** |
 | Organizer | Create draft event | **Events** → **+ New event** → fill form → **Save event** |
@@ -349,7 +350,7 @@ booking or inactive venue prevents registration even if seats remain.
 Ongoing events show **Registration closed** and do not offer a Register or
 Re-register button. Ended or no-longer-published events cannot be reopened through
 the catalogue; your bookings remain available in My Registrations. A separate
-attendance-history screen is not available yet.
+attendance-history screen shows your checked-in events, including ended events.
 
 ### Register, cancel and re-register
 
@@ -396,7 +397,7 @@ Venue information reflects the current booking, or the most recent historic
 booking if there is no current one. It is not a stored snapshot of the venue when
 you originally registered. A missing booking is shown explicitly. Cancelled
 registrations remain visible. Check-in is available for eligible ongoing bookings;
-a separate attendance-history workflow is not implemented.
+use **Attendance history** for the narrower read-only list of actual check-ins.
 
 ### Normal self-check-in
 
@@ -416,6 +417,25 @@ a second check-in or change its timestamp. If the response is lost, refresh and
 check your status before retrying. Check-in records a business audit entry; it
 does not create a new inbox notification. Self-check-in records your declaration
 of attendance, not independently verified physical presence.
+
+### Attendance history
+
+Select **Attendance history** in the Attendee sidebar. Only your checked-in
+events appear, ordered by check-in time (newest first); confirmed-but-not-attended
+and cancelled registrations are excluded. A check-in appears immediately on your
+next visit or refresh, even if the event is still ongoing. Ended/completed events
+remain visible here even when they are no longer in Browse.
+
+Select a row to see event title, description, club, start/end times, venue,
+current event status and your recorded check-in time in the side-by-side details
+panel. All times are in Singapore Time. This screen is read-only: no register,
+cancel or check-in actions. Use **Refresh** to reload; no attendance yet is shown
+as an empty state, while load failures offer a retry and invalid sessions ask you
+to return Home and log in again.
+
+The check-in time is persisted attendance evidence. Event details are current
+records, not a snapshot captured at check-in. Venue uses the current booking or
+latest historic booking; missing venue information is labelled unavailable.
 
 ### Notifications
 
@@ -487,7 +507,6 @@ associated with the account that created the club.
 ## Known Issues
 
 * No supersede/withdraw of venue requests from the Organizer UI.
-* A separate Attendee attendance-history screen is not implemented yet.
 * The inbox badge is refreshed on opening/refreshing Notifications and after read-status changes, not continuously.
 * Notification outbox stores Admin decisions but does not send email yet.
 
