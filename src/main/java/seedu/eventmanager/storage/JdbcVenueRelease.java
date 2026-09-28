@@ -43,7 +43,8 @@ public final class JdbcVenueRelease implements VenueRelease {
     }
 
     private static boolean release(Connection connection, UUID eventId, UUID organizerId) throws SQLException {
-        // Lock the event first so a concurrent publish cannot slip in between the draft check and the release.
+        // Lock the event first. Publish also locks this row before re-checking the booking, so the
+        // two cannot interleave a PUBLISHED status with a cancelled booking.
         try (var statement = connection.prepareStatement(
                 "SELECT 1 FROM organizer_event WHERE id=? AND status='DRAFT' FOR UPDATE")) {
             statement.setObject(1, eventId);

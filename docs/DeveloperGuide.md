@@ -162,7 +162,7 @@ Organizer times are entered in Asia/Singapore and stored as UTC instants.
 
 `ClubService.identityFor` builds the organizer’s `OrganizerIdentity` from clubs that account owns. `EventService.listEvents` returns events for those clubs and hides `DELETED` rows. Create and edit validate a non-blank title, a start before the end, and a positive capacity. A stale version is rejected. After approval, a draft’s times must stay on the booked window unless the organizer releases the venue first.
 
-Publish checks the clock and `EventBookingCheck`. Delete is a soft delete to `DELETED`. The same transaction withdraws a submitted request and releases an approved booking. A published event cannot be deleted.
+Publish checks the clock and `EventBookingCheck`. Persisting a publish locks the draft row and re-checks the confirmed booking in that same transaction, so a concurrent venue release cannot leave a published event without a booking. Delete is a soft delete to `DELETED`. The same transaction withdraws a submitted request and releases an approved booking. A published event cannot be deleted.
 
 ### Venue requests
 

@@ -161,7 +161,7 @@ Publishing is what makes the event visible to attendees.
 3. It must have an approved booking at an active room for the same start and end.
 4. Select the event, select **Publish**, then **OK**.
 
-After that, attendees can find it under **Browse events**. You can no longer edit or delete it.
+After that, attendees can find it under **Browse events**. You can no longer edit or delete it. If the approved booking is released at the same moment, publish is refused and the event stays a draft.
 
 ### Deleting a draft
 

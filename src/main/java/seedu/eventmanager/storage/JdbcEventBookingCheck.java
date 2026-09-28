@@ -1,5 +1,6 @@
 package seedu.eventmanager.storage;
 
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -28,8 +29,20 @@ public final class JdbcEventBookingCheck implements EventBookingCheck {
 
     @Override
     public boolean hasConfirmedActiveBooking(UUID eventId, Instant startsAt, Instant endsAt) {
-        try (var connection = dataSource.getConnection();
-                var statement = connection.prepareStatement(QUERY)) {
+        try (var connection = dataSource.getConnection()) {
+            return hasConfirmedActiveBooking(connection, eventId, startsAt, endsAt);
+        } catch (SQLException exception) {
+            throw new EventPersistenceException("Could not check the event's venue booking", exception);
+        }
+    }
+
+    /**
+     * Same matching-booking predicate as the DataSource check, using the caller's transaction so a
+     * publish can re-check after locking {@code organizer_event}.
+     */
+    public static boolean hasConfirmedActiveBooking(
+            Connection connection, UUID eventId, Instant startsAt, Instant endsAt) throws SQLException {
+        try (var statement = connection.prepareStatement(QUERY)) {
             statement.setObject(1, eventId);
             statement.setTimestamp(2, Timestamp.from(startsAt));
             statement.setTimestamp(3, Timestamp.from(endsAt));
@@ -37,8 +50,6 @@ public final class JdbcEventBookingCheck implements EventBookingCheck {
                 result.next();
                 return result.getBoolean(1);
             }
-        } catch (SQLException exception) {
-            throw new EventPersistenceException("Could not check the event's venue booking", exception);
         }
     }
 

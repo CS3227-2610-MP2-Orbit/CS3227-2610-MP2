@@ -11,6 +11,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import javax.sql.DataSource;
+import seedu.eventmanager.common.ValidationException;
+import seedu.eventmanager.storage.JdbcEventBookingCheck;
 
 /** PostgreSQL event repository that commits an event change and its audit record atomically. */
 public final class JdbcEventRepository implements EventRepository {
@@ -91,6 +93,14 @@ public final class JdbcEventRepository implements EventRepository {
                 WHERE id = ? AND version = ?
                 """;
         inTransaction(connection -> {
+            if (event.status() == EventStatus.PUBLISHED) {
+                lockDraftForPublish(connection, event.id(), expectedVersion);
+                if (!JdbcEventBookingCheck.hasConfirmedActiveBooking(
+                        connection, event.id(), event.startsAt(), event.endsAt())) {
+                    throw new ValidationException(
+                            "Publishing needs a confirmed venue booking at an active venue matching the event times");
+                }
+            }
             int updated;
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
                 statement.setString(1, event.title());
@@ -124,10 +134,31 @@ public final class JdbcEventRepository implements EventRepository {
             } finally {
                 connection.setAutoCommit(originalAutoCommit);
             }
-        } catch (EventVersionConflictException exception) {
+        } catch (EventVersionConflictException | ValidationException exception) {
             throw exception;
         } catch (SQLException exception) {
             throw persistenceFailure(operation, exception);
+        }
+    }
+
+    /**
+     * Holds the event row the same way {@code JdbcVenueRelease} does, so a concurrent release waits
+     * here and a publish that already holds the lock cannot be overtaken by a booking cancel.
+     */
+    private static void lockDraftForPublish(Connection connection, UUID eventId, long expectedVersion)
+            throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(
+                "SELECT version, status FROM organizer_event WHERE id = ? FOR UPDATE")) {
+            statement.setObject(1, eventId);
+            try (ResultSet result = statement.executeQuery()) {
+                if (!result.next()) {
+                    throw new EventVersionConflictException("Event was modified by another operation");
+                }
+                if (result.getLong("version") != expectedVersion
+                        || !"DRAFT".equals(result.getString("status"))) {
+                    throw new EventVersionConflictException("Event was modified by another operation");
+                }
+            }
         }
     }
 

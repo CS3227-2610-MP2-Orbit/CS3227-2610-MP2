@@ -12,6 +12,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.flywaydb.core.Flyway;
@@ -188,6 +189,7 @@ class EventPublishIntegrationTest {
 
     @Test
     void publishUpdate_auditFailure_rollsBackStatus() throws Exception {
+        booking(EVENT_ID, "ACTIVE", "CONFIRMED", STARTS, ENDS);
         Event draft = events.findById(EVENT_ID).orElseThrow();
         Event published = new Event(draft.id(), draft.clubId(), draft.organizerId(), draft.title(),
                 draft.description(), draft.startsAt(), draft.endsAt(), draft.capacity(), EventStatus.PUBLISHED, 1);
@@ -198,6 +200,39 @@ class EventPublishIntegrationTest {
 
         assertEquals(draft, events.findById(EVENT_ID).orElseThrow());
         assertEquals(List.of("CREATE_EVENT"), auditActions());
+    }
+
+    @Test
+    void publish_bookingReleasedAfterCheck_refusesAndLeavesDraft() throws Exception {
+        booking(EVENT_ID, "ACTIVE", "CONFIRMED", STARTS, ENDS);
+        JdbcVenueRelease release = new JdbcVenueRelease(database);
+        UUID organizer = OrganizerIds.toUuid("organizer-1");
+        EventBookingCheck checkThenRelease = new EventBookingCheck() {
+            @Override
+            public boolean hasConfirmedActiveBooking(UUID eventId, Instant startsAt, Instant endsAt) {
+                boolean held = bookingCheck.hasConfirmedActiveBooking(eventId, startsAt, endsAt);
+                if (held) {
+                    assertTrue(release.releaseApprovedBooking(eventId, organizer));
+                }
+                return held;
+            }
+
+            @Override
+            public Optional<EventBookingCheck.ActiveBooking> findActiveBooking(UUID eventId) {
+                return bookingCheck.findActiveBooking(eventId);
+            }
+        };
+        EventService racing = new EventService(
+                events, () -> EVENT_ID, Clock.fixed(NOW, ZoneOffset.UTC), null, checkThenRelease, deletion);
+
+        ValidationException error = assertThrows(ValidationException.class,
+                () -> racing.publishEvent(ORGANIZER, EVENT_ID, 0));
+
+        assertTrue(error.getMessage().contains("confirmed venue booking"));
+        assertEquals(EventStatus.DRAFT, events.findById(EVENT_ID).orElseThrow().status());
+        assertTrue(bookingCheck.findActiveBooking(EVENT_ID).isEmpty());
+        assertEquals(List.of("CREATE_EVENT"), auditActions());
+        assertTrue(new JdbcEventCatalogueRepository(database).findPublishedNotEnded(NOW).isEmpty());
     }
 
     @Test
