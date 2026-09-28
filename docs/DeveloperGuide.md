@@ -384,14 +384,15 @@ The app’s own log events never include passwords, session tokens, connection s
 
 ### Non-functional requirements
 
-1. The desktop UI runs on JDK 25 with JavaFX. The same project runs on macOS, Windows, and Linux where JDK 25 and PostgreSQL are installed.
+1. The desktop UI runs on JDK 25 with JavaFX. One release jar runs on Windows, Linux and Apple Silicon macOS where JDK 25 and PostgreSQL are installed. Intel macOS runs from the source code.
 2. Events, bookings, registrations, and the inbox are stored in PostgreSQL, not in a local JSON file.
-3. Authorization is enforced in services. Hiding a button is not the only check. An attendee acts only as the signed-in account.
+3. Authorization is enforced in services. Hiding a button is not the only check. An attendee acts only as the signed-in account. A deactivated account loses access on its next checked action, not only at its next login; the administrator screens that do not re-check yet are listed in the User Guide’s known issues.
 4. A failed decision or registration does not leave a partial booking or a second check-in. Related writes share a transaction.
 5. Error text shown on a role screen names the problem in plain language. If the database is not configured or cannot be reached at startup, the app shows a plain-language cause, the current folder, the diagnostic log path and a **Try again** button. It does not show the password or the full connection string.
-6. Diagnostic logs must not contain passwords, session tokens, or unnecessary personal data.
+6. Diagnostic logs go to a rotating local file and must not contain passwords, session tokens, or unnecessary personal data. Business audit records stay in the database, separate from diagnostic logs.
 7. The three role screens share one visual shell so a user can move between them without learning a new layout.
-8. Automated tests cover service rules and PostgreSQL integrations. A person still has to click through JavaFX before a screen is called done. No performance target for thousands of rows is claimed.
+8. Automated tests cover service rules and PostgreSQL integrations, and CI fails if a database test is skipped. A person still has to click through JavaFX before a screen is called done. No performance target for thousands of rows is claimed.
+9. A release is published only after the same jar has started JavaFX on Linux, Windows and macOS in the release workflow.
 
 ---
 
