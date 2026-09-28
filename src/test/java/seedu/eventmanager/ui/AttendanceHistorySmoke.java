@@ -30,7 +30,7 @@ public final class AttendanceHistorySmoke {
         private final AttendanceRecord row = new AttendanceRecord(new UUID(0, 1), "Campus engineering workshop",
                 "A completed workshop with event details and a recorded check-in.", "engineering-club",
                 Instant.parse("2026-09-20T10:00:00Z"), Instant.parse("2026-09-20T12:00:00Z"),
-                "COMPLETED", "Seminar room · Level 2", Instant.parse("2026-09-20T10:05:00Z"));
+                "COMPLETED", "Seminar room · Level 2", Instant.parse("2026-09-20T10:05:00Z"), "Campus Engineering");
         private final AtomicReference<Supplier<List<AttendanceRecord>>> reply = new AtomicReference<>(() -> List.of(row));
         private final AtomicInteger reads = new AtomicInteger();
         private final AtomicBoolean home = new AtomicBoolean();
@@ -41,8 +41,9 @@ public final class AttendanceHistorySmoke {
         @Override public void start(Stage stage) {
             this.stage = stage;
             var catalogue = new EventCatalogueService(new EventCatalogueRepository() {
-                public List<Event> findPublishedNotEnded(Instant now) { return List.of(); }
-                public Optional<Event> findPublishedById(UUID id) { return Optional.empty(); }
+                public List<Entry> findPublishedNotEnded(Instant now) { return List.of(); }
+                public Optional<Entry> findPublishedById(UUID id) { return Optional.empty(); }
+                public List<seedu.eventmanager.attendee.CatalogueClub> findClubs() { return List.of(); }
             }, Clock.systemUTC());
             view = new AttendeeBrowseView(() -> catalogue, id -> { throw new AssertionError("No catalogue detail read"); },
                     new AttendeeRegistrationActions((id, version) -> { throw new AssertionError("No history register"); },
@@ -72,6 +73,8 @@ public final class AttendanceHistorySmoke {
                 String details = detailText();
                 require(details.contains("20 Sept 2026, 6:05 PM SGT") || details.contains("20 Sep 2026, 6:05 PM SGT"), "SGT check-in time: " + details);
                 require(details.contains("COMPLETED") && details.contains("Seminar room") && details.contains(row.description()), "event details");
+                require(details.contains("Club: Campus Engineering") && !details.contains("engineering-club"),
+                        "history uses human-readable club name");
                 require(view.lookup("#attendee-register") == null && view.lookup("#attendee-check-in") == null
                         && view.lookup("#attendee-cancel") == null, "read-only history");
                 screenshot("attendance-history-1280.png"); stage.setWidth(1000); stage.setHeight(640);

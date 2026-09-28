@@ -45,8 +45,9 @@ public final class AttendeeInboxSmoke {
         @Override public void start(Stage stage) {
             this.stage = stage;
             var catalogue = new EventCatalogueService(new EventCatalogueRepository() {
-                public List<Event> findPublishedNotEnded(Instant now) { return List.of(); }
-                public Optional<Event> findPublishedById(UUID id) { return Optional.empty(); }
+                public List<Entry> findPublishedNotEnded(Instant now) { return List.of(); }
+                public Optional<Entry> findPublishedById(UUID id) { return Optional.empty(); }
+                public List<seedu.eventmanager.attendee.CatalogueClub> findClubs() { return List.of(); }
             }, Clock.fixed(NOW, ZoneOffset.UTC));
             view = new AttendeeBrowseView(() -> catalogue, id -> { throw new AssertionError("Unused details"); },
                     new AttendeeRegistrationActions((id, v) -> { throw new AssertionError("Unused register"); },

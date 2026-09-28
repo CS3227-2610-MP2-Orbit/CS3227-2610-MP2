@@ -68,7 +68,8 @@ class JdbcEventCatalogueRepositoryIntegrationTest {
         Event ongoing = insert(5, EventStatus.PUBLISHED, NOW, "Started", "tech");
         insert(6, EventStatus.PUBLISHED, NOW.minusSeconds(3600), "Ended", "tech");
 
-        assertEquals(List.of(ongoing, first, second), repository.findPublishedNotEnded(NOW));
+        assertEquals(List.of(ongoing, first, second), repository.findPublishedNotEnded(NOW).stream()
+                .map(EventCatalogueRepository.Entry::event).toList());
         assertTrue(repository.findPublishedById(draft.id()).isEmpty());
         assertTrue(repository.findPublishedById(UUID.randomUUID()).isEmpty());
     }

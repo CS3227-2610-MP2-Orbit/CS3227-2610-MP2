@@ -10,7 +10,15 @@ public interface RegistrationEventInfoRepository {
     Map<UUID, EventInfo> findAll(Set<UUID> eventIds);
 
     record EventInfo(String title, Instant startsAt, String venue, Instant endsAt,
-            String clubId, String description, String eventStatus, boolean confirmedActiveBooking) {
+            String clubId, String description, String eventStatus, boolean confirmedActiveBooking, String clubName) {
+        public EventInfo {
+            clubName = CatalogueClub.displayName(clubName);
+        }
+
+        public EventInfo(String title, Instant startsAt, String venue, Instant endsAt,
+                String clubId, String description, String eventStatus, boolean confirmedActiveBooking) {
+            this(title, startsAt, venue, endsAt, clubId, description, eventStatus, confirmedActiveBooking, null);
+        }
         public EventInfo(String title, Instant startsAt, String venue, Instant endsAt,
                 String clubId, String description, String eventStatus) {
             this(title, startsAt, venue, endsAt, clubId, description, eventStatus, false);

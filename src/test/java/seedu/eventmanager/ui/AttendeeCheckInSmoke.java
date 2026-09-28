@@ -46,8 +46,9 @@ public final class AttendeeCheckInSmoke {
         @Override public void start(Stage stage) {
             this.stage = stage;
             var catalogue = new EventCatalogueService(new EventCatalogueRepository() {
-                public List<Event> findPublishedNotEnded(Instant now) { return List.of(event); }
-                public Optional<Event> findPublishedById(UUID id) { return Optional.of(event); }
+                public List<Entry> findPublishedNotEnded(Instant now) { return List.of(new Entry(event, "Campus Technology")); }
+                public Optional<Entry> findPublishedById(UUID id) { return Optional.of(new Entry(event, "Campus Technology")); }
+                public List<seedu.eventmanager.attendee.CatalogueClub> findClubs() { return List.of(); }
             }, Clock.systemUTC());
             view = new AttendeeBrowseView(() -> catalogue, id -> {
                 require(!Platform.isFxApplicationThread(), "details off FX");

@@ -5,4 +5,13 @@ import java.util.UUID;
 
 /** Public event fields only. Capacity is the configured limit, not available seats. */
 public record CatalogueEvent(UUID id, String clubId, String title, String description,
-        Instant startsAt, Instant endsAt, int capacity) { }
+        Instant startsAt, Instant endsAt, int capacity, String clubName) {
+    public CatalogueEvent {
+        clubName = CatalogueClub.displayName(clubName);
+    }
+
+    public CatalogueEvent(UUID id, String clubId, String title, String description,
+            Instant startsAt, Instant endsAt, int capacity) {
+        this(id, clubId, title, description, startsAt, endsAt, capacity, null);
+    }
+}

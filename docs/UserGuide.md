@@ -327,19 +327,29 @@ are planned for a later secure and audited implementation.
    log in. Your role opens Browse events. The catalogue contains only
    public event fields; selected details also show your own registration status.
 2. Enter text to search event titles/descriptions (case-insensitive literal
-   substring), and optionally enter an exact, case-sensitive **Club ID**.
+   substring), and optionally select a name from the **Club** dropdown.
+   **All clubs** is the default; club names are sorted alphabetically.
 3. Optionally choose **From date** and **To date** using the calendar controls.
    These are inclusive event-start calendar dates in Singapore Time; either
    bound may be left blank. From must not be later than To.
 4. Select **Search / Refresh** (or press Enter in a text field). Only published
    upcoming and ongoing events (strictly before their end) are listed, ordered by start time
-   and then event ID. **Clear filters** resets all fields and reloads the list.
-5. Select an event for its latest title, description, club ID, SGT start/end
+   and then event ID. **Clear filters** resets the club to **All clubs**,
+   clears the other fields and reloads the list.
+5. Select an event for its latest title, description, club name, SGT start/end
    times, venue/location, booking/venue status, remaining seats and your own
    registration status. Full events remain visible, with an explanation of
    registration availability. **Refresh details** reloads the selected event.
 6. **← Home** clears personal details and returns to the login screen. If your
    session expires, the next detail read asks you to log in again.
+
+Club names appear in the event list/details, My Registrations and Attendance
+History. Older events whose club cannot be found display **Unknown club** and
+remain visible under **All clubs**. The dropdown lists shared clubs, including
+those without upcoming events. **Search / Refresh** reloads the choices while
+retaining the selected club. If loading clubs fails, existing choices remain
+available and a message offers a retry. If a selected club disappears, its
+filter remains selected as **Unknown club** until you choose another or clear it.
 
 Remaining seats count confirmed and checked-in registrations, including inactive
 accounts whose seats have not been cancelled. Cancelled registrations do not

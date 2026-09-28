@@ -181,6 +181,29 @@ an attendee event table. SQL restricts reads to published events; the service
 also enforces not-yet-ended visibility for both listing and direct-ID details.
 `CatalogueEvent` omits organizer identity and internal version/state fields.
 
+Club display (#37) is an Attendee read-model concern. Catalogue entries and
+the details/registration/history projections resolve `organizer_club.name`
+with a left join shared by `AttendeeClubSql`. The UUID club key is cast to text,
+not the legacy event club ID to UUID, so unmatched/non-UUID IDs remain readable.
+`CatalogueClub.displayName` supplies the neutral "Unknown club" fallback.
+No Organizer domain, repository contract, workflow, UI or migration is changed.
+The catalogue repository also loads public club IDs/names in one query for the
+dropdown; no owner fields are exposed and no per-row club lookup occurs.
+`CatalogueClub.BY_NAME` gives case-insensitive name ordering with an ID tie-break.
+The dropdown includes all shared clubs, not just clubs in the current search.
+It keeps "All clubs" first and sends the selected ID through the unchanged
+`CatalogueQuery.clubId` filter. Club loads run on a separate controller task,
+with superseded/closed callbacks ignored, selection restored by ID and safe
+failure feedback retaining existing choices. A disappeared selected ID is
+retained with the fallback name, rather than silently broadening a live search.
+Reads retain 15-second statement timeouts and acquire no write locks.
+
+`AttendeeClubNamesIntegrationTest` covers known/renamed and unmatched legacy
+clubs across all four projections, ID-only filtering, sorted dropdown data
+and absence of read-side audit/outbox effects in isolated PostgreSQL schemas.
+The Browse/My Registrations/History JavaFX smoke checks cover named display;
+Browse also covers sorted choices, Clear, failure/retry and stale club loads.
+
 `CatalogueQuery` combines literal, case-insensitive title/description search,
 exact club ID and inclusive Singapore-calendar start dates. An injected clock
 defines upcoming/ongoing visibility. `AttendeeBrowseController` uses cancellable JavaFX Tasks on virtual

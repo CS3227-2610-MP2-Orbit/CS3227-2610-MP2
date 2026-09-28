@@ -32,7 +32,9 @@ final class AttendanceHistoryView extends VBox implements AttendanceHistoryContr
                 title.maxWidthProperty().bind(rows.widthProperty().subtract(48));
                 Label time = text("Checked in: " + SingaporeDateTimes.display(row.checkedInAt()), 12);
                 time.maxWidthProperty().bind(rows.widthProperty().subtract(48));
-                VBox card = new VBox(6, title, time); card.setPadding(new Insets(8)); setGraphic(card);
+                Label club = text(row.clubName(), 12);
+                club.maxWidthProperty().bind(rows.widthProperty().subtract(48));
+                VBox card = new VBox(6, title, club, time); card.setPadding(new Insets(8)); setGraphic(card);
             }
         });
         rows.getSelectionModel().selectedItemProperty().addListener((ignored, previous, selected) -> {
@@ -73,7 +75,7 @@ final class AttendanceHistoryView extends VBox implements AttendanceHistoryContr
     private void showDetails(AttendanceRecord row) {
         details.getChildren().setAll(text(row.title(), 22),
                 text("Checked in: " + SingaporeDateTimes.display(row.checkedInAt()), 16),
-                text("Club: " + row.clubId(), 14),
+                text("Club: " + row.clubName(), 14),
                 text("Starts: " + SingaporeDateTimes.display(row.startsAt()), 14),
                 text("Ends: " + SingaporeDateTimes.display(row.endsAt()), 14),
                 text(row.description().isBlank() ? "No description provided." : row.description(), 14),
