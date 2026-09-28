@@ -201,14 +201,3 @@ ChatGPT→project adaptation (Gradle, Flyway, no lint plugin) and the Phase 1→
 approval discipline shows that generic AI advice must be grounded in the
 actual repo—and that hooks help by making those boundaries **enforceable and
 observable**, not just written in a markdown guide.
-
-## Student review
-
-- [ ] I confirmed that the original prompts are accurate.
-- [ ] I confirmed that the changed-file list is accurate.
-- [ ] I confirmed that recorded commands were actually executed.
-- [ ] I confirmed that verification results and limitations are accurate.
-- [ ] I added any mistakes or disagreements omitted by the AI.
-
-Reviewed by:
-Review date:

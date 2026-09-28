@@ -95,14 +95,3 @@ The strongest result is that the combined real-database suite found a defect tha
 per-role fakes could not show. The organizer and admin unit tests each passed on their own
 while the two together failed. The main limitation is that the suite stops at the
 service layer; a JavaFX end-to-end run is the useful next step.
-
-## Student review
-
-- [ ] I confirmed that the original prompts are accurate.
-- [ ] I confirmed that the changed-file list is accurate.
-- [ ] I confirmed that recorded commands were actually executed.
-- [ ] I confirmed that verification results and limitations are accurate.
-- [ ] I added any mistakes or disagreements omitted by the AI.
-
-Reviewed by:
-Review date:

@@ -117,14 +117,3 @@ The main outcome is that ownership now comes from the authenticated account and 
 database instead of local settings, reusing the existing `EventService` checks. The
 main limitation is the missing manual UI check and the hidden legacy demo events; a
 useful next step is a manual two-account run to confirm isolation end to end.
-
-## Student review
-
-- [ ] I confirmed that the original prompts are accurate.
-- [ ] I confirmed that the changed-file list is accurate.
-- [ ] I confirmed that recorded commands were actually executed.
-- [ ] I confirmed that verification results and limitations are accurate.
-- [ ] I added any mistakes or disagreements omitted by the AI.
-
-Reviewed by:
-Review date:

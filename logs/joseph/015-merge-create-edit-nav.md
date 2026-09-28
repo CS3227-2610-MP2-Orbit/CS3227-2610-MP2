@@ -78,14 +78,3 @@ Merge Organizer create/edit navigation into a single Events screen.
 The change removes a nav entry that duplicated an existing screen mode rather
 than a real feature. Main limitation: UI behaviour is verified only by
 compilation, not by an automated UI test.
-
-## Student review
-
-- [ ] I confirmed that the original prompts are accurate.
-- [ ] I confirmed that the changed-file list is accurate.
-- [ ] I confirmed that recorded commands were actually executed.
-- [ ] I confirmed that verification results and limitations are accurate.
-- [ ] I added any mistakes or disagreements omitted by the AI.
-
-Reviewed by:
-Review date:

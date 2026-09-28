@@ -45,14 +45,3 @@ The user guide said a Venue Administrator could only be created by an existing a
 ## Outcome and limitations
 
 The README now defers product description to the two guides. The guides were not clicked through in the running app.
-
-## Student review
-
-- [ ] I confirmed that the original prompts are accurate.
-- [ ] I confirmed that the changed-file list is accurate.
-- [ ] I confirmed that recorded commands were actually executed.
-- [ ] I confirmed that verification results and limitations are accurate.
-- [ ] I added any mistakes or disagreements omitted by the AI.
-
-Reviewed by:
-Review date:

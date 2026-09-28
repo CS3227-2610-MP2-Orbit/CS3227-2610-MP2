@@ -58,14 +58,3 @@ The previous developer guide’s manual test still said approval was forbidden u
 ## Outcome and limitations
 
 Both guides now cover the three roles. The user guide avoids service and schema names. The developer guide’s diagrams are Mermaid, not exported UML images. JavaFX was not launched to confirm every sentence against the running window.
-
-## Student review
-
-- [ ] I confirmed that the original prompts are accurate.
-- [ ] I confirmed that the changed-file list is accurate.
-- [ ] I confirmed that recorded commands were actually executed.
-- [ ] I confirmed that verification results and limitations are accurate.
-- [ ] I added any mistakes or disagreements omitted by the AI.
-
-Reviewed by:
-Review date:

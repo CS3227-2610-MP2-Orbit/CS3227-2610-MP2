@@ -78,14 +78,3 @@ Add unit and Postgres tests for capacity-to-attendance sync on edit.
 Strongest outcome: Postgres proof that status-gated attendance updates work end
 to end with `EventService.editEvent`. Limitation: integration suite stays env-
 gated so CI without a DB will skip unless configured.
-
-## Student review
-
-- [ ] I confirmed that the original prompts are accurate.
-- [ ] I confirmed that the changed-file list is accurate.
-- [ ] I confirmed that recorded commands were actually executed.
-- [ ] I confirmed that verification results and limitations are accurate.
-- [ ] I added any mistakes or disagreements omitted by the AI.
-
-Reviewed by:
-Review date:

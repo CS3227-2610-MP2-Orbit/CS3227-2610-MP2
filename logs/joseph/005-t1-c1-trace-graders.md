@@ -119,14 +119,3 @@ or review tasks. They depend on current Codex command-execution and agent-messag
 event shapes and may require updates if those shapes change.
 
 Suggested commit message: `test: add T1 and C1 trace graders`
-
-## Student review
-
-- [ ] I confirmed that the original prompts are accurate.
-- [ ] I confirmed that the changed-file list is accurate.
-- [ ] I confirmed that recorded commands were actually executed.
-- [ ] I confirmed that verification results and limitations are accurate.
-- [ ] I added any mistakes or disagreements omitted by the AI.
-
-Reviewed by:
-Review date:
