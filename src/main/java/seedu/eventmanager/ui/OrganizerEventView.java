@@ -246,7 +246,7 @@ public final class OrganizerEventView extends BorderPane {
         sidebar.setStyle(SIDEBAR_STYLE);
         VBox.setVgrow(sidebar, Priority.ALWAYS);
 
-        Label brand = new Label("EVENT VENUE\nMANAGER");
+        Label brand = new Label("ORBIT");
         brand.setStyle("-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;");
 
         Label role = new Label("Club Organizer");

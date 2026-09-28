@@ -2,11 +2,11 @@
 title: Developer guide
 ---
 
-# Event Venue Manager Developer Guide
+# Orbit Developer Guide
 
 ## Acknowledgements
 
-Event Venue Manager is a CS3227 MP2 team project with three roles: Club Organizer, Venue Administrator, and Attendee.
+Orbit, an event venue manager, is a CS3227 MP2 team project with three roles: Club Organizer, Venue Administrator, and Attendee.
 
 Libraries:
 
@@ -66,7 +66,7 @@ The app is one JavaFX process. The UI calls role services. Services enforce owne
 
 ```mermaid
 flowchart TB
-  accTitle: Event Venue Manager architecture
+  accTitle: Orbit architecture
   accDescr: JavaFX workspaces call Organizer, Venue Administrator and Attendee services, which use JDBC repositories to access PostgreSQL.
   UI[JavaFX workspaces]
   Org[Organizer services]
@@ -261,7 +261,7 @@ There is no automated end-to-end desktop test across all three roles. Attendee s
 
 Pull requests that change `build.gradle`, `src/main` or the workflow run steps 1–2 only, so every change is checked on all three systems before a release.
 
-`releaseJar` builds `build/release/EventVenueManager-<version>.jar`. It holds the app, all runtime dependencies, and JavaFX for Windows (`win`), Linux (`linux`) and Apple Silicon macOS (`mac-aarch64`). The per-OS native libraries have different names (`.dll`, `.so`, `.dylib`), so they coexist in one jar. The Intel macOS libraries use the same names as the Apple Silicon ones, so Intel Macs are not supported by the jar. Each platform’s JavaFX jars come from their own Gradle configuration, because Gradle rejects two platform variants of one module in a single configuration. `mergeServiceFiles` merges the `META-INF/services` files of all dependencies. Without it, Flyway would keep only one copy and lose its PostgreSQL plugin inside the jar. The manifest sets `Main-Class` and `Enable-Native-Access: ALL-UNNAMED`.
+`releaseJar` builds `build/release/Orbit-<version>.jar`. It holds the app, all runtime dependencies, and JavaFX for Windows (`win`), Linux (`linux`) and Apple Silicon macOS (`mac-aarch64`). The per-OS native libraries have different names (`.dll`, `.so`, `.dylib`), so they coexist in one jar. The Intel macOS libraries use the same names as the Apple Silicon ones, so Intel Macs are not supported by the jar. Each platform’s JavaFX jars come from their own Gradle configuration, because Gradle rejects two platform variants of one module in a single configuration. `mergeServiceFiles` merges the `META-INF/services` files of all dependencies. Without it, Flyway would keep only one copy and lose its PostgreSQL plugin inside the jar. The manifest sets `Main-Class` and `Enable-Native-Access: ALL-UNNAMED`.
 
 The release version comes from `version` in `build.gradle`: it names the jar and is written to the manifest, and `--version` reads it from there (running from source prints `development`). The publish step refuses a tag that does not match the jar, so bump `version` before releasing.
 
@@ -273,7 +273,7 @@ This is local diagnostics for a desktop app, not a hosted monitoring or alerting
 
 | Part | Where | What it does |
 | --- | --- | --- |
-| Diagnostic log | `DiagnosticLog` | Sends all `java.util.logging` output to a rotating file (`app-0.log`, 5 × 1 MB) in `~/.event-venue-manager/logs`, or in `EVENT_MANAGER_LOG_DIR`. Uncaught exceptions on any thread are logged as `uncaught_exception`. |
+| Diagnostic log | `DiagnosticLog` | Sends all `java.util.logging` output to a rotating file (`app-0.log`, 5 × 1 MB) in `~/.orbit/logs`, or in `EVENT_MANAGER_LOG_DIR`. Uncaught exceptions on any thread are logged as `uncaught_exception`. |
 | Structured events | `StructuredLogger` | One-line `event=… key=value` records: `app_started`, `database_health`, `database_unavailable`, `database_not_configured`, `database_migration_failed`, `login_succeeded` (role only), `login_failed` (exception type only), `workspace_failed`, `app_stopped`, and the Venue Administrator decision events. |
 | Metrics | `InMemoryMetrics` via `Monitoring.metrics()` | Thread-safe counters and gauges, for example `app.login_succeeded.<role>`, `app.login_failed`, `app.database_unavailable`, `database.latency_ms`, and the Venue Administrator `venue_requests.*` counters. They replace `NoopMetrics` as the default in `VenueAdministratorServiceFactory`. The snapshot is written to the log in `app_stopped`. |
 | Health check | `DatabaseHealth` | Before migrations, connects with a 5-second timeout and runs `SELECT 1`. The login screen shows the result and the log path. On failure, the error screen shows a safe cause (derived from the SQL state), the current folder and a **Try again** button. |

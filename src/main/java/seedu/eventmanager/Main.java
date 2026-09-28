@@ -7,7 +7,7 @@ import javafx.application.Platform;
 import seedu.eventmanager.demo.DemoDataSeeder;
 import seedu.eventmanager.ui.EventManagerApplication;
 
-/** Starts the Event Venue Manager application. */
+/** Starts Orbit, the campus event venue manager. */
 public final class Main {
     /** The release version from the jar manifest (set by build.gradle), or "development" from source. */
     public static final String VERSION = versionOf(Main.class.getPackage().getImplementationVersion());
@@ -22,7 +22,7 @@ public final class Main {
     /** Starts the application. */
     public static void main(String[] args) {
         if (args.length == 1 && "--version".equals(args[0])) {
-            System.out.println("Event Venue Manager " + VERSION);
+            System.out.println("Orbit " + VERSION);
             return;
         }
         if (args.length == 1 && "--seed-demo".equals(args[0])) {

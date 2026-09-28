@@ -22,13 +22,13 @@ public final class DiagnosticLog {
 
     private DiagnosticLog() { }
 
-    /** Directory from EVENT_MANAGER_LOG_DIR, otherwise ~/.event-venue-manager/logs. */
+    /** Directory from EVENT_MANAGER_LOG_DIR, otherwise ~/.orbit/logs. */
     public static Path defaultDirectory(Map<String, String> environment, String userHome) {
         String override = environment.get("EVENT_MANAGER_LOG_DIR");
         if (override != null && !override.isBlank()) {
             return Path.of(override);
         }
-        return Path.of(userHome, ".event-venue-manager", "logs");
+        return Path.of(userHome, ".orbit", "logs");
     }
 
     /** Installs the file handler once and returns the current log file. */

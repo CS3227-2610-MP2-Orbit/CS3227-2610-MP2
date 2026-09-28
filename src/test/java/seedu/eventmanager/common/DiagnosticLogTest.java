@@ -32,7 +32,7 @@ class DiagnosticLogTest {
     void defaultDirectory_prefersEnvironmentOverride() {
         assertEquals(Path.of("/tmp/custom-logs"),
                 DiagnosticLog.defaultDirectory(Map.of("EVENT_MANAGER_LOG_DIR", "/tmp/custom-logs"), "/home/tester"));
-        assertEquals(Path.of("/home/tester", ".event-venue-manager", "logs"),
+        assertEquals(Path.of("/home/tester", ".orbit", "logs"),
                 DiagnosticLog.defaultDirectory(Map.of(), "/home/tester"));
     }
 

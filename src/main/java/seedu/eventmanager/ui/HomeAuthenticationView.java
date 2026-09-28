@@ -36,7 +36,7 @@ public final class HomeAuthenticationView extends VBox {
         setSpacing(12);
         setPadding(new Insets(32));
         setMaxWidth(900);
-        Label heading = new Label("Event Venue Manager");
+        Label heading = new Label("Orbit");
         heading.setStyle("-fx-font-size: 24px; -fx-font-weight: bold;");
         username.setPromptText("Username");
         password.setPromptText("Password");

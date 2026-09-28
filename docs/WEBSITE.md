@@ -141,6 +141,12 @@ code blocks too. Website-only changes do not need app/database tests.
 
 ## Screenshot provenance and acknowledgements
 
+On 2026-09-29, after the app was renamed to Orbit, `attendee-browse.png`,
+`attendee-check-in-availability.png`, `attendee-notifications.png` and
+`attendance-history.png` were re-captured, unedited, from the same smoke tasks
+(the 1280-wide outputs) so the sidebar shows **ORBIT**. The registration-filters
+capture shows the view without the sidebar and was kept.
+
 `assets/images/attendee-browse.png` is an unmodified existing 1280 × 800 JavaFX
 capture from `AttendeeBrowseSmoke` (`browse-1280.png`), using synthetic fixtures
 and a controlled clock. It shows the real UI, not real campus data or live

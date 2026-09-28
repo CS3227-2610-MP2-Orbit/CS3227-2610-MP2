@@ -55,7 +55,7 @@ public final class VenueAdministratorDashboardView {
         sidebar.setPrefWidth(220);
         sidebar.setStyle("-fx-background-color: #172033;");
 
-        Label brand = new Label("EVENT VENUE\nMANAGER");
+        Label brand = new Label("ORBIT");
         brand.setStyle("-fx-text-fill: white; -fx-font-size: 16px; -fx-font-weight: bold;");
         sidebar.getChildren().add(brand);
 

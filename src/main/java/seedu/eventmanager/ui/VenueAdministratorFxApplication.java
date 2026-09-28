@@ -27,7 +27,7 @@ public final class VenueAdministratorFxApplication extends Application {
 
     @Override
     public void start(Stage stage) {
-        stage.setTitle("Event Venue Manager");
+        stage.setTitle("Orbit");
         stage.setScene(new Scene(createRoot(), WIDTH, HEIGHT));
         stage.show();
         stage.setMaximized(true);

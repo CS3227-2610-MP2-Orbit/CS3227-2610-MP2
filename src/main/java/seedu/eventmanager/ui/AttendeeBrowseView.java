@@ -111,7 +111,7 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
     }
 
     private VBox sidebar(Runnable onHome) {
-        Label brand = text("EVENT VENUE\nMANAGER", "white", 16);
+        Label brand = text("ORBIT", "white", 16);
         Label role = text("Attendee", "#93a4bd", 13);
         Button browse = browseNav;
         browse.setMaxWidth(Double.MAX_VALUE);
