@@ -40,6 +40,42 @@ public final class RegistrationService {
         return change(sessionToken, eventId, expectedVersion, true);
     }
 
+    public Registration checkIn(String sessionToken, UUID eventId, long expectedVersion) {
+        return transactions.execute(() -> {
+            Actor actor = sessions.require(sessionToken);
+            RegistrationEvent event = lockEventAndAccount(actor, eventId, expectedVersion);
+            // Acquire booking/venue locks before reading and eventually updating the registration.
+            boolean booking = store.lockConfirmedActiveBooking(event);
+            Registration current = store.find(eventId, actor.userId());
+            if (current != null) requireVersion(current, expectedVersion);
+            if (!actor.equals(sessions.require(sessionToken))) {
+                throw problem("UNAUTHENTICATED", "Please log in again.");
+            }
+            // Read time only after potentially blocking locks and session revalidation.
+            var now = clock.instant();
+            var eligibility = CheckInPolicy.evaluate(event, current == null ? null : current.status(), booking, now);
+            if (eligibility != CheckInPolicy.Result.AVAILABLE) {
+                String code = switch (eligibility) {
+                    case NOT_REGISTERED -> "REGISTRATION_NOT_FOUND";
+                    case CANCELLED -> "REGISTRATION_CANCELLED";
+                    case ALREADY_CHECKED_IN -> "ALREADY_CHECKED_IN";
+                    case TOO_EARLY -> "CHECK_IN_TOO_EARLY";
+                    case CLOSED -> "CHECK_IN_CLOSED";
+                    case VENUE_UNAVAILABLE -> "CHECK_IN_VENUE_UNAVAILABLE";
+                    case AVAILABLE -> throw new AssertionError("Handled above");
+                };
+                throw problem(code, "Check-in rejected: " + eligibility.name());
+            }
+            Registration updated = new Registration(current.id(), eventId, actor.userId(),
+                    Registration.Status.CHECKED_IN, current.registeredAt(), null, now, current.version() + 1);
+            store.save(updated);
+            audit.record(actor, "REGISTRATION_CHECKED_IN", "REGISTRATION", updated.id(),
+                    current.status().name(), updated.status().name(), null);
+            // Audit-only: no unsupported check-in event is put into the notification outbox.
+            return updated;
+        });
+    }
+
     public List<Registration> myRegistrations(String sessionToken) {
         return transactions.execute(() -> {
             Actor actor = sessions.require(sessionToken);
@@ -51,12 +87,7 @@ public final class RegistrationService {
     private Registration change(String token, UUID eventId, long expectedVersion, boolean cancel) {
         return transactions.execute(() -> {
             Actor actor = sessions.require(token);
-            if (eventId == null) throw problem("EVENT_NOT_FOUND", "Event was not found.");
-            if (expectedVersion < -1) throw problem("INVALID_VERSION", "Registration version is invalid.");
-            // Consistent write lock order: event, account, booking/venue, registration.
-            RegistrationEvent event = store.lockEvent(eventId);
-            if (event == null) throw problem("EVENT_NOT_FOUND", "Event was not found.");
-            requireActive(actor);
+            RegistrationEvent event = lockEventAndAccount(actor, eventId, expectedVersion);
             Registration current = store.find(eventId, actor.userId());
             if (cancel && current == null) throw problem("REGISTRATION_NOT_FOUND", "Your registration was not found.");
             Registration.Status target = cancel ? Registration.Status.CANCELLED : Registration.Status.CONFIRMED;
@@ -64,9 +95,7 @@ public final class RegistrationService {
                     && (expectedVersion == current.version() || expectedVersion == current.version() - 1)) {
                 return current; // Exact retry, including a lost successful response: no extra effects.
             }
-            if (current == null ? expectedVersion != -1 : expectedVersion != current.version()) {
-                throw problem("REGISTRATION_CHANGED", "Registration changed. Refresh before trying again.");
-            }
+            requireVersion(current, expectedVersion);
             if (current != null && current.status() == Registration.Status.CHECKED_IN) {
                 throw problem("ALREADY_CHECKED_IN", "A checked-in registration cannot be changed.");
             }
@@ -107,6 +136,22 @@ public final class RegistrationService {
     private void requireActive(Actor actor) {
         if (!store.lockActiveAttendee(actor.userId())) {
             throw problem("FORBIDDEN", "An active attendee account is required.");
+        }
+    }
+
+    private RegistrationEvent lockEventAndAccount(Actor actor, UUID eventId, long expectedVersion) {
+        if (eventId == null) throw problem("EVENT_NOT_FOUND", "Event was not found.");
+        if (expectedVersion < -1) throw problem("INVALID_VERSION", "Registration version is invalid.");
+        // Consistent write lock order: event, account, booking/venue, registration.
+        RegistrationEvent event = store.lockEvent(eventId);
+        if (event == null) throw problem("EVENT_NOT_FOUND", "Event was not found.");
+        requireActive(actor);
+        return event;
+    }
+
+    private static void requireVersion(Registration current, long expectedVersion) {
+        if (current == null ? expectedVersion != -1 : expectedVersion != current.version()) {
+            throw problem("REGISTRATION_CHANGED", "Registration changed. Refresh before trying again.");
         }
     }
 

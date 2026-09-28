@@ -11,16 +11,19 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.FutureTask;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 import javax.imageio.ImageIO;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
@@ -29,6 +32,7 @@ import javafx.scene.image.PixelFormat;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import seedu.eventmanager.attendee.CatalogueEvent;
+import seedu.eventmanager.attendee.CatalogueClub;
 import seedu.eventmanager.attendee.AttendeeEventDetails;
 import seedu.eventmanager.attendee.AttendeeEventDetailsService;
 import seedu.eventmanager.attendee.AttendeeEventDetailsRepository;
@@ -57,6 +61,9 @@ public final class AttendeeBrowseSmoke {
 
     public static final class SmokeApplication extends Application {
         private final AtomicBoolean failReads = new AtomicBoolean();
+        private final AtomicBoolean failClubs = new AtomicBoolean();
+        private final AtomicReference<CompletableFuture<List<CatalogueClub>>> pendingClubs = new AtomicReference<>();
+        private volatile CountDownLatch clubsEntered;
         private final AtomicInteger homes = new AtomicInteger();
         private final AtomicBoolean failDetails = new AtomicBoolean();
         private final AtomicBoolean expired = new AtomicBoolean();
@@ -77,7 +84,8 @@ public final class AttendeeBrowseSmoke {
                 return Optional.of(new AttendeeEventDetailsRepository.Snapshot(event, "PUBLISHED",
                         Optional.of(new AttendeeEventDetails.Venue("Campus Seminar Room", "COM1 Level 2", "CONFIRMED", "ACTIVE")),
                         RegistrationEligibilityPolicy.Booking.CONFIRMED_ACTIVE, occupied.get(),
-                        id.equals(new UUID(0, 1)) ? Optional.of(Registration.Status.CONFIRMED) : Optional.empty()));
+                        id.equals(new UUID(0, 1)) ? Optional.of(Registration.Status.CONFIRMED) : Optional.empty(),
+                        id.equals(new UUID(0, 1)) ? 0 : -1));
             }, token -> {
                 if (expired.get()) throw new IllegalArgumentException("Synthetic expired session");
                 return new Actor(new UUID(0, 100), Role.ATTENDEE);
@@ -103,7 +111,11 @@ public final class AttendeeBrowseSmoke {
                     finished.countDown();
                 }
                 return result;
-            }, homes::incrementAndGet);
+            }, new AttendeeRegistrationActions((id, version) -> { throw new AssertionError("Unexpected register"); },
+                    (id, version) -> { throw new AssertionError("Unexpected cancel"); },
+                    (id, version) -> { throw new AssertionError("Unexpected check-in"); }, List::of),
+                    new InboxActions(() -> new seedu.eventmanager.attendee.InboxSnapshot(List.of()), id -> { }, () -> { }),
+                    homes::incrementAndGet, Clock.fixed(Instant.parse("2026-09-25T00:00:00Z"), ZoneOffset.UTC));
             stage.setScene(new Scene(view, 1280, 800));
             stage.setTitle("Attendee smoke — synthetic fixtures");
             stage.show();
@@ -121,11 +133,31 @@ public final class AttendeeBrowseSmoke {
 
         private void exercise() throws Exception {
             await(() -> list().getItems().size() == 2);
+            fx(() -> require(view.lookup("#attendee-club") instanceof ComboBox,
+                    "club filter must be a dropdown, not a raw ID field"));
+            await(() -> clubs().getItems().size() == 3);
+            fx(() -> {
+                require(clubs().getItems().stream().map(seedu.eventmanager.attendee.CatalogueClub::name).toList()
+                        .equals(List.of("All clubs", "Campus Music", "Campus Technology")), "sorted named options");
+                clubs().getSelectionModel().select(2);
+                button("attendee-search").fire();
+            });
+            await(() -> list().getItems().size() == 1);
+            fx(() -> {
+                require(list().getItems().getFirst().clubId().equals("tech-club"), "filter uses ID, not display name");
+                button("attendee-clear").fire();
+            });
+            await(() -> list().getItems().size() == 2);
+            fx(() -> require(clubs().getValue().name().equals("All clubs"), "Clear restores All clubs"));
             fx(() -> list().getSelectionModel().selectFirst());
             await(() -> detailText().contains("Remaining seats: 17 / 20"));
             fx(() -> {
                 require(detailText().contains("Campus Seminar Room · COM1 Level 2"), "venue detail");
                 require(detailText().contains("Your registration: Registered"), "own status");
+                require(detailText().contains("Club: Campus Technology") && !detailText().contains("tech-club"),
+                        "details show club name, not internal ID");
+                require(view.lookup("#attendee-register") != null && view.lookup("#attendee-cancel") != null,
+                        "registration actions must replace the placeholder");
             });
             fx(() -> screenshot("browse-1280.png"));
             fx(() -> { stage.setWidth(1000); stage.setHeight(640); });
@@ -191,6 +223,31 @@ public final class AttendeeBrowseSmoke {
             failReads.set(false);
             fx(() -> button("attendee-search").fire());
             await(() -> list().getItems().size() == 2);
+            await(() -> !clubs().isDisabled());
+            failClubs.set(true);
+            fx(() -> {
+                clubs().getSelectionModel().select(2);
+                button("attendee-search").fire();
+            });
+            await(() -> ((Label) view.lookup("#attendee-club-feedback")).getText().startsWith("Unable to refresh clubs."));
+            await(() -> list().getItems().size() == 1);
+            fx(() -> require(clubs().getValue().id().equals("tech-club"), "club error retains selected filter"));
+            failClubs.set(false);
+            fx(() -> button("attendee-search").fire());
+            await(() -> ((Label) view.lookup("#attendee-club-feedback")).getText().isEmpty());
+            var staleClubs = new CompletableFuture<List<CatalogueClub>>();
+            clubsEntered = new CountDownLatch(1);
+            pendingClubs.set(staleClubs);
+            fx(() -> button("attendee-search").fire());
+            require(clubsEntered.await(5, TimeUnit.SECONDS), "slow club lookup started");
+            fx(() -> button("attendee-clear").fire());
+            await(() -> list().getItems().size() == 2 && !clubs().isDisabled());
+            staleClubs.complete(List.of(new CatalogueClub("stale-club", "Stale response")));
+            fx(() -> {
+                require(clubs().getValue().name().equals("All clubs"), "Clear wins over stale club load");
+                require(clubs().getItems().stream().noneMatch(item -> item.id().equals("stale-club")),
+                        "stale club options ignored");
+            });
             entered = new CountDownLatch(1); release = new CountDownLatch(1); finished = new CountDownLatch(1);
             delayNext.set(true);
             fx(() -> list().getSelectionModel().selectFirst());
@@ -200,6 +257,11 @@ public final class AttendeeBrowseSmoke {
             require(finished.await(5, TimeUnit.SECONDS), "closed read finished");
             fx(() -> require(!detailText().contains("Your registration:"), "Home clears personal state"));
             require(homes.get() == 1, "Home callback");
+        }
+
+        @SuppressWarnings("unchecked")
+        private ComboBox<seedu.eventmanager.attendee.CatalogueClub> clubs() {
+            return (ComboBox<seedu.eventmanager.attendee.CatalogueClub>) view.lookup("#attendee-club");
         }
 
         @SuppressWarnings("unchecked")
@@ -264,7 +326,7 @@ public final class AttendeeBrowseSmoke {
             }
         }
 
-        private static EventCatalogueService fixtureService() {
+        private EventCatalogueService fixtureService() {
             Instant now = Instant.parse("2026-09-25T00:00:00Z");
             List<Event> events = List.of(
                     new Event(new UUID(0, 1), "tech-club", "not-public", "AI workshop",
@@ -277,9 +339,23 @@ public final class AttendeeBrowseSmoke {
                             "Must not appear", now.plusSeconds(86400), now.plusSeconds(90000),
                             20, EventStatus.DRAFT, 0));
             return new EventCatalogueService(new EventCatalogueRepository() {
-                public List<Event> findUpcomingPublished(Instant time) { return events; }
-                public Optional<Event> findPublishedById(UUID id) {
-                    return events.stream().filter(event -> event.id().equals(id)).findFirst();
+                public List<Entry> findPublishedNotEnded(Instant time) {
+                    return events.stream().map(event -> new Entry(event,
+                            event.clubId().equals("tech-club") ? "Campus Technology" : "Campus Music")).toList();
+                }
+                public Optional<Entry> findPublishedById(UUID id) {
+                    return findPublishedNotEnded(now).stream().filter(entry -> entry.event().id().equals(id)).findFirst();
+                }
+                public List<seedu.eventmanager.attendee.CatalogueClub> findClubs() {
+                    require(!Platform.isFxApplicationThread(), "club lookup must run off FX thread");
+                    if (failClubs.get()) throw new IllegalStateException("synthetic-sensitive-value");
+                    var pending = pendingClubs.getAndSet(null);
+                    if (pending != null) {
+                        clubsEntered.countDown();
+                        return pending.join(); // Driver may ignore cancellation; late results must be discarded.
+                    }
+                    return List.of(new seedu.eventmanager.attendee.CatalogueClub("tech-club", "Campus Technology"),
+                            new seedu.eventmanager.attendee.CatalogueClub("music-club", "Campus Music"));
                 }
             }, Clock.fixed(now, ZoneOffset.UTC));
         }

@@ -3,14 +3,22 @@ package seedu.eventmanager.storage;
 import java.sql.SQLException;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.Set;
 import seedu.eventmanager.notification.NotificationOutboxRepository;
 
 /** PostgreSQL claim-and-update operations for notification delivery. */
 public final class JdbcNotificationOutboxRepository implements NotificationOutboxRepository {
     private final JdbcDatabase database;
+    private final Set<String> eventTypes;
 
     public JdbcNotificationOutboxRepository(JdbcDatabase database) {
+        this(database, null);
+    }
+
+    /** Optional routing scope. The original constructor still claims all event types. */
+    public JdbcNotificationOutboxRepository(JdbcDatabase database, Set<String> eventTypes) {
         this.database = Objects.requireNonNull(database);
+        this.eventTypes = eventTypes == null ? null : Set.copyOf(eventTypes);
     }
 
     @Override
@@ -22,27 +30,37 @@ public final class JdbcNotificationOutboxRepository implements NotificationOutbo
                     WHERE (status = 'PENDING' OR
                            (status = 'PROCESSING' AND next_attempt_at <= CURRENT_TIMESTAMP))
                       AND next_attempt_at <= CURRENT_TIMESTAMP
+                      AND (?::text[] IS NULL OR event = ANY(?::text[]))
                     ORDER BY created_at
                     FOR UPDATE SKIP LOCKED
                     LIMIT 1""")) {
-                try (var result = statement.executeQuery()) {
-                    if (!result.next()) {
-                        return null;
+                var types = eventTypes == null ? null
+                        : connection.createArrayOf("text", eventTypes.toArray(String[]::new));
+                try {
+                    statement.setArray(1, types);
+                    statement.setArray(2, types);
+                    statement.setQueryTimeout(15);
+                    try (var result = statement.executeQuery()) {
+                        if (!result.next()) {
+                            return null;
+                        }
+                        UUID id = result.getObject("notification_id", UUID.class);
+                        int attempts = result.getInt("attempts") + 1;
+                        try (var update = connection.prepareStatement("""
+                                UPDATE notification_outbox
+                                SET status = 'PROCESSING', attempts = ?,
+                                    next_attempt_at = CURRENT_TIMESTAMP + INTERVAL '5 minutes',
+                                    updated_at = CURRENT_TIMESTAMP
+                                WHERE notification_id = ?""")) {
+                            update.setInt(1, attempts);
+                            update.setObject(2, id);
+                            update.executeUpdate();
+                        }
+                        return new OutboxEvent(id, result.getObject("recipient_id", UUID.class),
+                                result.getString("event"), result.getString("payload"), attempts);
                     }
-                    UUID id = result.getObject("notification_id", UUID.class);
-                    int attempts = result.getInt("attempts") + 1;
-                    try (var update = connection.prepareStatement("""
-                            UPDATE notification_outbox
-                            SET status = 'PROCESSING', attempts = ?,
-                                next_attempt_at = CURRENT_TIMESTAMP + INTERVAL '5 minutes',
-                                updated_at = CURRENT_TIMESTAMP
-                            WHERE notification_id = ?""")) {
-                        update.setInt(1, attempts);
-                        update.setObject(2, id);
-                        update.executeUpdate();
-                    }
-                    return new OutboxEvent(id, result.getObject("recipient_id", UUID.class),
-                            result.getString("event"), result.getString("payload"), attempts);
+                } finally {
+                    if (types != null) types.free();
                 }
             } catch (SQLException exception) {
                 throw new IllegalStateException("Could not claim notification outbox event.", exception);

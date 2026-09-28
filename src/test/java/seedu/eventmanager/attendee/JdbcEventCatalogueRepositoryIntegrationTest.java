@@ -60,15 +60,16 @@ class JdbcEventCatalogueRepositoryIntegrationTest {
     }
 
     @Test
-    void sqlFiltersDraftCompletedAndStartBoundaryAndOrdersResults() {
+    void sqlIncludesStartBoundaryButExcludesEndBoundaryAndOrdersResults() {
         Event first = insert(1, EventStatus.PUBLISHED, NOW.plusSeconds(3600), "First", "tech");
         Event second = insert(2, EventStatus.PUBLISHED, first.startsAt(), "Second", "tech");
         Event draft = insert(3, EventStatus.DRAFT, first.startsAt(), "Private", "tech");
         insert(4, EventStatus.COMPLETED, first.startsAt(), "Done", "tech");
-        insert(5, EventStatus.PUBLISHED, NOW, "Started", "tech");
-        insert(6, EventStatus.PUBLISHED, NOW.minusSeconds(1), "Past", "tech");
+        Event ongoing = insert(5, EventStatus.PUBLISHED, NOW, "Started", "tech");
+        insert(6, EventStatus.PUBLISHED, NOW.minusSeconds(3600), "Ended", "tech");
 
-        assertEquals(List.of(first, second), repository.findUpcomingPublished(NOW));
+        assertEquals(List.of(ongoing, first, second), repository.findPublishedNotEnded(NOW).stream()
+                .map(EventCatalogueRepository.Entry::event).toList());
         assertTrue(repository.findPublishedById(draft.id()).isEmpty());
         assertTrue(repository.findPublishedById(UUID.randomUUID()).isEmpty());
     }

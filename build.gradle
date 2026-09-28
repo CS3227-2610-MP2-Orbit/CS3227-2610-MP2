@@ -49,3 +49,43 @@ tasks.register('attendeeUiSmoke', JavaExec) {
     mainClass = 'seedu.eventmanager.ui.AttendeeBrowseSmoke'
     jvmArgs '--enable-native-access=ALL-UNNAMED'
 }
+
+// Opt-in real JavaFX command flow with synthetic service callbacks; not database E2E.
+tasks.register('attendeeRegistrationUiSmoke', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'seedu.eventmanager.ui.AttendeeRegistrationSmoke'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+// Opt-in real JavaFX check-in flow; synthetic service callbacks, not database E2E.
+tasks.register('attendeeCheckInUiSmoke', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'seedu.eventmanager.ui.AttendeeCheckInSmoke'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+// Opt-in check-in explanations with a controlled clock; real controls, synthetic reads/store.
+tasks.register('attendeeCheckInAvailabilityUiSmoke', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'seedu.eventmanager.ui.CheckInAvailabilitySmoke'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+// Opt-in real JavaFX attendance history; synthetic callbacks, not database E2E.
+tasks.register('attendeeHistoryUiSmoke', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'seedu.eventmanager.ui.AttendanceHistorySmoke'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+// Opt-in real JavaFX inbox flow; synthetic service callbacks, not database E2E.
+tasks.register('attendeeInboxUiSmoke', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'seedu.eventmanager.ui.AttendeeInboxSmoke'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}

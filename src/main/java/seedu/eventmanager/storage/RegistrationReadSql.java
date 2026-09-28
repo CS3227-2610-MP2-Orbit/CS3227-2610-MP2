@@ -17,4 +17,11 @@ final class RegistrationReadSql {
     }
 
     static final String ACTIVE_VENUE = "v.status='ACTIVE'";
+
+    /** Display the current booking, otherwise the latest historic one; never multiply registration rows. */
+    static String displayBooking(String eventExpression) {
+        return "SELECT vb.venue_id FROM venue_bookings vb WHERE vb.event_id=" + eventExpression
+                + " ORDER BY CASE WHEN vb.status IN ('CONFIRMED','AT_RISK') THEN 0 ELSE 1 END,"
+                + " vb.confirmed_at DESC,vb.booking_id DESC LIMIT 1";
+    }
 }

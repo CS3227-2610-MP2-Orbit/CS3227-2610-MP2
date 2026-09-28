@@ -11,5 +11,5 @@ public interface AttendeeEventDetailsRepository {
 
     record Snapshot(CatalogueEvent event, String eventStatus, Optional<AttendeeEventDetails.Venue> venue,
             RegistrationEligibilityPolicy.Booking booking, int occupiedSeats,
-            Optional<Registration.Status> ownStatus) { }
+            Optional<Registration.Status> ownStatus, long ownRegistrationVersion) { }
 }

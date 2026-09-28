@@ -1,7 +1,7 @@
 # Attendee
 
 The public read-only event catalogue is implemented here: `EventCatalogueService`
-enforces upcoming/published visibility and combines search, exact club ID and
+enforces upcoming/ongoing published visibility and combines search, exact club ID and
 inclusive SGT date filters. `CatalogueEvent` exposes public event fields only.
 The JDBC adapter reads the canonical Organizer event table; no duplicate event
 store or publication workflow is introduced.
@@ -13,7 +13,17 @@ shared registration policy, not the Organizer roster's active-account count.
 The JDBC adapter uses a single statement snapshot; the controller handles
 asynchronous loading/cancellation and the view only renders results.
 
-Registration commands already exist under `registration`; register/cancel UI,
-notifications, check-in and attendance history remain future slices.
+Registration commands live under `registration`. Register/cancel, My Registrations,
+persistent notifications and normal self-check-in are implemented. Check-in uses
+the shared deterministic policy in the existing registration service and permits
+only an eligible own confirmed registration from start (inclusive) to end
+(exclusive). Ongoing events never offer Register/Re-register.
+
+`AttendanceHistoryService` provides a separate read-only, session-owned view of
+CHECKED_IN registrations, newest check-in first, including ended events. It
+revalidates the session after a single-statement repository snapshot. History
+shows the stored check-in time and current event/venue metadata, not historical
+metadata snapshots. The history screen shares the attendee sidebar and uses
+side-by-side details; it cannot change a registration.
 See the [Developer Guide](../../../../../../docs/DeveloperGuide.md#attendee-catalogue-and-personalized-event-details)
 for implemented behavior and integration boundaries.

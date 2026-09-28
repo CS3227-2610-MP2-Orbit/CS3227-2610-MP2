@@ -78,7 +78,7 @@ The app is designed for users who:
 
    * **Club Organizer** — log in with a Club Organizer account, then create clubs, create/edit events, and request venues. Each account sees only its own clubs and their events.
    * **Venue Administrator** — local login, then dashboard, venues, and request review.
-   * **Attendee** — read-only browse/search of upcoming published events after login.
+   * **Attendee** — browse/search upcoming and ongoing published events, register/cancel, check in, view My Registrations and read Notifications.
 
 6. Continue with [Features](#features).
 
@@ -90,6 +90,11 @@ The app is designed for users who:
 | --- | --- | --- |
 | All | Open a role workspace | Shared login |
 | Attendee | Browse/search published events | **Attendee** → **Browse events** |
+| Attendee | Register, cancel or re-register | **Browse events** → select event → action |
+| Attendee | View own bookings or cancel | **My Registrations** → select booking |
+| Attendee | Check into an ongoing registered event | **Browse events** or **My Registrations** → select event → **Check in** |
+| Attendee | View attended events and check-in times | **Attendance history** → select event |
+| Attendee | Read registration updates and announcements | **Notifications** → refresh or mark read |
 | Organizer | Create a club | **Clubs** → enter **Club name** → **Create club** |
 | Organizer | Create draft event | **Events** → **+ New event** → fill form → **Save event** |
 | Organizer | Edit draft event | **Events** → select event → edit → **Save event** |
@@ -208,7 +213,7 @@ Shows who is registered for one of your events.
 
 **Expected result:** The panel shows the count as *registered / capacity* (for example `12 / 80 registered`) and lists registered attendees by name, sorted alphabetically. Select the event again to refresh.
 
-> **Caution:** The list reads real registrations from the database and counts confirmed and checked-in attendees with active accounts. This build has no Attendee screen for registering, and Organizers cannot publish events yet, so events normally show `0 / capacity registered` and *No attendees have registered for this event yet.* The list is read-only; registrations cannot be changed here.
+> **Caution:** The list reads real registrations from the database and counts confirmed and checked-in attendees with active accounts. Attendees can register for eligible published events, but Organizers cannot publish events yet, so a fresh database has no eligible catalogue events. This Organizer list is read-only; registrations cannot be changed here.
 
 ### Posting announcements
 
@@ -223,7 +228,7 @@ Saves a message for one of your events and queues a notification for each regist
 
 **Expected result:** The announcement appears at the top of **Posted announcements**, and feedback reports how many notifications were queued (for example *Notification queued for 12 registered attendees*).
 
-> **Caution:** Announcements cannot be edited after sending. Notifications are only **queued** in the shared notification outbox; attendees cannot see them yet, because in-app notification delivery is not available in this build. Recipients are the event's current registrants; this build has no Attendee screen for registering, so feedback normally shows *No registered attendees to notify yet.*
+> **Caution:** Announcements cannot be edited after sending. The queued count is not a delivery receipt: background delivery places queued messages in each recipient's Attendee **Notifications** inbox. The worker starts after an Attendee workspace initializes and runs while that app remains open. Recipients are the event's current registrants. With no eligible active registrants, feedback shows *No registered attendees to notify yet.*
 
 ### Deleting announcements
 
@@ -237,7 +242,7 @@ Permanently removes one of your event's announcements.
 
 **Expected result:** The announcement disappears from **Posted announcements** and feedback shows *Announcement deleted.*
 
-> **Caution:** Deletion cannot be undone. Notifications already queued for attendees when the announcement was sent are **not** withdrawn.
+> **Caution:** Deletion cannot be undone. Notifications already queued for attendees when the announcement was sent are **not** withdrawn; their inbox entries show *Announcement removed.* instead of the deleted message.
 
 ### Assigning volunteers
 
@@ -252,7 +257,7 @@ Assigns attendees who are registered for one of your events as volunteers, with 
 
 **Expected result:** Feedback confirms the assignment or removal and the list updates. Assigning the same attendee twice is rejected.
 
-> **Caution:** Only attendees **registered** for the event can be assigned. This build has no Attendee screen for registering, so the attendee picker is normally empty and shows *No registered attendees available to assign*.
+> **Caution:** Only eligible active attendees **registered** for the event can be assigned. If none are registered, the picker shows *No registered attendees available to assign*.
 
 ---
 
@@ -319,22 +324,32 @@ are planned for a later secure and audited implementation.
 ## Attendee: browse and search events
 
 1. On the shared login screen, create an **ATTENDEE** account if needed and
-   log in. Your role opens the read-only catalogue. The catalogue contains only
+   log in. Your role opens Browse events. The catalogue contains only
    public event fields; selected details also show your own registration status.
 2. Enter text to search event titles/descriptions (case-insensitive literal
-   substring), and optionally enter an exact, case-sensitive **Club ID**.
+   substring), and optionally select a name from the **Club** dropdown.
+   **All clubs** is the default; club names are sorted alphabetically.
 3. Optionally choose **From date** and **To date** using the calendar controls.
    These are inclusive event-start calendar dates in Singapore Time; either
    bound may be left blank. From must not be later than To.
 4. Select **Search / Refresh** (or press Enter in a text field). Only published
-   events whose start is still in the future are listed, ordered by start time
-   and then event ID. **Clear filters** resets all fields and reloads the list.
-5. Select an event for its latest title, description, club ID, SGT start/end
+   upcoming and ongoing events (strictly before their end) are listed, ordered by start time
+   and then event ID. **Clear filters** resets the club to **All clubs**,
+   clears the other fields and reloads the list.
+5. Select an event for its latest title, description, club name, SGT start/end
    times, venue/location, booking/venue status, remaining seats and your own
    registration status. Full events remain visible, with an explanation of
    registration availability. **Refresh details** reloads the selected event.
 6. **← Home** clears personal details and returns to the login screen. If your
    session expires, the next detail read asks you to log in again.
+
+Club names appear in the event list/details, My Registrations and Attendance
+History. Older events whose club cannot be found display **Unknown club** and
+remain visible under **All clubs**. The dropdown lists shared clubs, including
+those without upcoming events. **Search / Refresh** reloads the choices while
+retaining the selected club. If loading clubs fails, existing choices remain
+available and a message offers a retry. If a selected club disappears, its
+filter remains selected as **Unknown club** until you choose another or clear it.
 
 Remaining seats count confirmed and checked-in registrations, including inactive
 accounts whose seats have not been cancelled. Cancelled registrations do not
@@ -342,9 +357,148 @@ occupy seats. This can differ from the Organizer's active-account roster count.
 Availability is a snapshot, not a reservation. A missing/mismatched/unconfirmed
 booking or inactive venue prevents registration even if seats remain.
 
-Register/cancel controls, personal notifications, check-in and attendance history
-screens are not available yet. An event that has started or is no longer published
-cannot be reopened through the catalogue.
+Ongoing events show **Registration closed** and do not offer a Register or
+Re-register button. Ended or no-longer-published events cannot be reopened through
+the catalogue; your bookings remain available in My Registrations. A separate
+attendance-history screen shows your checked-in events, including ended events.
+
+### Register, cancel and re-register
+
+1. Select an event in **Browse events**, then select **Register** when available.
+   Registration requires a future published event, matching confirmed venue booking,
+   active venue and remaining capacity. You register only yourself; there is no waitlist.
+2. A message confirms the outcome and the details refresh. A seat can fill between
+   viewing and clicking; the service checks again when you submit.
+3. Select **Cancel registration** to cancel a confirmed registration before its start.
+   Cancellation at/after start or after check-in is rejected.
+4. Cancelled registrations offer **Re-register** when the same eligibility conditions
+   hold. Cancellation does not guarantee a seat will remain available.
+
+Actions and navigation are temporarily disabled while a command runs to prevent
+double submission. A stale-version message means another operation changed your
+record: review the refreshed status before retrying. For expired sessions, return
+Home and log in again. If the outcome is uncertain after a connection failure,
+refresh and check the recorded status before retrying. Closing the app does not
+guarantee that a command already sent to the database was cancelled.
+
+### My Registrations
+
+Select **My Registrations** in the Attendee sidebar to see only your own upcoming,
+past and cancelled bookings, with event title, SGT start, venue and status.
+Use **Show** to filter **All**, **Upcoming**, **Ongoing**, **Past** or **Cancelled**.
+Ongoing includes the start instant but excludes the end instant; Past starts when
+the event ends. Cancelled bookings appear in Cancelled and All, not the time-based
+filters. **Sort by** orders event starts earliest or latest first.
+
+Select a booking in the left-hand list to show its **event details alongside it**
+on the right, just like Browse events, with its description, club,
+SGT start/end, venue, event status and your registration status—even for past,
+cancelled or no-longer-published events you registered for. The list stays visible;
+there is no separate details tab. Drag the divider to resize the panes.
+Changing filters/sort clears the selection and old details.
+Filters use the current time when selected or refreshed; they do not update
+automatically as time passes.
+
+Select a confirmed future booking and **Cancel selected registration** to cancel;
+the outcome is shown and the list refreshes, retaining your filter/sort. Use **Refresh registrations** for
+changes made elsewhere. To re-register, return to Browse events.
+
+Venue information reflects the current booking, or the most recent historic
+booking if there is no current one. It is not a stored snapshot of the venue when
+you originally registered. A missing booking is shown explicitly. Cancelled
+registrations remain visible. Check-in is available for eligible ongoing bookings;
+use **Attendance history** for the narrower read-only list of actual check-ins.
+
+### Normal self-check-in
+
+1. Select your ongoing event in **Browse events**, or select its booking in
+   **My Registrations** (the **Ongoing** filter can help).
+2. Select **Check in**. It appears only for your confirmed registration during
+   the event, with a published event and matching confirmed booking at an active
+   venue. Check-in opens exactly at start and closes exactly at end; no early/late
+   window and no QR code.
+3. Wait for confirmation and refreshed status **Checked in**. Navigation and
+   actions are disabled while the command runs. You cannot cancel after check-in.
+
+Both event-details panes explain check-in availability even when the button is
+hidden:
+
+| Explanation | Meaning |
+| --- | --- |
+| Check-in is open | Your loaded registration is eligible to check in. |
+| You are not registered | You need your own confirmed registration. |
+| Your registration is cancelled | A cancelled registration cannot check in. |
+| You are already checked in | No further action is needed. |
+| Check-in opens at … SGT | It is too early; the message gives the event start time. |
+| Check-in is closed | The event has ended or is no longer published. |
+| Check-in unavailable | A matching confirmed booking at an active venue is required. |
+
+The explanation includes the check-in window in Singapore Time: start is
+**inclusive**, end is **exclusive**. Registration status takes precedence over
+timing, and timing takes precedence over venue availability. For example, a
+cancelled registration still says cancelled after the event ends.
+
+These are loaded snapshots, not live timers. Use **Refresh details** or
+**Refresh registrations** for current information. A freshly refreshed Browse
+view still excludes ended/unpublished events; use My Registrations for your
+past bookings. My Registrations does not create rows for events you never
+registered for. An already-open, stale button cannot bypass the command checks:
+the service rejection is shown if conditions changed after loading.
+
+The button is a preview; the service checks every rule again, including your
+live session and displayed registration version. If timing, booking or status has
+changed, read the rejection and refresh. A duplicate/stale request cannot record
+a second check-in or change its timestamp. If the response is lost, refresh and
+check your status before retrying. Check-in records a business audit entry; it
+does not create a new inbox notification. Self-check-in records your declaration
+of attendance, not independently verified physical presence.
+
+### Attendance history
+
+Select **Attendance history** in the Attendee sidebar. Only your checked-in
+events appear, ordered by check-in time (newest first); confirmed-but-not-attended
+and cancelled registrations are excluded. A check-in appears immediately on your
+next visit or refresh, even if the event is still ongoing. Ended/completed events
+remain visible here even when they are no longer in Browse.
+
+Select a row to see event title, description, club, start/end times, venue,
+current event status and your recorded check-in time in the side-by-side details
+panel. All times are in Singapore Time. This screen is read-only: no register,
+cancel or check-in actions. Use **Refresh** to reload; no attendance yet is shown
+as an empty state, while load failures offer a retry and invalid sessions ask you
+to return Home and log in again.
+
+The check-in time is persisted attendance evidence. Event details are current
+records, not a snapshot captured at check-in. Venue uses the current booking or
+latest historic booking; missing venue information is labelled unavailable.
+
+### Notifications
+
+Select **Notifications** in the Attendee sidebar to see your registration
+confirmations, cancellations and event announcements, newest first. The sidebar
+badge and screen show the unread count from the last successful refresh.
+
+- **Refresh notifications** reloads the inbox. Opening Notifications also refreshes
+  it; the UI does not continuously poll for newly delivered messages.
+- **Show** filters **All**, **Unread** or **Read**, keeping newest-first order.
+  The filter stays selected after refresh and read-status changes. The badge
+  always counts unread messages across your whole inbox, not just visible rows.
+- Select an unread message and **Mark selected as read**, or select **Mark all as
+  read** to mark your whole inbox, including messages hidden by the filter.
+  A marked message leaves the Unread list after refresh. Read status is saved
+  in PostgreSQL and survives closing/reopening the app.
+- Registration entries show the event's current title and start time in SGT.
+  They describe the original confirmation/cancellation, not your current booking
+  status; use My Registrations for that.
+- Announcements show the current event title and message. A deleted announcement
+  remains as a neutral **Announcement removed.** entry.
+
+Delivery is asynchronous: allow a few seconds after registering/cancelling or an
+Organizer sending an announcement, then refresh. The worker starts when an
+Attendee workspace initializes and stays running until that app closes. Pending
+messages remain queued while the app is closed. This is in-app delivery, not email.
+An invalid/expired session asks you to return Home and log in again. A failed
+refresh displays **Notifications (?)**, not an unverified zero unread count.
 
 Browsing uses the same database settings as the other workspaces. The Attendee
 workspace initializes existing schema prerequisites in the background; opening
@@ -388,7 +542,7 @@ associated with the account that created the club.
 ## Known Issues
 
 * No supersede/withdraw of venue requests from the Organizer UI.
-* Attendee registration UI, notifications, check-in, and history are not implemented yet.
+* The inbox badge is refreshed on opening/refreshing Notifications and after read-status changes, not continuously.
 * Notification outbox stores Admin decisions but does not send email yet.
 
 ---

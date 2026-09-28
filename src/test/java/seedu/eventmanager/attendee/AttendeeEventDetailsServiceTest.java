@@ -27,7 +27,8 @@ class AttendeeEventDetailsServiceTest {
             return Optional.of(new AttendeeEventDetailsRepository.Snapshot(
                     new CatalogueEvent(eventId, "club", "Workshop", "Description", start, start.plusSeconds(3600), 3),
                     status, Optional.of(new AttendeeEventDetails.Venue("Room", "Level 1", "CONFIRMED", "ACTIVE")),
-                    booking, occupied, attendee.equals(alice) ? Optional.of(Registration.Status.CONFIRMED) : Optional.empty()));
+                    booking, occupied, attendee.equals(alice) ? Optional.of(Registration.Status.CONFIRMED) : Optional.empty(),
+                    attendee.equals(alice) ? 0 : -1));
         }, token -> switch (token) {
             case "alice" -> new Actor(alice, Role.ATTENDEE);
             case "bob" -> new Actor(bob, Role.ATTENDEE);
@@ -53,13 +54,15 @@ class AttendeeEventDetailsServiceTest {
         assertEquals(0, reads);
     }
 
-    @Test void revalidatesVisibilityIncludingExactStartAndMissingEvent() {
+    @Test void ongoingDetailsRemainVisibleButEndBoundaryAndMissingEventsAreHidden() {
         for (String hidden : List.of("DRAFT", "COMPLETED")) {
             status = hidden;
             assertThrows(EntityNotFoundException.class, () -> service().getEvent("alice", eventId));
         }
         status = "PUBLISHED";
         start = now;
+        assertEquals(Result.EVENT_NOT_REGISTERABLE, service().getEvent("alice", eventId).eligibility());
+        start = now.minusSeconds(3600);
         assertThrows(EntityNotFoundException.class, () -> service().getEvent("alice", eventId));
         start = now.plusSeconds(1); missing = true;
         assertThrows(EntityNotFoundException.class, () -> service().getEvent("alice", eventId));

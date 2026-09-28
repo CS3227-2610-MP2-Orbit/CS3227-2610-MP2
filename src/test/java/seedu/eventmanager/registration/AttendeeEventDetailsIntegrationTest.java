@@ -13,6 +13,17 @@ import static seedu.eventmanager.registration.RegistrationEligibilityPolicy.Resu
 
 /** Reuses the isolated-schema registration fixtures; never uses the interactive demo DB. */
 class AttendeeEventDetailsIntegrationTest extends RegistrationDatabaseTest {
+    @Test void carriesOwnVersionIncludingCancelledInsteadOfTreatingItAsAbsent() throws Exception {
+        UUID event = event("PUBLISHED", 5, NOW.plusSeconds(3600));
+        UUID alice = account("alice", Role.ATTENDEE);
+        String token = login("alice");
+        assertEquals(-1, service().getEvent(token, event).ownRegistrationVersion());
+        registration(event, alice, "CANCELLED");
+        sql("UPDATE event_registrations SET version=7");
+        assertEquals(7, service().getEvent(token, event).ownRegistrationVersion());
+        account("bob", Role.ATTENDEE);
+        assertEquals(-1, service().getEvent(login("bob"), event).ownRegistrationVersion());
+    }
     AttendeeEventDetailsService service() {
         return new AttendeeEventDetailsService(new JdbcAttendeeEventDetailsRepository(database),
                 sessions::resolve, Clock.fixed(NOW, ZoneOffset.UTC));
@@ -76,6 +87,8 @@ class AttendeeEventDetailsIntegrationTest extends RegistrationDatabaseTest {
         sql("UPDATE organizer_event SET status='DRAFT'");
         assertThrows(EntityNotFoundException.class, () -> service().getEvent(token, event));
         sql("UPDATE organizer_event SET status='PUBLISHED',starts_at='2030-01-01T00:00:00Z'");
+        assertEquals(EVENT_NOT_REGISTERABLE, service().getEvent(token, event).eligibility());
+        sql("UPDATE organizer_event SET starts_at='2029-12-31T22:00:00Z',ends_at='2030-01-01T00:00:00Z'");
         assertThrows(EntityNotFoundException.class, () -> service().getEvent(token, event));
         assertEquals(1, count("event_registrations"));
         assertEquals(0, count("audit_logs")); assertEquals(0, count("notification_outbox"));
@@ -107,25 +120,4 @@ class AttendeeEventDetailsIntegrationTest extends RegistrationDatabaseTest {
         }
     }
 
-    void booking(UUID event) throws Exception {
-        UUID venue = UUID.randomUUID(); UUID request = UUID.randomUUID();
-        new JdbcVenueRepository(database).save(new Venue(venue, "Synthetic room", "Level 2", 20, "", VenueStatus.ACTIVE));
-        try (var c = connection(); var p = c.prepareStatement("""
-                INSERT INTO venue_requests(request_id,event_id,venue_id,organizer_id,requested_starts_at,
-                    requested_ends_at,expected_attendance,status,submitted_at,decided_at,decided_by,created_at,updated_at)
-                SELECT ?,id,?,?::uuid,starts_at,ends_at,capacity,'APPROVED',now(),now(),?::uuid,now(),now()
-                FROM organizer_event WHERE id=?
-                """)) {
-            p.setObject(1, request); p.setObject(2, venue); p.setObject(3, UUID.randomUUID());
-            p.setObject(4, UUID.randomUUID()); p.setObject(5, event); p.executeUpdate();
-        }
-        new JdbcVenueBookingRepository(database).createFromApprovedRequest(
-                new JdbcVenueRequestRepository(database).get(request), UUID.randomUUID());
-    }
-
-    int count(String table) throws Exception {
-        try (var c = connection(); var s = c.createStatement(); var r = s.executeQuery("SELECT count(*) FROM " + table)) {
-            r.next(); return r.getInt(1);
-        }
-    }
 }
