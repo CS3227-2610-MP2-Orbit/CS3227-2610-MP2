@@ -165,6 +165,12 @@ The scratch database `mp2_release_smoke_20260928` was created with the local
   from `.env`; the line was removed.
 - The first DG monitoring text overclaimed that logs never contain connection strings;
   it was corrected to mention library stack traces.
+- After PR #47 was opened, `main` gained PR #45 (Joseph's guide and README edits), and
+  GitHub reported the PR as conflicting. `git merge origin/main` conflicted in
+  `README.md`, `docs/DeveloperGuide.md` and `docs/UserGuide.md`. Each conflict was
+  resolved by keeping Joseph's wording and adding this PR's `.env.example`, jar,
+  demo-data and quick-start text, then removing a duplicate README paragraph.
+  No code files conflicted, so the build was not re-run for the merge.
 - No skill needed revision.
 
 ## Outcome and limitations
