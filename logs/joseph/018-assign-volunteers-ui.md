@@ -127,14 +127,3 @@ git commit --no-edit
 The two skipped tests are in `PostgreSqlVenueAdministratorIntegrationTest`
 (Jordan's), which was not enabled by these environment variables. No manual UI run
 was performed after either merge.
-
-## Student review
-
-- [ ] I confirmed that the original prompts are accurate.
-- [ ] I confirmed that the changed-file list is accurate.
-- [ ] I confirmed that recorded commands were actually executed.
-- [ ] I confirmed that verification results and limitations are accurate.
-- [ ] I added any mistakes or disagreements omitted by the AI.
-
-Reviewed by:
-Review date:

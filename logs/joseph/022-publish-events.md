@@ -203,14 +203,3 @@ exact Attendee booking predicate, so the two sides cannot disagree about
 eligibility. The main limitation is the lack of a manual UI or real-login
 end-to-end check. A useful next step is running the full Organizer → Admin →
 Publish → Attendee flow in the desktop app.
-
-## Student review
-
-- [ ] I confirmed that the original prompts are accurate.
-- [ ] I confirmed that the changed-file list is accurate.
-- [ ] I confirmed that recorded commands were actually executed.
-- [ ] I confirmed that verification results and limitations are accurate.
-- [ ] I added any mistakes or disagreements omitted by the AI.
-
-Reviewed by:
-Review date:

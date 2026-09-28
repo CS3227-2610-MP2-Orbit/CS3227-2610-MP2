@@ -139,14 +139,3 @@ git diff --cached --stat HEAD   # empty: the merge changes no file contents
 Read-only check: a throwaway commit object built from the resolved tree (not on
 any branch) merged with `origin/main` via `git merge-tree --write-tree` without
 conflicts. Tests were not re-run because file contents are unchanged from 86aae80.
-
-## Student review
-
-- [ ] I confirmed that the original prompts are accurate.
-- [ ] I confirmed that the changed-file list is accurate.
-- [ ] I confirmed that recorded commands were actually executed.
-- [ ] I confirmed that verification results and limitations are accurate.
-- [ ] I added any mistakes or disagreements omitted by the AI.
-
-Reviewed by:
-Review date:

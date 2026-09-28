@@ -82,14 +82,3 @@ Refuse publish when the venue booking is released concurrently
 ## AI-generated mini reflection
 
 The defect was a transaction boundary, not a missing validation message. The strongest outcome is a failing integration test that published a booking-less event, then a lock-and-re-check that made the same test refuse and leave a draft. The overlapping two-thread test then showed that either publish or release can win, but never both in a way that leaves a published event without a booking. A remaining limit is that the desktop UI was not clicked.
-
-## Student review
-
-- [ ] I confirmed that the original prompts are accurate.
-- [ ] I confirmed that the changed-file list is accurate.
-- [ ] I confirmed that recorded commands were actually executed.
-- [ ] I confirmed that verification results and limitations are accurate.
-- [ ] I added any mistakes or disagreements omitted by the AI.
-
-Reviewed by:
-Review date:

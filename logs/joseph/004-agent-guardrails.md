@@ -141,21 +141,6 @@ changes were performed.
 
 Suggested commit message: `docs: define MP2 agent guardrails`
 
-## Student review
-
-- [ ] I confirmed that the original prompts are accurate.
-- [ ] I confirmed that the changed-file list is accurate.
-- [ ] I confirmed that recorded commands were actually executed.
-- [ ] I confirmed that verification results and limitations are accurate.
-- [ ] I added any mistakes or disagreements omitted by the AI.
-
-Reviewed by:
-Review date:
-
-
-
-
-
 ## Reflection: Guardrails for the single engineering agent
 
 ### What guardrails are (vs skills)

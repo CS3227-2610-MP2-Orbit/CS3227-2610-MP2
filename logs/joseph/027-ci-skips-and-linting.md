@@ -78,14 +78,3 @@ The review database `mp2_review_2609` was used for these runs.
 Both CI gaps are closed in the working tree, uncommitted. The lint gate covers Checkstyle only; no PMD, SpotBugs or Spotless was added. The workflow has not been run on GitHub. Nothing was committed or pushed.
 
 Suggested commit message: `ci: fail on skipped tests and add Checkstyle linting`
-
-## Student review
-
-- [ ] I confirmed that the original prompts are accurate.
-- [ ] I confirmed that the changed-file list is accurate.
-- [ ] I confirmed that recorded commands were actually executed.
-- [ ] I confirmed that verification results and limitations are accurate.
-- [ ] I added any mistakes or disagreements omitted by the AI.
-
-Reviewed by:
-Review date:
