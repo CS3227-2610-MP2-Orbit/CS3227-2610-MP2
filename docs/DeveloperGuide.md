@@ -26,7 +26,7 @@ The guide structure follows the team’s earlier AB3-style developer guide: arch
 ## Setting up, getting started
 
 1. Install JDK 25 and a local PostgreSQL server. Create a database named `event_manager`.
-2. Add a project-root `.env` as described in the [User Guide](UserGuide.md#getting-started). All three roles must point at the same database.
+2. Copy [`.env.example`](../.env.example) to a project-root `.env` and fill in your database user, as described in the [User Guide](UserGuide.md#getting-started). All three roles must point at the same database. A fresh database includes the local Venue Administrator `admin` / `admin123` from `V5__development_admin_seed.sql`. That seed does not replace an existing `admin` account, and it is not a production account.
 3. From the project root:
 
    ```sh
@@ -34,7 +34,15 @@ The guide structure follows the team’s earlier AB3-style developer guide: arch
    ./gradlew run
    ```
 
-`EventManagerApplication` loads the database, shows one login screen, and opens the workspace for the account’s role.
+4. Optional: load demo data so every role has something to work with:
+
+   ```sh
+   ./gradlew seedDemo
+   ```
+
+   `seedDemo` runs `DemoDataSeeder` against the `.env` database. It adds six `demo_*` accounts (password `demo1234`), three clubs, four rooms, published, ongoing, past and draft events, one waiting venue request, registrations, a check-in, a volunteer and an announcement. The same seeder runs from a release jar with `java -jar <jar> --seed-demo`. It never runs automatically. If `demo_organizer` already exists, it changes nothing. The [User Guide](UserGuide.md#trying-the-app-with-demo-data) lists what each account can try.
+
+`EventManagerApplication` checks the database, applies migrations, shows one login screen, and opens the workspace for the account’s role.
 
 ---
 
@@ -206,6 +214,36 @@ PostgreSQL integration tests run when their database environment variables are s
 | `DATABASE_URL` / `EVENT_MANAGER_DB_URL` | JDBC URL |
 | `DATABASE_USER` / `EVENT_MANAGER_DB_USER` | Database user |
 | `DATABASE_PASSWORD` / `EVENT_MANAGER_DB_PASSWORD` | Optional password |
+| `EVENT_MANAGER_LOG_DIR` | Optional diagnostic log folder (process environment only, not `.env`) |
+
+### Demo data
+
+`seedu.eventmanager.demo.DemoDataSeeder` creates its data through the real services (`ClubService`, `EventService`, `OrganizerVenueRequestService`, `VenueAdministratorService`, `RegistrationService`, `VolunteerService`, `AnnouncementService`). Seeded rows therefore pass the same validation, conflict, publish and registration rules as the app, and they get the normal business audit records. The seeder uses fixed clocks only to place events in the past, present and future relative to the seeding time. It is opt-in (`./gradlew seedDemo` or `--seed-demo`). It is idempotent because it checks for `demo_organizer` first. `DemoDataSeederIntegrationTest` seeds an isolated schema and checks what each role will see.
+
+### Release and deployment (CD)
+
+`.github/workflows/release.yml` runs when a `v*` tag is pushed (or manually for an existing tag):
+
+1. It runs `./gradlew test`. Database suites skip there; the CI workflow runs them against PostgreSQL.
+2. On Ubuntu, Windows and macOS runners, it builds `./gradlew releaseJar` and smoke-starts each jar with `java -jar … --version` on its own OS.
+3. It publishes a GitHub Release with the three jars, `SHA256SUMS.txt`, and `env.example` (a copy of `.env.example`, because dot-files are awkward to download).
+
+`releaseJar` builds `build/release/EventVenueManager-<version>-<os>-<arch>.jar`: the app, all runtime dependencies, and the JavaFX native libraries of the OS that builds it. JavaFX natives are platform-specific (and the Intel and Apple Silicon macOS libraries share file names), so there is one jar per OS rather than one universal jar. There is no Intel macOS jar. `mergeServiceFiles` merges the `META-INF/services` files of all dependencies before packaging. Without it, Flyway would keep only one copy and lose its PostgreSQL plugin inside the jar. The manifest sets `Main-Class` and `Enable-Native-Access: ALL-UNNAMED`.
+
+To release: merge to the default branch, then `git tag v1.0.0 && git push origin v1.0.0`.
+
+### Monitoring and diagnostics
+
+This is local diagnostics for a desktop app, not a hosted monitoring or alerting service.
+
+| Part | Where | What it does |
+| --- | --- | --- |
+| Diagnostic log | `DiagnosticLog` | Sends all `java.util.logging` output to a rotating file (`app-0.log`, 5 × 1 MB) in `~/.event-venue-manager/logs`, or in `EVENT_MANAGER_LOG_DIR`. Uncaught exceptions on any thread are logged as `uncaught_exception`. |
+| Structured events | `StructuredLogger` | One-line `event=… key=value` records: `app_started`, `database_health`, `database_unavailable`, `database_not_configured`, `database_migration_failed`, `login_succeeded` (role only), `login_failed` (exception type only), `workspace_failed`, `app_stopped`, and the Venue Administrator decision events. |
+| Metrics | `InMemoryMetrics` via `Monitoring.metrics()` | Thread-safe counters and gauges, for example `app.login_succeeded.<role>`, `app.login_failed`, `app.database_unavailable`, `database.latency_ms`, and the Venue Administrator `venue_requests.*` counters. They replace `NoopMetrics` as the default in `VenueAdministratorServiceFactory`. The snapshot is written to the log in `app_stopped`. |
+| Health check | `DatabaseHealth` | Before migrations, connects with a 5-second timeout and runs `SELECT 1`. The login screen shows the result and the log path. On failure, the error screen shows a safe cause (derived from the SQL state), the current folder and a **Try again** button. |
+
+The app’s own log events never include passwords, session tokens, connection strings or usernames. Exceptions from libraries are logged with their original message and stack trace, and those can include a JDBC URL (never the password). Business audit records (who approved, published, registered or checked in) stay in the database audit tables and are separate from the diagnostic log.
 
 ---
 
@@ -337,7 +375,7 @@ These steps are a starting point. Exploratory testing should go beyond them. Use
 
 ### Launch
 
-1. Start PostgreSQL and `./gradlew run`.
+1. Start PostgreSQL and `./gradlew run`. For a quick start, run `./gradlew seedDemo` first and use the `demo_*` accounts.
 2. Create an Attendee and a Club Organizer from the login screen. Create a Venue Administrator from **Users and access**.
 3. Each login opens a different sidebar. **Home** or **Log out** returns to login.
 

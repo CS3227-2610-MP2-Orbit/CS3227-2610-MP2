@@ -1,6 +1,7 @@
 package seedu.eventmanager.ui;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -13,11 +14,15 @@ import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
+import seedu.eventmanager.common.JavaUtilStructuredLogger;
+import seedu.eventmanager.common.Monitoring;
 import seedu.eventmanager.common.Role;
+import seedu.eventmanager.common.StructuredLogger;
 import seedu.eventmanager.storage.JdbcLocalSessionService;
 
 /** Shared authentication gate for the role workspaces. */
 public final class HomeAuthenticationView extends VBox {
+    private static final StructuredLogger LOGGER = new JavaUtilStructuredLogger(HomeAuthenticationView.class);
     private final JdbcLocalSessionService sessions;
     private final Consumer<JdbcLocalSessionService.Session> onAuthenticated;
     private final TextField username = new TextField();
@@ -51,6 +56,9 @@ public final class HomeAuthenticationView extends VBox {
         try {
             onAuthenticated.accept(sessions.login(username.getText(), password.getText()));
         } catch (RuntimeException exception) {
+            // Never log the username or password; the reason class is enough to spot patterns.
+            Monitoring.metrics().increment("app.login_failed");
+            LOGGER.warn("login_failed", Map.of("reason", exception.getClass().getSimpleName()));
             showError(exception.getMessage());
         }
     }

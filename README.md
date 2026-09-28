@@ -1,8 +1,17 @@
 # CS3227-2610-MP2
 
 Event Venue Manager is a Java 25 desktop application for campus event and venue
-management. The current implementation includes the Club Organizer's create and
-edit event workflow. See the [User Guide](docs/UserGuide.md) for setup and usage.
+management for Club Organizers, Venue Administrators and Attendees. See the
+[User Guide](docs/UserGuide.md) for setup and usage, and the
+[Developer Guide](docs/DeveloperGuide.md) for design, release and monitoring notes.
+
+## Quick start
+
+1. Start PostgreSQL, then copy `.env.example` to `.env` and fill in your database user.
+2. Optional demo data for every role: `./gradlew seedDemo`, or `java -jar <release jar> --seed-demo`.
+3. Run `./gradlew run`, or download the jar for your OS from the
+   [Releases page](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/releases) and run
+   `java -jar <jar>`.
 
 ## Development administrator account
 

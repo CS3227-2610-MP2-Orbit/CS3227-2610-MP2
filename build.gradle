@@ -42,6 +42,69 @@ tasks.named('test') {
     useJUnitPlatform()
 }
 
+// Opt-in demo data for testers: accounts, clubs, venues, events and registrations in the .env database.
+tasks.register('seedDemo', JavaExec) {
+    group = 'application'
+    description = 'Loads demo data into the database configured in .env (skipped if already loaded).'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'seedu.eventmanager.demo.DemoDataSeeder'
+    workingDir = rootDir
+}
+
+// Release packaging: one runnable jar per OS, because JavaFX native libraries are platform-specific.
+def osName = System.getProperty('os.name').toLowerCase()
+def releasePlatform = osName.contains('win') ? 'windows' : (osName.contains('mac') ? 'macos' : 'linux')
+def releaseArch = System.getProperty('os.arch') in ['aarch64', 'arm64'] ? 'arm64' : 'x64'
+def runtimeJars = configurations.runtimeClasspath
+def mergedServices = layout.buildDirectory.dir('merged-services')
+
+// Flyway finds its PostgreSQL support through META-INF/services files that several jars share;
+// merge them so the fat jar keeps every entry instead of only the first copy.
+tasks.register('mergeServiceFiles') {
+    inputs.files(runtimeJars)
+    outputs.dir(mergedServices)
+    doLast {
+        File out = mergedServices.get().asFile
+        out.deleteDir()
+        Map<String, Set<String>> merged = [:]
+        runtimeJars.files.findAll { it.name.endsWith('.jar') }.each { jar ->
+            new java.util.zip.ZipFile(jar).withCloseable { zip ->
+                zip.entries().findAll { !it.directory && it.name.startsWith('META-INF/services/') }.each { entry ->
+                    Set<String> lines = merged.computeIfAbsent(entry.name) { new LinkedHashSet<String>() }
+                    zip.getInputStream(entry).getText('UTF-8').readLines()*.trim()
+                            .findAll { it && !it.startsWith('#') }.each { lines << it }
+                }
+            }
+        }
+        merged.each { name, lines ->
+            File file = new File(out, name)
+            file.parentFile.mkdirs()
+            file.setText(lines.join('\n') + '\n', 'UTF-8')
+        }
+    }
+}
+
+tasks.register('releaseJar', Jar) {
+    group = 'distribution'
+    description = 'Builds a runnable jar with all dependencies and the JavaFX libraries for this OS.'
+    dependsOn 'mergeServiceFiles', 'classes'
+    archiveBaseName = 'EventVenueManager'
+    archiveClassifier = "${releasePlatform}-${releaseArch}"
+    destinationDirectory = layout.buildDirectory.dir('release')
+    manifest {
+        attributes('Main-Class': 'seedu.eventmanager.Main',
+                'Implementation-Version': project.version,
+                'Enable-Native-Access': 'ALL-UNNAMED')
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from(mergedServices)
+    from(sourceSets.main.output)
+    from({ runtimeJars.filter { it.name.endsWith('.jar') }.collect { zipTree(it) } }) {
+        exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA', 'META-INF/*.EC',
+                'module-info.class', 'META-INF/versions/*/module-info.class'
+    }
+}
+
 // Opt-in: requires a graphical desktop. Uses synthetic service fixtures, not a live database.
 tasks.register('attendeeUiSmoke', JavaExec) {
     dependsOn testClasses

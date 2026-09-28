@@ -65,6 +65,6 @@ public final class VenueAdministratorServiceFactory {
                 new JdbcTransactionManager(database),
                 logger == null ? new seedu.eventmanager.common.JavaUtilStructuredLogger(
                         VenueAdministratorService.class) : logger,
-                metrics == null ? new seedu.eventmanager.common.NoopMetrics() : metrics);
+                metrics == null ? seedu.eventmanager.common.Monitoring.metrics() : metrics);
     }
 }

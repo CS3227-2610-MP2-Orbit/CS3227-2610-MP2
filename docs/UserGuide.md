@@ -32,7 +32,10 @@ You click through a window. You do not type commands. Everyone signs in on the s
 
 1. Install **JDK 25**. In a terminal, `java -version` should mention version 25.
 2. Install and start **PostgreSQL** (on a Mac, [Postgres.app](https://postgresapp.com/) is enough). Create a database named `event_manager` if you do not already have one.
-3. In the project folder, create a file named `.env`. Use your own database username:
+3. Get the app in one of two ways:
+   * **Download the jar (recommended for testers).** On the [Releases page](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/releases), download the jar for your computer: `EventVenueManager-<version>-windows-x64.jar`, `-linux-x64.jar`, or `-macos-arm64.jar` (Apple Silicon). Put it in its own folder.
+   * **Run from the source code.** Clone the repository and work in the project folder.
+4. In that folder, create a file named `.env`. Copy [`.env.example`](../.env.example) (release downloads include it as `env.example`; rename it to `.env`) and use your own database username:
 
    ```env
    DATABASE_URL=jdbc:postgresql://localhost:5432/event_manager
@@ -43,19 +46,46 @@ You click through a window. You do not type commands. Everyone signs in on the s
 
    Add `DATABASE_PASSWORD` and `EVENT_MANAGER_DB_PASSWORD` only if your database asks for a password.
 
-4. From the project folder, start the app:
+5. Start the app from that folder:
 
    ```sh
-   ./gradlew run
+   java -jar EventVenueManager-<version>-<your-os>.jar
    ```
 
-   On Windows: `.\gradlew.bat run`
+   From the source code, run `./gradlew run` instead (on Windows: `.\gradlew.bat run`).
 
-5. On the login screen you can **log in**, or choose **Create normal user account** to make an Attendee or Club Organizer account. The password must be at least 8 characters. A Venue Administrator account is created later by someone who is already an administrator.
+6. Log in. A new database already has one Venue Administrator: username `admin`, password `admin123`. To try every role straight away, load the [demo data](#trying-the-app-with-demo-data) first. You can also choose **Create normal user account** to make an Attendee or Club Organizer account. The password must be at least 8 characters.
 
-> **Caution:** Restart the app after you change `.env`. All three roles must use the same database, or an organizer’s request will not show up for the administrator.
+> **Caution:** Restart the app after you change `.env`, or select **Try again** on the database error screen. All three roles must use the same database, or an organizer’s request will not show up for the administrator.
 
-> **Note:** A brand-new database has no events. Attendees see an empty list until an organizer publishes one.
+> **Caution:** There is no Intel Mac jar. On an Intel Mac, run from the source code.
+
+> **Note:** The line under the login form shows whether the database is connected and where the app writes its diagnostic log.
+
+### Trying the app with demo data
+
+A new database has no events. To get sample data for every role, run this once from the folder that contains your `.env`:
+
+```sh
+java -jar EventVenueManager-<version>-<your-os>.jar --seed-demo
+```
+
+From the source code: `./gradlew seedDemo`. Running it again changes nothing.
+
+Every demo account uses the password `demo1234`:
+
+| Username | Role | What you can try |
+| --- | --- | --- |
+| `demo_admin` | Venue Administrator | Approve or reject the waiting request for **Robotics Demo Day**. Four rooms exist, and one is under maintenance. |
+| `demo_organizer` | Club Organizer | Owns **NUS Hackers** and **Photography Society**. See registrations, the volunteer and the announcement for **Intro to Git Workshop**. **Robotics Demo Day** is waiting for approval. |
+| `demo_organizer2` | Club Organizer | Owns **Dance Club**. **Welcome Tea** is a draft that still needs a room. |
+| `demo_attendee` | Attendee | Signed up for **Intro to Git Workshop** and **Street Dance Showcase**. **Street Dance Showcase** is happening now, so you can check in. **Photography Basics** is in Attendance history. |
+| `demo_attendee2` | Attendee | Signed up for two events and volunteers as an usher. |
+| `demo_attendee3` | Attendee | Has a cancelled registration for **Hack Night**. |
+
+Event dates are set relative to the day you load the data. **Street Dance Showcase** starts about an hour before you run the command and lasts six hours.
+
+> **Caution:** Demo accounts share a public password. Use demo data only on a test database.
 
 ---
 
@@ -313,6 +343,12 @@ A: Not yet. An administrator can deactivate an account or create a new one.
 **Q: Why is Browse events empty?**  
 A: Only published events appear. A draft stays invisible until the organizer publishes it.
 
+**Q: The app says “Unable to connect to the event database”.**  
+A: Check that PostgreSQL is running and that `.env` is in the folder you started the app from (the screen shows that folder). Fix `.env`, then select **Try again**.
+
+**Q: Where can I find the app’s log if something goes wrong?**  
+A: In `~/.event-venue-manager/logs/app-0.log` (your home folder). The login screen shows the exact path. The log never contains your password.
+
 ---
 
 ## Known issues
@@ -323,6 +359,8 @@ A: Only published events appear. A draft stays invisible until the organizer pub
 * The unread count updates when you open or refresh **Notifications**, not continuously.
 * Published events cannot be unpublished or deleted.
 * Check-in records that you said you attended. It does not prove you were physically in the room.
+* When you start the jar from a terminal, Java may print `WARNING: Unsupported JavaFX configuration`. The app still works; the warning appears because JavaFX is packed inside the jar.
+* The database check and setup run when the login screen opens, so the window can take a few seconds to appear if PostgreSQL is slow or unreachable.
 
 ---
 

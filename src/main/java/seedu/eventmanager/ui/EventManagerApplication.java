@@ -36,6 +36,7 @@ import seedu.eventmanager.registration.RegistrationServiceFactory;
 import seedu.eventmanager.storage.DatabaseBootstrap;
 import seedu.eventmanager.storage.DatabaseConfig;
 import seedu.eventmanager.storage.DatabaseConfiguration;
+import seedu.eventmanager.storage.DatabaseHealth;
 import seedu.eventmanager.storage.DatabaseMigration;
 import seedu.eventmanager.storage.DriverManagerDataSource;
 import seedu.eventmanager.storage.JdbcDatabase;
@@ -56,7 +57,13 @@ import seedu.eventmanager.storage.JdbcVenueRepository;
 import seedu.eventmanager.storage.JdbcVenueRequestRepository;
 import seedu.eventmanager.storage.JdbcLocalSessionService;
 import seedu.eventmanager.storage.PasswordHasher;
+import java.util.Map;
+import seedu.eventmanager.Main;
 import seedu.eventmanager.common.Actor;
+import seedu.eventmanager.common.DiagnosticLog;
+import seedu.eventmanager.common.JavaUtilStructuredLogger;
+import seedu.eventmanager.common.Monitoring;
+import seedu.eventmanager.common.StructuredLogger;
 import seedu.eventmanager.common.Role;
 import seedu.eventmanager.volunteer.JdbcVolunteerRepository;
 import seedu.eventmanager.volunteer.VolunteerService;
@@ -66,8 +73,19 @@ public final class EventManagerApplication extends Application {
     private AttendeeBrowseView attendeeView;
     private final InboxDispatcher inboxDispatcher = new InboxDispatcher();
 
+    private static final StructuredLogger LOGGER = new JavaUtilStructuredLogger(EventManagerApplication.class);
+    private String logFile = "not available";
+
     @Override
     public void start(Stage stage) {
+        try {
+            logFile = DiagnosticLog.install(DiagnosticLog.defaultDirectory(
+                    System.getenv(), System.getProperty("user.home"))).toString();
+        } catch (RuntimeException exception) {
+            System.err.println("Diagnostic log unavailable: " + exception.getMessage());
+        }
+        LOGGER.info("app_started", Map.of("version", Main.VERSION, "java", Runtime.version().toString(),
+                "os", System.getProperty("os.name") + " " + System.getProperty("os.arch")));
         stage.setTitle("Event Venue Manager");
         BorderPane root = new BorderPane();
         root.setStyle("-fx-background-color: #f7f9fc;");
@@ -81,23 +99,49 @@ public final class EventManagerApplication extends Application {
 
     private void showHome(BorderPane root) {
         closeAttendee();
+        root.setPadding(new Insets(24));
+        root.setTop(null);
+        root.setBottom(null);
+        DatabaseConfiguration configuration;
         try {
-            DatabaseConfiguration configuration = DatabaseBootstrap.configuration();
+            configuration = DatabaseBootstrap.configuration();
+        } catch (RuntimeException exception) {
+            Monitoring.metrics().increment("app.database_not_configured");
+            LOGGER.warn("database_not_configured", Map.of("reason", exception.getClass().getSimpleName()));
+            root.setCenter(databaseErrorView(root, "No database is configured: " + exception.getMessage()));
+            return;
+        }
+        DatabaseHealth.Status health = DatabaseHealth.check(configuration);
+        Monitoring.metrics().setGauge("database.latency_ms", health.latencyMillis());
+        if (!health.up()) {
+            Monitoring.metrics().increment("app.database_unavailable");
+            LOGGER.warn("database_unavailable", Map.of("problem", health.problem()));
+            root.setCenter(databaseErrorView(root, health.summary()));
+            return;
+        }
+        LOGGER.info("database_health", Map.of("result", "up", "server", health.serverVersion(),
+                "latencyMs", health.latencyMillis()));
+        try {
             DatabaseBootstrap.migrate(configuration);
             JdbcLocalSessionService sessions = new JdbcLocalSessionService(
                     new JdbcDatabase(configuration), new PasswordHasher());
-            root.setPadding(new Insets(24));
-            root.setTop(null);
             root.setCenter(new HomeAuthenticationView(sessions,
                     session -> routeAuthenticatedUser(root, configuration, session)));
+            root.setBottom(statusBar(health.summary() + "  ·  Diagnostic log: " + logFile));
         } catch (RuntimeException exception) {
-            root.setPadding(new Insets(24));
-            root.setCenter(databaseErrorView(exception));
+            Monitoring.metrics().increment("app.database_migration_failed");
+            LOGGER.error("database_migration_failed", Map.of(), exception);
+            root.setCenter(databaseErrorView(root, "The database schema could not be prepared ("
+                    + exception.getClass().getSimpleName() + "). See the diagnostic log for details."));
         }
     }
 
     private void routeAuthenticatedUser(BorderPane root, DatabaseConfiguration configuration,
             JdbcLocalSessionService.Session session) {
+        root.setBottom(null);
+        String role = session.actor().role().name();
+        Monitoring.metrics().increment("app.login_succeeded." + role.toLowerCase(java.util.Locale.ROOT));
+        LOGGER.info("login_succeeded", Map.of("role", role));
         if (session.actor().role() == Role.VENUE_ADMINISTRATOR) {
             showVenueAdministrator(root, session);
         } else if (session.actor().role() == Role.CLUB_ORGANIZER) {
@@ -165,7 +209,9 @@ public final class EventManagerApplication extends Application {
                     () -> showHome(root)));
         } catch (RuntimeException | java.sql.SQLException exception) {
             root.setPadding(new Insets(24));
-            showWorkspace(root, "Club Organizer", databaseErrorView(exception));
+            LOGGER.error("workspace_failed", Map.of("role", "CLUB_ORGANIZER"), exception);
+            showWorkspace(root, "Club Organizer", databaseErrorView(root,
+                    exception.getClass().getSimpleName() + ": " + exception.getMessage()));
         }
     }
 
@@ -238,6 +284,7 @@ public final class EventManagerApplication extends Application {
     public void stop() {
         inboxDispatcher.close();
         closeAttendee();
+        LOGGER.info("app_stopped", Monitoring.metrics().snapshot());
     }
 
     private void showWorkspace(BorderPane root, String title, Node workspace) {
@@ -262,20 +309,36 @@ public final class EventManagerApplication extends Application {
         return button;
     }
 
-    private static VBox databaseErrorView(Exception exception) {
+    private static Label statusBar(String text) {
+        Label status = new Label(text);
+        status.setId("app-status");
+        status.setWrapText(true);
+        status.setStyle("-fx-text-fill: #61708a; -fx-font-size: 12px;");
+        status.setPadding(new Insets(8, 32, 0, 32));
+        return status;
+    }
+
+    private VBox databaseErrorView(BorderPane root, String problem) {
         Label heading = new Label("Unable to connect to the event database");
         heading.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
         Label help = new Label("""
-                Start Postgres.app (or another local PostgreSQL), then create a project-root .env
-                with DATABASE_URL / DATABASE_USER (or EVENT_MANAGER_DB_*). Restart the app after
-                changing .env. Passwords and full connection strings are not shown here.""");
+                1. Start PostgreSQL (for example Postgres.app) and create a database, such as event_manager.
+                2. In the folder you start the app from, create a .env file (copy .env.example) with
+                   DATABASE_URL, DATABASE_USER and DATABASE_PASSWORD.
+                3. Select Try again. Optional: load demo data with --seed-demo (see the User Guide).
+                Passwords and full connection strings are never shown here.""");
         help.setWrapText(true);
-        Label detail = new Label(exception.getClass().getSimpleName()
-                + ": "
-                + (exception.getMessage() == null ? "no message" : exception.getMessage()));
+        Label detail = new Label(problem);
         detail.setWrapText(true);
         detail.setStyle("-fx-text-fill: #6b7280;");
-        VBox view = new VBox(12, heading, help, detail);
+        Label folder = new Label("Current folder: " + System.getProperty("user.dir")
+                + "\nDiagnostic log: " + logFile);
+        folder.setWrapText(true);
+        folder.setStyle("-fx-text-fill: #6b7280;");
+        Button retry = new Button("Try again");
+        retry.setId("database-retry");
+        retry.setOnAction(ignored -> showHome(root));
+        VBox view = new VBox(12, heading, help, detail, folder, retry);
         view.setPadding(new Insets(24));
         return view;
     }

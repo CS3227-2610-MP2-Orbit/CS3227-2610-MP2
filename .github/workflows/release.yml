@@ -1,0 +1,90 @@
+name: Release
+
+# Continuous delivery: pushing a version tag (for example `git tag v1.0.0 && git push origin v1.0.0`)
+# builds one runnable jar per OS, smoke-starts each on its own OS, and publishes a GitHub Release.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to (re)publish, for example v1.0.0'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+      # Database suites skip without EVENT_MANAGER_TEST_DB_URL; the CI workflow runs them against PostgreSQL.
+      - run: ./gradlew test
+
+  package:
+    name: Jar (${{ matrix.os }})
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build release jar
+        run: ./gradlew releaseJar
+      - name: Smoke-start the jar on this OS
+        shell: bash
+        run: java -jar build/release/EventVenueManager-*.jar --version
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jar-${{ matrix.os }}
+          path: build/release/*.jar
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: jar-*
+          merge-multiple: true
+      - name: Checksums and configuration template
+        run: |
+          cp .env.example dist/env.example
+          cd dist && sha256sum -- *.jar > SHA256SUMS.txt && cat SHA256SUMS.txt
+      - name: Create or update the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --title "Event Venue Manager $TAG" \
+              --generate-notes --notes "Download the jar for your OS and env.example (save it as .env next to the jar). Requires Java 25 and PostgreSQL; see the User Guide."
+          fi
