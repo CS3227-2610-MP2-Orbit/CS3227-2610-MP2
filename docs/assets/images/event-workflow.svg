@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="620" viewBox="0 0 880 620" role="img" aria-labelledby="title description">
+  <title id="title">From event draft to attendance</title>
+  <desc id="description">The organizer creates a draft and requests a room. A venue administrator approves it. The organizer publishes the event. An attendee registers before the start, checks in during the event, and can then view attendance history. This diagram shows the successful path only.</desc>
+  <style>text{font-family:Helvetica,Arial,sans-serif;fill:#111827}.label{font-size:20px;font-weight:600}.detail{font-size:15px;fill:#4b5563}.role{font-size:13px;fill:#2563eb;font-weight:600}.step{fill:#eff6ff;stroke:#bfdbfe;stroke-width:1.5}.arrow{fill:none;stroke:#2563eb;stroke-width:2;marker-end:url(#arrow)}</style>
+  <defs><marker id="arrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><path d="M0 0L10 3.5L0 7Z" fill="#2563eb"/></marker></defs>
+  <rect width="880" height="620" rx="12" fill="white"/>
+  <text x="40" y="44" font-size="24" font-weight="600">From draft to attendance</text>
+  <text x="40" y="72" class="detail">The successful path across all three roles</text>
+  <rect class="step" x="40" y="112" width="360" height="112" rx="8"/>
+  <text x="60" y="138" class="role">1 · CLUB ORGANIZER</text><text x="60" y="169" class="label">Plan and request</text><text x="60" y="197" class="detail">Create a draft, then request an active room.</text>
+  <path class="arrow" d="M400 168H480"/>
+  <rect class="step" x="480" y="112" width="360" height="112" rx="8"/>
+  <text x="500" y="138" class="role">2 · VENUE ADMINISTRATOR</text><text x="500" y="169" class="label">Approve the request</text><text x="500" y="197" class="detail">Approval creates the room booking.</text>
+  <path class="arrow" d="M660 224V288"/>
+  <rect class="step" x="480" y="288" width="360" height="112" rx="8"/>
+  <text x="500" y="314" class="role">3 · CLUB ORGANIZER</text><text x="500" y="345" class="label">Publish the event</text><text x="500" y="373" class="detail">Before start, with a matching active room.</text>
+  <path class="arrow" d="M480 344H400"/>
+  <rect class="step" x="40" y="288" width="360" height="112" rx="8"/>
+  <text x="60" y="314" class="role">4 · ATTENDEE</text><text x="60" y="345" class="label">Browse and register</text><text x="60" y="373" class="detail">Before start, if eligible and a seat remains.</text>
+  <path class="arrow" d="M220 400V464"/>
+  <rect class="step" x="40" y="464" width="360" height="112" rx="8"/>
+  <text x="60" y="490" class="role">5 · ATTENDEE</text><text x="60" y="521" class="label">Check in</text><text x="60" y="549" class="detail">During the event, while still eligible.</text>
+  <path class="arrow" d="M400 520H480"/>
+  <rect class="step" x="480" y="464" width="360" height="112" rx="8"/>
+  <text x="500" y="490" class="role">6 · ATTENDEE</text><text x="500" y="521" class="label">View history</text><text x="500" y="549" class="detail">The event appears with your check-in time.</text>
+</svg>

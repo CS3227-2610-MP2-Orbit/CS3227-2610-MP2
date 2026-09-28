@@ -2,7 +2,8 @@
 
 The static Jekyll product website publishes from `main:/docs` using GitHub Pages.
 It is not a web version of the desktop app. Its custom layout and CSS are local:
-no analytics, external fonts or JavaScript. App CI workflows are unchanged.
+no analytics or external fonts. Guides containing Mermaid diagrams load a pinned
+Mermaid renderer from jsDelivr (see below). App CI workflows are unchanged.
 
 ## Enable publishing
 
@@ -53,7 +54,68 @@ See [GitHub's publishing-source instructions](https://docs.github.com/en/pages/g
 - This maintenance file, skill-validation records and hook-design notes are
   excluded from the site but remain available in the repository.
 
+### Section navigation
+
+Every guide has an **On this page** menu generated from its rendered `h2` and `h3`
+headings and their existing Jekyll IDs. Subsections are nested and the current
+section is highlighted while scrolling. Do not maintain a separate section list.
+The menu is sticky on wide screens (1200px and above); on smaller screens it
+starts collapsed above the article and closes after selecting a section.
+Keyboard users can toggle the native disclosure and follow links to focus the
+target heading. Fragment URLs remain shareable. A small local script provides
+this enhancement; the original guide and its links still work without JavaScript.
+
+To verify section navigation in a real browser, open each guide with
+`agent-browser` at desktop and mobile widths, then run:
+
+```sh
+agent-browser eval --stdin < tools/site/check_navigation.js
+```
+
+The browser check verifies heading/link correspondence, subsection nesting,
+collapse behaviour, navigation, keyboard focus, highlighting and page width.
+
 ## Local preview and checks
+
+### Diagram rendering
+
+GitHub renders Mermaid fences itself; Jekyll emits them as code. The shared guide
+layout loads `assets/js/document-diagrams.js`, which renders those blocks with
+[Mermaid 11.12.0](https://mermaid.js.org/config/usage.html) (MIT) from jsDelivr.
+The version is pinned, strict security mode is enabled and HTML labels are disabled.
+Only pages containing Mermaid load the external renderer. Do not put confidential
+content into public documentation. The CDN receives normal browser requests.
+
+Each diagram keeps a collapsible text source. If the CDN or a diagram fails,
+the source remains visible with a clear message; without JavaScript it remains
+an ordinary code block. Wide diagrams scroll within their own keyboard-focusable
+region instead of widening the page. Include Mermaid `accTitle` and `accDescr`
+for accessible diagram descriptions. Changing Mermaid versions requires browser
+verification, including network failure and malformed-source cases.
+
+On the built Developer Guide, wait for all `.documentation-diagram` elements to
+leave `data-state="loading"`, then run:
+
+```sh
+agent-browser eval --stdin < tools/site/check_diagrams.js
+agent-browser eval --stdin < tools/site/check_diagram_fallbacks.js
+```
+
+The fallback check simulates an unavailable loader and exercises a real Mermaid
+parse error alongside a valid block. On the User Guide, run
+`agent-browser eval --stdin < tools/site/check_guide_images.js` to check the seven
+illustrations load, fit the article, have alternative text and open full-size.
+
+The User Guide's two workflow illustrations are local SVGs with PNG alternatives,
+so they also work offline and in repository Markdown. Edit the SVG sources in
+`assets/images/`, then regenerate their PNGs:
+
+```sh
+rsvg-convert -w 1920 docs/assets/images/event-workflow.svg -o docs/assets/images/event-workflow.png
+rsvg-convert -w 1920 docs/assets/images/registration-workflow.svg -o docs/assets/images/registration-workflow.png
+```
+
+### Build and serve
 
 GitHub supplies Jekyll when publishing. Local website development also needs Ruby
 and Python 3.9+ (separate from the Java app). From the repository root, install
@@ -93,6 +155,16 @@ using synthetic callbacks, not database end-to-end evidence. The captions label
 the synthetic data explicitly.
 
 The HTML/CSS and simple SVG mark were authored for this project with AI assistance.
+The two workflow SVGs were also authored for this project using the layout and
+flat-style guidance of the [fireworks-tech-graph skill](https://github.com/yizhiyanhua-ai/fireworks-tech-graph).
+`attendee-registration-filters.png` is the unedited `registration-filters-1000.png`
+capture from `attendeeRegistrationUiSmoke`, generated on 2026-09-28. It renders the
+real My Registrations view in isolation using synthetic fixtures, not a database.
+The existing browse screenshot is now also included in the User Guide.
+`attendee-check-in-availability.png` is the unedited
+`check-in-availability-browse-1280.png` from `attendeeCheckInAvailabilityUiSmoke`,
+generated on 2026-09-28. It uses a controlled clock and deliberately missing booking
+to show the unavailable explanation, not a successful check-in or database test.
 Rendering uses [Jekyll](https://jekyllrb.com/) and the Pages-supported
 [jekyll-relative-links](https://github.com/benbalter/jekyll-relative-links) plugin.
 No third-party theme or stock artwork was reused.

@@ -23,6 +23,9 @@ The product website uses [Jekyll](https://jekyllrb.com/) and
 [GitHub Pages](https://docs.github.com/en/pages), with original local HTML/CSS
 and the existing Markdown guides. Website maintenance and screenshot provenance
 are documented in [WEBSITE.md](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/blob/HEAD/docs/WEBSITE.md).
+Documentation diagrams use [Mermaid](https://mermaid.js.org/) (MIT; pinned to
+11.12.0 on Pages). The User Guide's original workflow illustrations use layout
+guidance from the [fireworks-tech-graph skill](https://github.com/yizhiyanhua-ai/fireworks-tech-graph).
 
 | Role | Owner | Main code |
 | --- | --- | --- |
@@ -55,6 +58,8 @@ The app is one JavaFX process. The UI calls role services. Services enforce owne
 
 ```mermaid
 flowchart TB
+  accTitle: Event Venue Manager architecture
+  accDescr: JavaFX workspaces call Organizer, Venue Administrator and Attendee services, which use JDBC repositories to access PostgreSQL.
   UI[JavaFX workspaces]
   Org[Organizer services]
   Admin[VenueAdministratorService]
@@ -85,6 +90,8 @@ A shared happy path is: an organizer publishes only after an administrator has a
 
 ```mermaid
 sequenceDiagram
+  accTitle: Publishing and registering for an event
+  accDescr: The organizer creates an event and submits a venue request. An administrator approves it, then the organizer publishes and the attendee registers.
   participant Org as Organizer UI
   participant ES as EventService
   participant OVS as OrganizerVenueRequestService

@@ -13,4 +13,12 @@ layout: default
     <a class="source-link" href="{{ site.repository_url }}/blob/{{ site.repository_ref }}/{{ page.path | prepend: 'docs/' }}">View Markdown source <span aria-hidden="true">↗</span></a>
   </aside>
   <article class="prose">{{ content }}</article>
+  <aside class="page-toc" aria-label="Document sections" hidden>
+    <details>
+      <summary>On this page</summary>
+      <nav aria-label="On this page"></nav>
+    </details>
+  </aside>
 </main>
+<script src="{{ '/assets/js/document-navigation.js' | relative_url }}" defer></script>
+<script type="module" src="{{ '/assets/js/document-diagrams.js' | relative_url }}"></script>
