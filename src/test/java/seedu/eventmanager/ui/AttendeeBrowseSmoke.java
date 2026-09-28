@@ -105,9 +105,10 @@ public final class AttendeeBrowseSmoke {
                 }
                 return result;
             }, new AttendeeRegistrationActions((id, version) -> { throw new AssertionError("Unexpected register"); },
-                    (id, version) -> { throw new AssertionError("Unexpected cancel"); }, List::of),
+                    (id, version) -> { throw new AssertionError("Unexpected cancel"); },
+                    (id, version) -> { throw new AssertionError("Unexpected check-in"); }, List::of),
                     new InboxActions(() -> new seedu.eventmanager.attendee.InboxSnapshot(List.of()), id -> { }, () -> { }),
-                    homes::incrementAndGet);
+                    homes::incrementAndGet, Clock.fixed(Instant.parse("2026-09-25T00:00:00Z"), ZoneOffset.UTC));
             stage.setScene(new Scene(view, 1280, 800));
             stage.setTitle("Attendee smoke — synthetic fixtures");
             stage.show();
@@ -283,7 +284,7 @@ public final class AttendeeBrowseSmoke {
                             "Must not appear", now.plusSeconds(86400), now.plusSeconds(90000),
                             20, EventStatus.DRAFT, 0));
             return new EventCatalogueService(new EventCatalogueRepository() {
-                public List<Event> findUpcomingPublished(Instant time) { return events; }
+                public List<Event> findPublishedNotEnded(Instant time) { return events; }
                 public Optional<Event> findPublishedById(UUID id) {
                     return events.stream().filter(event -> event.id().equals(id)).findFirst();
                 }

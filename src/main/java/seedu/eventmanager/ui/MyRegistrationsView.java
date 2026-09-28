@@ -25,17 +25,18 @@ final class MyRegistrationsView extends VBox {
     private final ListView<MyRegistration> rows = new ListView<>();
     private final Label feedback = label("");
     private final Button cancel = new Button("Cancel selected registration");
+    private final Button checkIn = new Button("Check in");
     private final ComboBox<Filter> filter = new ComboBox<>();
     private final ComboBox<Order> order = new ComboBox<>();
     private final VBox details = new VBox(14);
     private final Clock clock;
     private List<MyRegistration> allRows = List.of();
 
-    MyRegistrationsView(Runnable refresh, Consumer<MyRegistration> cancelAction) {
-        this(refresh, cancelAction, Clock.systemUTC());
+    MyRegistrationsView(Runnable refresh, Consumer<MyRegistration> cancelAction, Consumer<MyRegistration> checkInAction) {
+        this(refresh, cancelAction, checkInAction, Clock.systemUTC());
     }
 
-    MyRegistrationsView(Runnable refresh, Consumer<MyRegistration> cancelAction, Clock clock) {
+    MyRegistrationsView(Runnable refresh, Consumer<MyRegistration> cancelAction, Consumer<MyRegistration> checkInAction, Clock clock) {
         super(14);
         this.clock = Objects.requireNonNull(clock);
         setPadding(new Insets(24));
@@ -46,6 +47,14 @@ final class MyRegistrationsView extends VBox {
         reload.setOnAction(ignored -> refresh.run());
         cancel.setId("attendee-cancel-registration");
         cancel.setDisable(true);
+        checkIn.setId("attendee-check-in-registration");
+        checkIn.setStyle("-fx-background-color: #2563eb; -fx-text-fill: white; -fx-padding: 9 14;");
+        checkIn.setVisible(false);
+        checkIn.managedProperty().bind(checkIn.visibleProperty());
+        checkIn.setOnAction(ignored -> {
+            var selected = rows.getSelectionModel().getSelectedItem();
+            if (selected != null) checkInAction.accept(selected);
+        });
         cancel.setOnAction(ignored -> {
             var selected = rows.getSelectionModel().getSelectedItem();
             if (selected != null) cancelAction.accept(selected);
@@ -53,6 +62,8 @@ final class MyRegistrationsView extends VBox {
         rows.setId("attendee-registrations");
         rows.getSelectionModel().selectedItemProperty().addListener((ignored, previous, selected) -> {
             cancel.setDisable(selected == null || !selected.canCancel() || !clock.instant().isBefore(selected.startsAt()));
+            checkIn.setVisible(selected != null && selected.canCheckIn()
+                    && !clock.instant().isBefore(selected.startsAt()) && clock.instant().isBefore(selected.endsAt()));
             if (selected == null) clearDetails();
             else showDetails(selected);
         });
@@ -98,7 +109,7 @@ final class MyRegistrationsView extends VBox {
         clearDetails();
         getChildren().setAll(heading, label("Your bookings: filter by event timing or cancellation. Times are in Singapore Time."),
                 label("Only confirmed bookings before the event starts can be cancelled. To re-register, use Browse events."),
-                new FlowPane(12, 12, label("Show"), filter, label("Sort by"), order, reload, cancel), feedback, body);
+                new FlowPane(12, 12, label("Show"), filter, label("Sort by"), order, reload, cancel, checkIn), feedback, body);
     }
 
     void loading() {
@@ -143,6 +154,7 @@ final class MyRegistrationsView extends VBox {
     private void clearDetails() {
         details.getChildren().setAll(label("Select a booking to view its event details."));
         cancel.setDisable(true);
+        checkIn.setVisible(false);
     }
 
     private void showDetails(MyRegistration row) {

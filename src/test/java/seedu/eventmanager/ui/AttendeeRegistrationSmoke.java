@@ -49,7 +49,7 @@ public final class AttendeeRegistrationSmoke {
                     "Synthetic registration UI fixture.", NOW.plusSeconds(3600), NOW.plusSeconds(7200),
                     20, EventStatus.PUBLISHED, 0);
             var catalogue = new EventCatalogueService(new EventCatalogueRepository() {
-                public List<Event> findUpcomingPublished(Instant now) { return List.of(event); }
+                public List<Event> findPublishedNotEnded(Instant now) { return List.of(event); }
                 public Optional<Event> findPublishedById(UUID id) { return Optional.of(event); }
             }, Clock.fixed(NOW, ZoneOffset.UTC));
             view = new AttendeeBrowseView(() -> catalogue, id -> {
@@ -62,7 +62,8 @@ public final class AttendeeRegistrationSmoke {
                         Optional.ofNullable(row).map(Registration::status), row == null ? -1 : row.version(),
                         RegistrationEligibilityPolicy.Result.AVAILABLE);
             }, new AttendeeRegistrationActions((id, version) -> command(id, version, false),
-                    (id, version) -> command(id, version, true), () -> {
+                    (id, version) -> command(id, version, true),
+                    (id, version) -> { throw new AssertionError("Unused check-in"); }, () -> {
                         require(!Platform.isFxApplicationThread(), "list read must run off FX thread");
                         checkSession();
                         if (empty.get() || current.get() == null) return List.of();
@@ -76,7 +77,8 @@ public final class AttendeeRegistrationSmoke {
                                 new MyRegistration(new UUID(0, 3), "Cancelled music booking", NOW.plusSeconds(86400), "Music room",
                                         Registration.Status.CANCELLED, 1, false, NOW.plusSeconds(90000),
                                         "music-club", "Cancelled booking description", "PUBLISHED"));
-                    }), new InboxActions(() -> new InboxSnapshot(List.of()), id -> { }, () -> { }), () -> { });
+                    }), new InboxActions(() -> new InboxSnapshot(List.of()), id -> { }, () -> { }), () -> { },
+                    Clock.fixed(NOW, ZoneOffset.UTC));
             stage.setScene(new Scene(view, 1280, 800));
             stage.setTitle("Registration smoke — synthetic fixtures");
             stage.show();
@@ -200,7 +202,7 @@ public final class AttendeeRegistrationSmoke {
                     sample(2, "Ongoing workshop", 0, 3600, Registration.Status.CONFIRMED),
                     sample(3, "Past workshop", -3600, 0, Registration.Status.CHECKED_IN),
                     sample(4, "Cancelled workshop", -3600, 3600, Registration.Status.CANCELLED));
-            var screen = new MyRegistrationsView(() -> { }, row -> { }, Clock.fixed(NOW, ZoneOffset.UTC));
+            var screen = new MyRegistrationsView(() -> { }, row -> { }, row -> { }, Clock.fixed(NOW, ZoneOffset.UTC));
             screen.loaded(samples);
             stage.setScene(new Scene(screen, 1000, 640));
             screen.applyCss(); screen.layout();

@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.BiFunction;
 import javafx.concurrent.Task;
 import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.beans.property.ReadOnlyBooleanWrapper;
@@ -119,20 +120,28 @@ public final class AttendeeBrowseController implements AutoCloseable {
         Thread.ofVirtual().name("attendee-my-registrations").start(task);
     }
 
-    public void register(UUID eventId, long expectedVersion) { command(eventId, expectedVersion, false); }
+    public void register(UUID eventId, long expectedVersion) {
+        command(eventId, expectedVersion, actions.register(), "Registering…");
+    }
 
-    public void cancelRegistration(UUID eventId, long expectedVersion) { command(eventId, expectedVersion, true); }
+    public void cancelRegistration(UUID eventId, long expectedVersion) {
+        command(eventId, expectedVersion, actions.cancel(), "Cancelling registration…");
+    }
 
-    private void command(UUID eventId, long expectedVersion, boolean cancelling) {
+    public void checkIn(UUID eventId, long expectedVersion) {
+        command(eventId, expectedVersion, actions.checkIn(), "Checking in…");
+    }
+
+    private void command(UUID eventId, long expectedVersion, BiFunction<UUID, Long, Registration> action, String progress) {
         if (closed || busy.get()) return;
         busy.set(true);
         // Invalidate pre-command reads even if a driver ignores interruption.
         cancel(detailTask); detailTask = null;
         cancel(registrationsTask); registrationsTask = null;
-        view.commandFeedback(cancelling ? "Cancelling registration…" : "Registering…");
+        view.commandFeedback(progress);
         Task<Registration> task = new Task<>() {
             @Override protected Registration call() {
-                return (cancelling ? actions.cancel() : actions.register()).apply(eventId, expectedVersion);
+                return action.apply(eventId, expectedVersion);
             }
         };
         commandTask = task;

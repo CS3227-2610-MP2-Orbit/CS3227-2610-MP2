@@ -178,12 +178,12 @@ Shared utilities and cross-cutting types live under `seedu.eventmanager.common` 
 Organizer events. Its `EventCatalogueRepository` boundary has a JDBC adapter in
 `storage`; it does not bypass organizer ownership checks for writes or introduce
 an attendee event table. SQL restricts reads to published events; the service
-also enforces future-start visibility for both listing and direct-ID details.
+also enforces not-yet-ended visibility for both listing and direct-ID details.
 `CatalogueEvent` omits organizer identity and internal version/state fields.
 
 `CatalogueQuery` combines literal, case-insensitive title/description search,
 exact club ID and inclusive Singapore-calendar start dates. An injected clock
-defines "upcoming". `AttendeeBrowseController` uses cancellable JavaFX Tasks on virtual
+defines upcoming/ongoing visibility. `AttendeeBrowseController` uses cancellable JavaFX Tasks on virtual
 threads and ignores superseded results. Database/configuration work is off the
 UI thread; Home/app shutdown cancels pending reads. Failures use safe messages and
 structured failure-type logging, not raw JDBC messages or business audit writes.
@@ -220,6 +220,7 @@ Focused verification:
 ./gradlew attendeeUiSmoke
 ./gradlew attendeeRegistrationUiSmoke
 ./gradlew attendeeInboxUiSmoke
+./gradlew attendeeCheckInUiSmoke
 ```
 
 The PostgreSQL catalogue/detail/registration tests require `EVENT_MANAGER_TEST_DB_URL`,
@@ -323,7 +324,7 @@ app shutdown detaches UI callbacks without pretending to roll back a database co
 unknown failures as uncertain outcomes, without exposing raw exceptions.
 
 `MyRegistrationsService` enriches `RegistrationService.myRegistrations` in one
-batch metadata query; it does not filter through the future-only public catalogue.
+batch metadata query; it does not filter through the not-yet-ended public catalogue.
 It revalidates the session after enrichment and rejects non-owner records.
 `JdbcRegistrationEventInfoRepository` uses a bound UUID array and a lateral join
 from `RegistrationReadSql` that selects at most one venue booking per event:
@@ -357,9 +358,50 @@ equality distinguishes `+08:00` from equivalent UTC offsets returned by JDBC.
 At that revision, the full suite passed with `JAVA_TOOL_OPTIONS=-Duser.timezone=UTC`; this is a
 diagnostic environment setting, not a fix for those tests or a global app change.
 The catalogue's Instant/SGT conversion tests pass in the normal local environment.
-The initial catalogue fetches upcoming published events then filters text/club/date
+The catalogue fetches upcoming/ongoing published events then filters text/club/date
 in memory. Large-data pagination and a publication-specific index need a measured,
 coordinated follow-up; no existing migration was modified or performance claim made.
+
+### Normal self-check-in (#31)
+
+`RegistrationService.checkIn(token, eventId, expectedVersion)` extends the existing
+command boundary. It reuses `AttendeeSessionGuard`, the shared transaction manager
+and event/account locking helper. Lock order is event → account → booking/venue →
+registration update; the event lock serializes all supported registration writers.
+After potentially blocking locks, it re-resolves the session and reads the command
+clock before evaluating `CheckInPolicy`. Only own CONFIRMED registrations may
+transition while PUBLISHED with a matching CONFIRMED booking at an ACTIVE venue,
+from start inclusive to end exclusive. Capacity is not rechecked for a seat already
+reserved. No applied migration or Organizer/Venue Administrator workflow changes.
+
+Check-in strictly rejects stale versions, including a repeated old version after
+a successful response was lost. A current-version repeat reports ALREADY_CHECKED_IN
+without updating the timestamp, version or audit. Existing register/cancel retry
+semantics are preserved. The transition increments version once, sets checked-in
+time once and writes REGISTRATION_CHECKED_IN through the shared business audit
+service in the same transaction. Audit failure rolls back the transition. Check-in
+is audit-only: it does not enqueue a new outbox type or change inbox routing.
+
+The same pure `CheckInPolicy` supplies `canCheckIn` previews to event details and
+My Registrations. The batch registration metadata read uses an EXISTS query with
+the shared booking predicates; historical venue display is not eligibility proof.
+Browse now uses `findPublishedNotEnded` and includes ongoing events until exact
+end. Registration eligibility still requires a future start. Ongoing details omit
+the Register/Re-register control entirely. Both check-in entry points share the
+existing controller's in-flight gate, safe feedback, expected-version submission
+and post-command refresh. The UI clock is injectable for deterministic fixtures;
+production defaults to UTC instants, displayed in SGT.
+
+`CheckInIntegrationTest` checks real PostgreSQL persistence, boundaries, identity,
+eligibility changes, concurrent submissions, unchanged Organizer roster behavior
+and audit rollback. Unit tests simulate time advancing during booking-lock wait
+and session revocation during a command. These injected tests are not evidence of
+real wall-clock expiry during an SQL transaction: the shared session resolver
+still uses PostgreSQL transaction-time expiry behavior. `attendeeCheckInUiSmoke`
+exercises both real JavaFX entry points with synthetic callbacks and saves desktop
+snapshots, including no Register on ongoing events and safe rejection messages.
+This is separate from PostgreSQL integration, not real-login desktop E2E. There is
+no QR verification, location/proximity check or proof of physical presence.
 
 ### Team ownership
 
@@ -378,7 +420,7 @@ event are required for registration.
 | --- | --- |
 | Club Organizer (Joseph) | Events, volunteers/announcements (as scheduled), Organizer→venue submit |
 | Venue Administrator (Jordan) | Venues, availability, request decide, bookings, Admin UI |
-| Attendee (Johannsen) | Catalogue/details, registration backend, register/cancel/My Registrations and persistent Notifications UI; check-in remains planned |
+| Attendee (Johannsen) | Catalogue/details, registration backend, register/cancel/My Registrations, persistent Notifications and normal self-check-in |
 
 ---
 
@@ -466,7 +508,7 @@ See [Agentic SE](AgenticSE.md). Cursor project hooks (optional process guardrail
 
 * Organizer supersede/withdraw of open requests.
 * Club rename/delete and multi-organizer clubs.
-* Attendee check-in and attendance history.
+* A separate Attendee attendance-history screen.
 * Delivery routes for non-attendee outbox events and email (attendee in-app delivery is implemented).
 * Broader Postgres integration tests for the Organizer submit path.
 
@@ -508,6 +550,6 @@ See [Agentic SE](AgenticSE.md). Cursor project hooks (optional process guardrail
 
 ## Appendix: Current implementation status
 
-**Implemented (selected):** shared role-based login; Attendee catalogue, registration backend, register/cancel, My Registrations and persistent Notifications inbox; Organizer account-owned clubs, draft events, venue requests, volunteers, registration overview and announcements; Admin venues, user management and request approve/reject; Flyway + JDBC persistence; unit and PostgreSQL integration tests.
+**Implemented (selected):** shared role-based login; Attendee catalogue, registration backend, register/cancel, My Registrations, normal self-check-in and persistent Notifications inbox; Organizer account-owned clubs, draft events, venue requests, volunteers, registration overview and announcements; Admin venues, user management and request approve/reject; Flyway + JDBC persistence; unit and PostgreSQL integration tests.
 
-**Not yet implemented (selected):** Attendee check-in and attendance history; club rename/delete; Organizer supersede/withdraw; email notification delivery; production deployment tooling.
+**Not yet implemented (selected):** a separate Attendee attendance-history screen; club rename/delete; Organizer supersede/withdraw; email notification delivery; production deployment tooling.

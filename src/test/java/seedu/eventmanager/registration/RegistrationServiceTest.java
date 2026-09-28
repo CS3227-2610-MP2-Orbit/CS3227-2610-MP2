@@ -143,14 +143,62 @@ class RegistrationServiceTest {
         assertEquals(expected, assertThrows(ApplicationException.class, work::run).code());
     }
 
+    @Test void checkInAtStartRecordsOneTimestampAndAuditWithoutNotification() {
+        Registration before = service.register("alice", eventId, -1);
+        store.event = new RegistrationEvent(eventId, "PUBLISHED", 1, now, now.plusSeconds(7200));
+        Registration checked = service.checkIn("alice", eventId, before.version());
+        assertEquals(Registration.Status.CHECKED_IN, checked.status());
+        assertEquals(now, checked.checkedInAt());
+        assertEquals(before.registeredAt(), checked.registeredAt());
+        assertEquals(1, checked.version());
+        assertEquals(List.of("REGISTRATION_CONFIRMED", "REGISTRATION_CHECKED_IN"), audits);
+        assertEquals(1, notices.size());
+        code("REGISTRATION_CHANGED", () -> service.checkIn("alice", eventId, 0));
+        code("ALREADY_CHECKED_IN", () -> service.checkIn("alice", eventId, 1));
+        assertEquals(checked, store.find(eventId, alice));
+        assertEquals(2, audits.size());
+    }
+
+    @Test void checkInRechecksTimeAfterBookingLockWait() {
+        var time = new java.util.concurrent.atomic.AtomicReference<>(now);
+        clock = new Clock() {
+            public ZoneId getZone() { return ZoneOffset.UTC; }
+            public Clock withZone(ZoneId zone) { return this; }
+            public Instant instant() { return time.get(); }
+        };
+        setup();
+        var before = service.register("alice", eventId, -1);
+        store.event = new RegistrationEvent(eventId, "PUBLISHED", 1, now, now.plusSeconds(1));
+        store.bookingHook = () -> time.set(now.plusSeconds(1));
+        code("CHECK_IN_CLOSED", () -> service.checkIn("alice", eventId, 0));
+        assertEquals(before, store.find(eventId, alice));
+        assertEquals(1, audits.size()); assertEquals(1, notices.size());
+    }
+
+    @Test void checkInRevalidatesSessionAfterLocksBeforeWriting() {
+        var before = service.register("alice", eventId, -1);
+        store.event = new RegistrationEvent(eventId, "PUBLISHED", 1, now, now.plusSeconds(1));
+        var resolves = new java.util.concurrent.atomic.AtomicInteger();
+        var guarded = new RegistrationService(store, token -> {
+            if (resolves.incrementAndGet() > 1) throw new IllegalArgumentException("Revoked");
+            return new Actor(alice, Role.ATTENDEE);
+        }, new TransactionManager() {
+            public <T> T execute(Supplier<T> action) { return action.get(); }
+        }, (actor, action, type, id, previous, next, reason) -> fail("No audit"),
+                (recipient, action, payload) -> fail("No notification"), clock);
+        code("UNAUTHENTICATED", () -> guarded.checkIn("alice", eventId, 0));
+        assertEquals(before, store.find(eventId, alice));
+    }
+
     final class MemoryStore implements RegistrationStore {
         RegistrationEvent event;
         boolean booking = true;
         boolean active = true;
+        Runnable bookingHook = () -> { };
         final Map<UUID, Registration> records = new HashMap<>();
         public RegistrationEvent lockEvent(UUID id) { return eventId.equals(id) ? event : null; }
         public boolean lockActiveAttendee(UUID id) { return active; }
-        public boolean lockConfirmedActiveBooking(RegistrationEvent event) { return booking; }
+        public boolean lockConfirmedActiveBooking(RegistrationEvent event) { bookingHook.run(); return booking; }
         public Registration find(UUID event, UUID attendee) { return records.get(attendee); }
         public int occupiedPlaces(UUID event) {
             return (int) records.values().stream().filter(r -> r.status() != Registration.Status.CANCELLED).count();

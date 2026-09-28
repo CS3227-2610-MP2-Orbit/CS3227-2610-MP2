@@ -22,7 +22,7 @@ class EventCatalogueServiceTest {
     private static final Instant TOMORROW = Instant.parse("2026-09-26T10:00:00Z");
 
     @Test
-    void listsOnlyUpcomingPublishedEventsAndSortsByStartThenId() {
+    void listsUpcomingAndOngoingPublishedEventsButNotEndedAndSortsByStartThenId() {
         Event early = event(1, "Talk", "", "tech", TOMORROW, EventStatus.PUBLISHED);
         Event tied = event(2, "Games", "", "games", TOMORROW, EventStatus.PUBLISHED);
         Event later = event(3, "Music", "", "music", TOMORROW.plusSeconds(3600), EventStatus.PUBLISHED);
@@ -30,9 +30,9 @@ class EventCatalogueServiceTest {
                 event(4, "Draft", "", "tech", TOMORROW, EventStatus.DRAFT),
                 event(5, "Done", "", "tech", TOMORROW, EventStatus.COMPLETED),
                 event(6, "Started", "", "tech", NOW, EventStatus.PUBLISHED),
-                event(7, "Past", "", "tech", NOW.minusSeconds(1), EventStatus.PUBLISHED), early));
+                event(7, "Ended", "", "tech", NOW.minusSeconds(3600), EventStatus.PUBLISHED), early));
 
-        assertEquals(List.of(early.id(), tied.id(), later.id()),
+        assertEquals(List.of(new UUID(0, 6), early.id(), tied.id(), later.id()),
                 service.search(CatalogueQuery.all()).stream().map(CatalogueEvent::id).toList());
     }
 
@@ -73,11 +73,11 @@ class EventCatalogueServiceTest {
     }
 
     @Test
-    void directIdLookupCannotExposeDraftCompletedStartedOrMissingEvents() {
+    void directIdLookupCannotExposeDraftCompletedEndedOrMissingEvents() {
         for (Event event : List.of(
                 event(1, "Draft", "", "tech", TOMORROW, EventStatus.DRAFT),
                 event(2, "Done", "", "tech", TOMORROW, EventStatus.COMPLETED),
-                event(3, "Started", "", "tech", NOW, EventStatus.PUBLISHED))) {
+                event(3, "Ended", "", "tech", NOW.minusSeconds(3600), EventStatus.PUBLISHED))) {
             assertThrows(EntityNotFoundException.class, () -> service(List.of(event)).getEvent(event.id()));
         }
         assertThrows(EntityNotFoundException.class, () -> service(List.of()).getEvent(UUID.randomUUID()));
@@ -86,7 +86,7 @@ class EventCatalogueServiceTest {
     private static EventCatalogueService service(List<Event> events) {
         // Deliberately includes hidden events: service must enforce its own public boundary.
         return new EventCatalogueService(new EventCatalogueRepository() {
-            public List<Event> findUpcomingPublished(Instant now) { return events; }
+            public List<Event> findPublishedNotEnded(Instant now) { return events; }
             public Optional<Event> findPublishedById(UUID id) {
                 return events.stream().filter(event -> event.id().equals(id)).findFirst();
             }

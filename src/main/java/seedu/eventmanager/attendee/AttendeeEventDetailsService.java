@@ -10,6 +10,7 @@ import seedu.eventmanager.common.EntityNotFoundException;
 import seedu.eventmanager.registration.AttendeeSessionGuard;
 import seedu.eventmanager.registration.RegistrationEvent;
 import seedu.eventmanager.registration.RegistrationEligibilityPolicy;
+import seedu.eventmanager.registration.CheckInPolicy;
 
 /** Authenticated read-only details. Availability is a snapshot, never a seat reservation. */
 public final class AttendeeEventDetailsService {
@@ -37,12 +38,15 @@ public final class AttendeeEventDetailsService {
         var registrationEvent = new RegistrationEvent(event.id(), snapshot.eventStatus(), event.capacity(),
                 event.startsAt(), event.endsAt());
         var now = clock.instant();
-        if (!event.id().equals(eventId) || !RegistrationEligibilityPolicy.eventOpen(registrationEvent, now)) {
+        if (!event.id().equals(eventId) || !"PUBLISHED".equals(snapshot.eventStatus()) || !now.isBefore(event.endsAt())) {
             throw unavailable();
         }
         return new AttendeeEventDetails(event, snapshot.venue(), snapshot.occupiedSeats(),
                 Math.max(0, event.capacity() - snapshot.occupiedSeats()), snapshot.ownStatus(), snapshot.ownRegistrationVersion(),
-                RegistrationEligibilityPolicy.evaluate(registrationEvent, now, snapshot.booking(), snapshot.occupiedSeats()));
+                RegistrationEligibilityPolicy.evaluate(registrationEvent, now, snapshot.booking(), snapshot.occupiedSeats()),
+                CheckInPolicy.evaluate(registrationEvent, snapshot.ownStatus().orElse(null),
+                        snapshot.booking() == RegistrationEligibilityPolicy.Booking.CONFIRMED_ACTIVE, now)
+                        == CheckInPolicy.Result.AVAILABLE);
     }
 
     private static EntityNotFoundException unavailable() {

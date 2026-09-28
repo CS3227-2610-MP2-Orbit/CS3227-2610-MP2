@@ -87,6 +87,8 @@ class AttendeeEventDetailsIntegrationTest extends RegistrationDatabaseTest {
         sql("UPDATE organizer_event SET status='DRAFT'");
         assertThrows(EntityNotFoundException.class, () -> service().getEvent(token, event));
         sql("UPDATE organizer_event SET status='PUBLISHED',starts_at='2030-01-01T00:00:00Z'");
+        assertEquals(EVENT_NOT_REGISTERABLE, service().getEvent(token, event).eligibility());
+        sql("UPDATE organizer_event SET starts_at='2029-12-31T22:00:00Z',ends_at='2030-01-01T00:00:00Z'");
         assertThrows(EntityNotFoundException.class, () -> service().getEvent(token, event));
         assertEquals(1, count("event_registrations"));
         assertEquals(0, count("audit_logs")); assertEquals(0, count("notification_outbox"));

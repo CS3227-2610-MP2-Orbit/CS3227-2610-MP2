@@ -58,6 +58,14 @@ tasks.register('attendeeRegistrationUiSmoke', JavaExec) {
     jvmArgs '--enable-native-access=ALL-UNNAMED'
 }
 
+// Opt-in real JavaFX check-in flow; synthetic service callbacks, not database E2E.
+tasks.register('attendeeCheckInUiSmoke', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'seedu.eventmanager.ui.AttendeeCheckInSmoke'
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
 // Opt-in real JavaFX inbox flow; synthetic service callbacks, not database E2E.
 tasks.register('attendeeInboxUiSmoke', JavaExec) {
     dependsOn testClasses

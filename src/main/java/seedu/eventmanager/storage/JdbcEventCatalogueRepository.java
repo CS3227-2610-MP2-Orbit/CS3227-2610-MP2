@@ -29,10 +29,10 @@ public final class JdbcEventCatalogueRepository implements EventCatalogueReposit
     }
 
     @Override
-    public List<Event> findUpcomingPublished(Instant now) {
+    public List<Event> findPublishedNotEnded(Instant now) {
         try (var connection = dataSource.getConnection();
                 var statement = connection.prepareStatement(
-                        PUBLIC_EVENTS + " AND starts_at > ? ORDER BY starts_at, id")) {
+                        PUBLIC_EVENTS + " AND ends_at > ? ORDER BY starts_at, id")) {
             statement.setQueryTimeout(15);
             statement.setTimestamp(1, Timestamp.from(now));
             try (var rows = statement.executeQuery()) {
