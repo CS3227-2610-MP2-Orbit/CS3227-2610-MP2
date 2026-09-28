@@ -35,7 +35,7 @@ You click through a window. You do not type commands. Everyone signs in on the s
 3. Get the app in one of two ways:
    * **Download the jar (recommended for testers).** On the [Releases page](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/releases), download `EventVenueManager-<version>.jar`. The same jar runs on Windows, Linux and Apple Silicon Macs. Put it in its own folder.
    * **Run from the source code.** Clone the repository and work in the project folder.
-4. In that folder, create a file named `.env`. Copy [`.env.example`](../.env.example) (release downloads include it as `env.example`; rename it to `.env`) and use your own database username:
+4. In that folder, create a file named `.env`. Copy [`.env.example`](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/blob/HEAD/.env.example) (release downloads include it as `env.example`; rename it to `.env`) and use your own database username:
 
    ```env
    DATABASE_URL=jdbc:postgresql://localhost:5432/event_manager
