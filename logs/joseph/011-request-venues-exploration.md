@@ -95,14 +95,3 @@ Exploration complete for planning. Blockers: identity UUID vs String mismatch,
 conflicting `VenueRequest`/`VenueRequestStatus` models across branches, no
 organizer submit API on Jordan's side, no FK/link from `venue_requests.event_id`
 to `organizer_event`, and absent assignment PDF/spec in-repo.
-
-## Student review
-
-- [ ] I confirmed that the original prompts are accurate.
-- [ ] I confirmed that the changed-file list is accurate.
-- [ ] I confirmed that recorded commands were actually executed.
-- [ ] I confirmed that verification results and limitations are accurate.
-- [ ] I added any mistakes or disagreements omitted by the AI.
-
-Reviewed by:
-Review date:

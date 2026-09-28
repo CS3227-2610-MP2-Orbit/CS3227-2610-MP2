@@ -119,14 +119,3 @@ outcome is unit-tested ownership/duplicate/ACTIVE-venue rules plus a Request
 venue screen in the shared Organizer shell. Main limitation is unverified
 end-to-end UI against a live Postgres Admin queue. Useful next step: manual
 dual-role smoke, then align organizer UUID with Jordan’s users table.
-
-## Student review
-
-- [ ] I confirmed that the original prompts are accurate.
-- [ ] I confirmed that the changed-file list is accurate.
-- [ ] I confirmed that recorded commands were actually executed.
-- [ ] I confirmed that verification results and limitations are accurate.
-- [ ] I added any mistakes or disagreements omitted by the AI.
-
-Reviewed by:
-Review date:

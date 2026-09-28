@@ -166,14 +166,3 @@ EVENT_MANAGER_TEST_DB_URL=jdbc:postgresql://localhost:5432/event_manager_test_an
 ```
 
 Not run: manual desktop check of the Announcements screen after the merge.
-
-## Student review
-
-- [ ] I confirmed that the original prompts are accurate.
-- [ ] I confirmed that the changed-file list is accurate.
-- [ ] I confirmed that recorded commands were actually executed.
-- [ ] I confirmed that verification results and limitations are accurate.
-- [ ] I added any mistakes or disagreements omitted by the AI.
-
-Reviewed by:
-Review date:

@@ -129,18 +129,3 @@ outside the recorded trace and may not recognize future Codex event shapes or
 unusual write commands. No application implementation was performed.
 
 Suggested commit message: `test: add deterministic requirements trace grader`
-
-## Student review
-
-- [ ] I confirmed that the original prompts are accurate.
-- [ ] I confirmed that the changed-file list is accurate.
-- [ ] I confirmed that recorded commands were actually executed.
-- [ ] I confirmed that verification results and limitations are accurate.
-- [ ] I added any mistakes or disagreements omitted by the AI.
-
-Reviewed by: Joseph kwok  
-Review date: 22/09
-
-
-
-
