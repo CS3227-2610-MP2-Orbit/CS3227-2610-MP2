@@ -30,6 +30,7 @@ public final class VenueAdministratorFxApplication extends Application {
         stage.setTitle("Event Venue Manager");
         stage.setScene(new Scene(createRoot(), WIDTH, HEIGHT));
         stage.show();
+        stage.setMaximized(true);
     }
 
     /** Creates an embeddable Venue Administrator workspace for the shared desktop shell. */
