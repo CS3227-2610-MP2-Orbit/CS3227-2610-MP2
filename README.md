@@ -1,9 +1,6 @@
-# CS3227-2610-MP2
+# Event Venue Manager
 
-Event Venue Manager is a Java 25 desktop application for campus event and venue
-management for Club Organizers, Venue Administrators and Attendees. See the
-[User Guide](docs/UserGuide.md) for setup and usage, and the
-[Developer Guide](docs/DeveloperGuide.md) for design, release and monitoring notes.
+Event Venue Manager is a Java 25 desktop application for campus events. Club Organizers plan events and request rooms, Venue Administrators decide those requests, and Attendees browse, register, and check in. One shared PostgreSQL database holds the data for all three roles.
 
 ## Quick start
 
@@ -13,22 +10,11 @@ management for Club Organizers, Venue Administrators and Attendees. See the
    [Releases page](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/releases) and run
    `java -jar <jar>`.
 
-## Development administrator account
+How to install the app and use each role is in the [User Guide](docs/UserGuide.md). Design, user stories, use cases, and non-functional requirements are in the [Developer Guide](docs/DeveloperGuide.md). Those two guides are the description of the product. This file only points to them.
 
-The Flyway migration `V5__development_admin_seed.sql` creates an idempotent
-local/demo Venue Administrator account so that a fresh development database can
-be tested immediately:
-
-```text
-Username: admin
-Password: admin123
-Role: VENUE_ADMINISTRATOR
+```sh
+./gradlew test
+./gradlew run
 ```
 
-Run the application after configuring the local PostgreSQL connection in `.env`;
-Flyway applies the migration automatically. The password is stored as a PBKDF2
-hash, and the migration does not overwrite an existing `admin` account.
-
-This credential is for local assessment and demonstrations only. It must be
-changed or replaced before any production deployment, and the development seed
-must not be used as a production provisioning mechanism.
+A fresh database includes a local Venue Administrator, `admin` / `admin123`, so the administrator workspace can be opened before any other account exists. Setup steps and the warning that this account is for local use only are in the [User Guide](docs/UserGuide.md#getting-started).

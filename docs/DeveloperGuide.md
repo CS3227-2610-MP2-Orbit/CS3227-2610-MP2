@@ -324,22 +324,34 @@ The app’s own log events never include passwords, session tokens, connection s
 * 3b. The room is already booked for an overlapping time. System refuses approval.
 * 5a. The event is not a draft, has already started, or has no matching confirmed booking at an active room. System refuses publish.
 
-**UC04 — Register, cancel, and check in**
+**UC04 — Register and cancel**
 
 **MSS**
 
-1. Attendee searches **Browse events** and selects a published event.
+1. Attendee searches **Browse events** and selects a future published event.
 2. Attendee selects **Register**.
-3. System confirms the seat and later shows a notification.
-4. Before the start, attendee cancels.
-5. During the event, attendee checks in.
-6. System records the check-in time. **Attendance history** shows it.
+3. System confirms the seat and later shows a notification in **Notifications**.
+4. Before the start, attendee cancels from **Browse events** or **My Registrations**.
+5. System marks that registration cancelled.
 
 **Extensions**
 
 * 2a. The event has started, is full, or has no matching active booking. System rejects registration.
 * 4a. The event has started, or the attendee is already checked in. System rejects cancellation.
-* 5a. It is before the start or at or after the end, or the booking is no longer valid. System rejects check-in and does not write a second check-in.
+* 5a. The event is still open and a seat remains. Attendee selects **Re-register**. Cancelling did not keep the seat.
+
+**UC04b — Check in**
+
+**MSS**
+
+1. Attendee has a confirmed registration for a published event with a matching active booking.
+2. During the event, from the start instant inclusive until the end instant exclusive, attendee selects **Check in**.
+3. System records the check-in time. **Attendance history** shows it. No inbox message is created.
+
+**Extensions**
+
+* 2a. It is before the start or at or after the end, the registration is cancelled or missing, or the booking is no longer valid. System rejects check-in.
+* 2b. The attendee is already checked in. System does not write a second check-in or change the original time.
 
 **UC05 — Announce and assign a volunteer**
 
@@ -362,7 +374,7 @@ The app’s own log events never include passwords, session tokens, connection s
 2. Events, bookings, registrations, and the inbox are stored in PostgreSQL, not in a local JSON file.
 3. Authorization is enforced in services. Hiding a button is not the only check. An attendee acts only as the signed-in account.
 4. A failed decision or registration does not leave a partial booking or a second check-in. Related writes share a transaction.
-5. Error text shown to users names the problem in plain language. Database exception text is not shown on the attendee workspace.
+5. Error text shown on a role screen names the problem in plain language. If the database cannot be reached at startup, the app shows the exception type and message, and it does not show the password or the full connection string.
 6. Diagnostic logs must not contain passwords, session tokens, or unnecessary personal data.
 7. The three role screens share one visual shell so a user can move between them without learning a new layout.
 8. Automated tests cover service rules and PostgreSQL integrations. A person still has to click through JavaFX before a screen is called done. No performance target for thousands of rows is claimed.
