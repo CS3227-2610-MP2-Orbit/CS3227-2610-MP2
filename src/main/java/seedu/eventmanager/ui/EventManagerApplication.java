@@ -20,10 +20,13 @@ import seedu.eventmanager.club.JdbcClubRepository;
 import seedu.eventmanager.event.EventService;
 import seedu.eventmanager.attendee.EventCatalogueService;
 import seedu.eventmanager.attendee.AttendeeEventDetailsService;
+import seedu.eventmanager.attendee.MyRegistrationsService;
 import seedu.eventmanager.event.JdbcEventRepository;
 import seedu.eventmanager.event.OrganizerVenueRequestService;
 import seedu.eventmanager.event.RegistrationOverviewService;
 import seedu.eventmanager.registration.EventRegistrations;
+import seedu.eventmanager.registration.RegistrationService;
+import seedu.eventmanager.registration.RegistrationServiceFactory;
 import seedu.eventmanager.storage.DatabaseBootstrap;
 import seedu.eventmanager.storage.DatabaseConfig;
 import seedu.eventmanager.storage.DatabaseConfiguration;
@@ -32,6 +35,7 @@ import seedu.eventmanager.storage.DriverManagerDataSource;
 import seedu.eventmanager.storage.JdbcDatabase;
 import seedu.eventmanager.storage.JdbcEventCatalogueRepository;
 import seedu.eventmanager.storage.JdbcAttendeeEventDetailsRepository;
+import seedu.eventmanager.storage.JdbcRegistrationEventInfoRepository;
 import seedu.eventmanager.storage.JdbcEventRegistrations;
 import seedu.eventmanager.storage.JdbcNotificationService;
 import seedu.eventmanager.storage.RegistrationDatabaseMigration;
@@ -157,12 +161,13 @@ public final class EventManagerApplication extends Application {
         closeAttendee();
         root.setPadding(Insets.EMPTY);
         root.setTop(null);
-        record ReadServices(EventCatalogueService catalogue, AttendeeEventDetailsService details) { }
-        // Lazy bootstrap runs only on background read tasks; a failed initialization can be retried.
-        var services = new java.util.function.Supplier<ReadServices>() {
-            private ReadServices value;
+        record AttendeeServices(EventCatalogueService catalogue, AttendeeEventDetailsService details,
+                RegistrationService commands, MyRegistrationsService registrations) { }
+        // Lazy bootstrap runs only on background tasks; a failed initialization can be retried.
+        var services = new java.util.function.Supplier<AttendeeServices>() {
+            private AttendeeServices value;
 
-            @Override public synchronized ReadServices get() {
+            @Override public synchronized AttendeeServices get() {
                 if (value == null) {
                     DatabaseConfiguration configuration = DatabaseBootstrap.configuration();
                     RegistrationDatabaseMigration.migrate(configuration);
@@ -170,16 +175,24 @@ public final class EventManagerApplication extends Application {
                             configuration.url(), configuration.username(), configuration.password()));
                     var database = new JdbcDatabase(configuration);
                     var sessions = new JdbcLocalSessionService(database, new PasswordHasher());
-                    value = new ReadServices(
+                    var commands = RegistrationServiceFactory.create(configuration, Clock.systemUTC());
+                    value = new AttendeeServices(
                             new EventCatalogueService(new JdbcEventCatalogueRepository(dataSource), Clock.systemUTC()),
                             new AttendeeEventDetailsService(new JdbcAttendeeEventDetailsRepository(database),
+                                    sessions::resolve, Clock.systemUTC()), commands,
+                            new MyRegistrationsService(commands::myRegistrations,
+                                    new JdbcRegistrationEventInfoRepository(database),
                                     sessions::resolve, Clock.systemUTC()));
                 }
                 return value;
             }
         };
         attendeeView = new AttendeeBrowseView(() -> services.get().catalogue(),
-                id -> services.get().details().getEvent(session.token(), id), () -> showHome(root));
+                id -> services.get().details().getEvent(session.token(), id),
+                new AttendeeRegistrationActions(
+                        (id, version) -> services.get().commands().register(session.token(), id, version),
+                        (id, version) -> services.get().commands().cancel(session.token(), id, version),
+                        () -> services.get().registrations().list(session.token())), () -> showHome(root));
         root.setCenter(attendeeView);
     }
 

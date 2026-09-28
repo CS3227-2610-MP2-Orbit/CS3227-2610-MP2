@@ -78,7 +78,7 @@ The app is designed for users who:
 
    * **Club Organizer** — log in with a Club Organizer account, then create clubs, create/edit events, and request venues. Each account sees only its own clubs and their events.
    * **Venue Administrator** — local login, then dashboard, venues, and request review.
-   * **Attendee** — read-only browse/search of upcoming published events after login.
+   * **Attendee** — browse/search upcoming published events, register/cancel and view My Registrations.
 
 6. Continue with [Features](#features).
 
@@ -90,6 +90,8 @@ The app is designed for users who:
 | --- | --- | --- |
 | All | Open a role workspace | Shared login |
 | Attendee | Browse/search published events | **Attendee** → **Browse events** |
+| Attendee | Register, cancel or re-register | **Browse events** → select event → action |
+| Attendee | View own bookings or cancel | **My Registrations** → select booking |
 | Organizer | Create a club | **Clubs** → enter **Club name** → **Create club** |
 | Organizer | Create draft event | **Events** → **+ New event** → fill form → **Save event** |
 | Organizer | Edit draft event | **Events** → select event → edit → **Save event** |
@@ -208,7 +210,7 @@ Shows who is registered for one of your events.
 
 **Expected result:** The panel shows the count as *registered / capacity* (for example `12 / 80 registered`) and lists registered attendees by name, sorted alphabetically. Select the event again to refresh.
 
-> **Caution:** The list reads real registrations from the database and counts confirmed and checked-in attendees with active accounts. This build has no Attendee screen for registering, and Organizers cannot publish events yet, so events normally show `0 / capacity registered` and *No attendees have registered for this event yet.* The list is read-only; registrations cannot be changed here.
+> **Caution:** The list reads real registrations from the database and counts confirmed and checked-in attendees with active accounts. Attendees can register for eligible published events, but Organizers cannot publish events yet, so a fresh database has no eligible catalogue events. This Organizer list is read-only; registrations cannot be changed here.
 
 ### Posting announcements
 
@@ -223,7 +225,7 @@ Saves a message for one of your events and queues a notification for each regist
 
 **Expected result:** The announcement appears at the top of **Posted announcements**, and feedback reports how many notifications were queued (for example *Notification queued for 12 registered attendees*).
 
-> **Caution:** Announcements cannot be edited after sending. Notifications are only **queued** in the shared notification outbox; attendees cannot see them yet, because in-app notification delivery is not available in this build. Recipients are the event's current registrants; this build has no Attendee screen for registering, so feedback normally shows *No registered attendees to notify yet.*
+> **Caution:** Announcements cannot be edited after sending. Notifications are only **queued** in the shared notification outbox; attendees cannot see them yet, because in-app notification delivery is not available in this build. Recipients are the event's current registrants. With no eligible active registrants, feedback shows *No registered attendees to notify yet.*
 
 ### Deleting announcements
 
@@ -252,7 +254,7 @@ Assigns attendees who are registered for one of your events as volunteers, with 
 
 **Expected result:** Feedback confirms the assignment or removal and the list updates. Assigning the same attendee twice is rejected.
 
-> **Caution:** Only attendees **registered** for the event can be assigned. This build has no Attendee screen for registering, so the attendee picker is normally empty and shows *No registered attendees available to assign*.
+> **Caution:** Only eligible active attendees **registered** for the event can be assigned. If none are registered, the picker shows *No registered attendees available to assign*.
 
 ---
 
@@ -319,7 +321,7 @@ are planned for a later secure and audited implementation.
 ## Attendee: browse and search events
 
 1. On the shared login screen, create an **ATTENDEE** account if needed and
-   log in. Your role opens the read-only catalogue. The catalogue contains only
+   log in. Your role opens Browse events. The catalogue contains only
    public event fields; selected details also show your own registration status.
 2. Enter text to search event titles/descriptions (case-insensitive literal
    substring), and optionally enter an exact, case-sensitive **Club ID**.
@@ -342,9 +344,56 @@ occupy seats. This can differ from the Organizer's active-account roster count.
 Availability is a snapshot, not a reservation. A missing/mismatched/unconfirmed
 booking or inactive venue prevents registration even if seats remain.
 
-Register/cancel controls, personal notifications, check-in and attendance history
-screens are not available yet. An event that has started or is no longer published
+Personal notifications, check-in and attendance history screens are not available
+yet. An event that has started or is no longer published
 cannot be reopened through the catalogue.
+
+### Register, cancel and re-register
+
+1. Select an event in **Browse events**, then select **Register** when available.
+   Registration requires a future published event, matching confirmed venue booking,
+   active venue and remaining capacity. You register only yourself; there is no waitlist.
+2. A message confirms the outcome and the details refresh. A seat can fill between
+   viewing and clicking; the service checks again when you submit.
+3. Select **Cancel registration** to cancel a confirmed registration before its start.
+   Cancellation at/after start or after check-in is rejected.
+4. Cancelled registrations offer **Re-register** when the same eligibility conditions
+   hold. Cancellation does not guarantee a seat will remain available.
+
+Actions and navigation are temporarily disabled while a command runs to prevent
+double submission. A stale-version message means another operation changed your
+record: review the refreshed status before retrying. For expired sessions, return
+Home and log in again. If the outcome is uncertain after a connection failure,
+refresh and check the recorded status before retrying. Closing the app does not
+guarantee that a command already sent to the database was cancelled.
+
+### My Registrations
+
+Select **My Registrations** in the Attendee sidebar to see only your own upcoming,
+past and cancelled bookings, with event title, SGT start, venue and status.
+Use **Show** to filter **All**, **Upcoming**, **Ongoing**, **Past** or **Cancelled**.
+Ongoing includes the start instant but excludes the end instant; Past starts when
+the event ends. Cancelled bookings appear in Cancelled and All, not the time-based
+filters. **Sort by** orders event starts earliest or latest first.
+
+Select a booking in the left-hand list to show its **event details alongside it**
+on the right, just like Browse events, with its description, club,
+SGT start/end, venue, event status and your registration status—even for past,
+cancelled or no-longer-published events you registered for. The list stays visible;
+there is no separate details tab. Drag the divider to resize the panes.
+Changing filters/sort clears the selection and old details.
+Filters use the current time when selected or refreshed; they do not update
+automatically as time passes.
+
+Select a confirmed future booking and **Cancel selected registration** to cancel;
+the outcome is shown and the list refreshes, retaining your filter/sort. Use **Refresh registrations** for
+changes made elsewhere. To re-register, return to Browse events.
+
+Venue information reflects the current booking, or the most recent historic
+booking if there is no current one. It is not a stored snapshot of the venue when
+you originally registered. A missing booking is shown explicitly. Cancelled
+registrations remain visible; this list does not implement check-in or an
+attendance-history workflow.
 
 Browsing uses the same database settings as the other workspaces. The Attendee
 workspace initializes existing schema prerequisites in the background; opening
@@ -388,7 +437,7 @@ associated with the account that created the club.
 ## Known Issues
 
 * No supersede/withdraw of venue requests from the Organizer UI.
-* Attendee registration UI, notifications, check-in, and history are not implemented yet.
+* Attendee notifications, check-in, and attendance history are not implemented yet.
 * Notification outbox stores Admin decisions but does not send email yet.
 
 ---

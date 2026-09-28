@@ -15,7 +15,7 @@ public final class JdbcAttendeeEventDetailsRepository implements AttendeeEventDe
     private static final String QUERY = """
             SELECT e.id,e.club_id,e.title,e.description,e.starts_at,e.ends_at,e.capacity,e.status,
                    v.name AS venue_name,v.location,v.status AS venue_status,b.status AS booking_status,
-                   own.status AS own_status,
+                   own.status AS own_status,COALESCE(own.version,-1) AS own_version,
                    (%s) AS occupied_seats,
                    CASE WHEN %s THEN CASE WHEN %s THEN 'CONFIRMED_ACTIVE'
                         ELSE 'VENUE_INACTIVE' END ELSE 'UNCONFIRMED' END AS booking_eligibility
@@ -51,7 +51,7 @@ public final class JdbcAttendeeEventDetailsRepository implements AttendeeEventDe
                                     r.getString("booking_status"), r.getString("venue_status")));
                     return Optional.of(new Snapshot(event, r.getString("status"), venue,
                             Booking.valueOf(r.getString("booking_eligibility")), r.getInt("occupied_seats"),
-                            Optional.ofNullable(r.getString("own_status")).map(Registration.Status::valueOf)));
+                            Optional.ofNullable(r.getString("own_status")).map(Registration.Status::valueOf), r.getLong("own_version")));
                 }
             } catch (SQLException failure) {
                 throw new IllegalStateException("Unable to load attendee event details.", failure);
