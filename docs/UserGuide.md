@@ -1,54 +1,38 @@
 # Event Venue Manager User Guide
 
-**Event Venue Manager** is a JavaFX desktop application for campus **club organizers**
-and **venue administrators** who coordinate events and venue bookings.
+Event Venue Manager is a desktop app for campus events. Three kinds of people use it:
 
-With Event Venue Manager, you can:
+* A **club organizer** plans a club’s events, asks for a room, and tells registered students what is happening.
+* A **venue administrator** looks after rooms and says yes or no to booking requests.
+* An **attendee** browses published events, signs up, checks in, and reads messages.
 
-* Create and edit draft club events (Club Organizer).
-* Submit venue booking requests for those events.
-* Log in as a Venue Administrator to manage venues and approve or reject requests.
-* Persist data in a shared local PostgreSQL database.
+You click through a window. You do not type commands. Everyone signs in on the same screen, and the app opens the workspace that matches the account.
 
-The app is designed for users who:
-
-* Prefer a **desktop GUI** with sidebar navigation.
-* Are comfortable editing a small `.env` file for local database settings.
-* Understand basic campus event and venue workflows (organizer vs administrator).
-
-> **Tip:** Unfamiliar terms? See the [Glossary](#glossary).
+> **Tip:** Unfamiliar words are listed in the [Glossary](#glossary).
 
 ---
 
-## How to use this User Guide
+## How to use this guide
 
-1. **[Getting Started](#getting-started)** — Install JDK/PostgreSQL, configure `.env`, and launch the app.
-2. **[Feature Summary](#feature-summary)** — Quick reference of UI actions by role.
-3. **[Features](#features)** — Step-by-step feature guides.
-4. **[FAQ](#faq)** — Common questions.
-5. **[Known Issues](#known-issues)** — Current limitations and workarounds.
-6. **[Glossary](#glossary)** — Key terms.
+1. [Getting started](#getting-started) — install what you need, then open the app.
+2. [Feature summary](#feature-summary) — a short list of what each person can do.
+3. [Features](#features) — how to do each task, one role at a time.
+4. [FAQ](#faq) — common problems.
+5. [Known issues](#known-issues) — things the app does not do yet.
 
-### Alert styles used in this guide
+> **Note:** Extra context for the step you are on.
 
-> **Note:** Extra context for the current step.
+> **Tip:** A shortcut or easier way.
 
-> **Tip:** Advice that makes a feature easier to use.
-
-> **Caution:** Avoid this pitfall to prevent failed actions or confusion.
+> **Caution:** A mistake that will stop the action.
 
 ---
 
-## Getting Started
+## Getting started
 
-1. Ensure you have **JDK 25** installed.
-
-   > **Tip:** Check with `java -version` in Terminal (macOS/Linux) or Command Prompt (Windows).
-
-2. Install and start a local **PostgreSQL** server (for example [Postgres.app](https://postgresapp.com/) on macOS).
-   Create a database named `event_manager` if it does not exist.
-
-3. In the project root, create a `.env` file (gitignored). Example:
+1. Install **JDK 25**. In a terminal, `java -version` should mention version 25.
+2. Install and start **PostgreSQL** (on a Mac, [Postgres.app](https://postgresapp.com/) is enough). Create a database named `event_manager` if you do not already have one.
+3. In the project folder, create a file named `.env`. Use your own database username:
 
    ```env
    DATABASE_URL=jdbc:postgresql://localhost:5432/event_manager
@@ -57,546 +41,288 @@ The app is designed for users who:
    EVENT_MANAGER_DB_USER=your_postgres_username
    ```
 
-   Optional: `DATABASE_PASSWORD` / `EVENT_MANAGER_DB_PASSWORD` if your Postgres user requires a password.
+   Add `DATABASE_PASSWORD` and `EVENT_MANAGER_DB_PASSWORD` only if your database asks for a password.
 
-   > **Caution:** Restart the app after changing `.env`. Club Organizer and Venue Administrator must use the **same** database URL or requests will not appear for Admin.
-
-4. From the project root, run:
+4. From the project folder, start the app:
 
    ```sh
    ./gradlew run
    ```
 
-   Windows:
+   On Windows: `.\gradlew.bat run`
 
-   ```powershell
-   .\gradlew.bat run
-   ```
+5. On the login screen you can **log in**, or choose **Create normal user account** to make an Attendee or Club Organizer account. The password must be at least 8 characters. A Venue Administrator account is created later by someone who is already an administrator.
 
-5. A shared login screen appears. Log in with your role's account (or create a
-   normal Attendee/Organizer account); the app routes you to that workspace:
+> **Caution:** Restart the app after you change `.env`. All three roles must use the same database, or an organizer’s request will not show up for the administrator.
 
-   * **Club Organizer** — log in with a Club Organizer account, then create clubs, create/edit events, and request venues. Each account sees only its own clubs and their events.
-   * **Venue Administrator** — local login, then dashboard, venues, and request review.
-   * **Attendee** — browse/search upcoming and ongoing published events, register/cancel, check in, view My Registrations and read Notifications.
-
-6. Continue with [Features](#features).
+> **Note:** A brand-new database has no events. Attendees see an empty list until an organizer publishes one.
 
 ---
 
-## Feature Summary
+## Feature summary
 
-| Role | Action | Where in the UI |
+| Who | What you can do | Where |
 | --- | --- | --- |
-| All | Open a role workspace | Shared login |
-| Attendee | Browse/search published events | **Attendee** → **Browse events** |
-| Attendee | Register, cancel or re-register | **Browse events** → select event → action |
-| Attendee | View own bookings or cancel | **My Registrations** → select booking |
-| Attendee | Check into an ongoing registered event | **Browse events** or **My Registrations** → select event → **Check in** |
-| Attendee | View attended events and check-in times | **Attendance history** → select event |
-| Attendee | Read registration updates and announcements | **Notifications** → refresh or mark read |
-| Organizer | Create a club | **Clubs** → enter **Club name** → **Create club** |
-| Organizer | Create draft event | **Events** → **+ New event** → fill form → **Save event** |
-| Organizer | Edit draft event | **Events** → select event → edit → **Save event** |
-| Organizer | Reset / revert form | **Reset** (new) or **Revert changes** (edit) |
-| Organizer | Request a venue | **Request venue** → select event + venue → **Submit request** |
-| Organizer | Release an approved venue (drafts) | **Request venue** → select approved draft → **Release venue** → **OK** |
-| Organizer | Publish an event | **Events** → select approved draft → **Publish** → **OK** |
-| Organizer | Delete a draft event | **Events** → select draft → **Delete** → **OK** |
-| Organizer | View registrations | **Registrations** → select event |
-| Organizer | Post an announcement | **Announcements** → select event → write message → **Send announcement** |
-| Organizer | Delete an announcement | **Announcements** → select event → select announcement → **Delete selected** → **OK** |
-| Organizer | Assign / remove volunteers | **Volunteers** → select event → **Assign volunteer** or **Remove selected** (requires registered attendees) |
-| Venue Admin | Log in | Venue Administrator login screen |
-| Venue Admin | View dashboard | **Dashboard** → pending requests, available venues, **Refresh** |
-| Venue Admin | Review / approve / reject | **Venue requests** → select row → **Approve** or **Reject** |
-| Venue Admin | Manage venues | **Venues** → view, create, edit, activate/deactivate |
-| Venue Admin | Manage users | **Users and access** → view, create, edit, activate/deactivate |
-| Venue Admin | Sign out | **Log out** |
+| Anyone | Sign in, or create an Attendee or Organizer account | Login screen |
+| Organizer | Create a club | **Clubs** |
+| Organizer | Create, edit, publish, or delete a draft event | **Events** |
+| Organizer | Ask for a room, or give an approved room back | **Request venue** |
+| Organizer | See who signed up | **Registrations** |
+| Organizer | Send or delete an announcement | **Announcements** |
+| Organizer | Add or remove a volunteer | **Volunteers** |
+| Administrator | See pending requests and rooms | **Dashboard** |
+| Administrator | Approve or reject a request | **Venue requests** |
+| Administrator | Add or change a room | **Venues** |
+| Administrator | Add or change accounts | **Users and access** |
+| Attendee | Search published events and sign up | **Browse events** |
+| Attendee | See or cancel your own bookings | **My Registrations** |
+| Attendee | Check in while an event is happening | **Browse events** or **My Registrations** |
+| Attendee | See events you already attended | **Attendance history** |
+| Attendee | Read updates | **Notifications** |
 
 ---
 
 ## Features
 
-### Product overview
+### Signing in
 
-Event Venue Manager uses one shared desktop shell:
+1. Type your username and password, then select **Log in**.
+2. The app opens Club Organizer, Venue Administrator, or Attendee, depending on the account.
+3. **← Home** or **Log out** returns you to the login screen.
 
-1. Shared login routes to Club Organizer, Venue Administrator, or Attendee based on account role.
-2. Each role has a dark sidebar and card-style content area.
-3. Organizer event data and Admin venue/request data share the same PostgreSQL database when configured as above.
+To make your own Attendee or Club Organizer account, select **Create normal user account**, pick the role, then enter a username and a password of at least 8 characters. You still need to log in afterwards.
+
+> **Note:** You cannot create a Venue Administrator account from this screen. An existing administrator does that under **Users and access**.
 
 ---
 
 ## Club Organizer
 
-Everything in the Club Organizer workspace belongs to the signed-in account: you see and manage only the clubs you created and their events, venue requests, and volunteers.
+You only see the clubs you created, and the events that belong to those clubs.
 
 ### Creating a club
 
-**Steps:**
+1. Select **Clubs**.
+2. Type a **Club name** (up to 80 characters) and select **Create club**.
 
-1. Log in with a Club Organizer account.
-2. In the sidebar, select **Clubs**.
-3. Enter a **Club name** (up to 80 characters) and select **Create club**.
+The club appears under **Your clubs** and in the club list when you create an event.
 
-**Expected result:** The club appears in **Your clubs** and in the **Club** picker when creating events.
-
-> **Caution:** Club names are unique across the whole system, ignoring case, so `Chess Club` and `chess club` cannot both exist. Clubs cannot be renamed or deleted yet. Each club has exactly one owner: the account that created it.
+> **Caution:** Names must be unique even if the letters differ only by case. `Chess Club` and `chess club` cannot both exist. You cannot rename or delete a club yet. The person who creates the club is its only owner.
 
 ### Creating a draft event
 
-Creates a new draft event owned by one of your clubs.
+A draft is a plan. Attendees cannot see it until you publish it.
 
-**Prerequisite:** You own at least one club (see [Creating a club](#creating-a-club)).
-
-**Steps:**
-
-1. Log in with a Club Organizer account.
-2. In the sidebar, select **Events**, then select **+ New event** above **Your events**.
-3. Choose a **Club**, enter **Title**, optional **Description**, start/end date and Singapore time (24-hour, e.g. `18:00`), and a positive **Capacity**.
+1. Create a club first if you do not have one.
+2. Select **Events**, then **+ New event**.
+3. Choose a **Club**, enter a **Title**, an optional **Description**, a start and end in Singapore time (for example `18:00`), and a **Capacity** greater than zero.
 4. Select **Save event**.
 
-**Expected result:** Feedback confirms the draft was created; the event appears in **Your events**.
+The event appears in **Your events**. A new form starts with `18:00`–`20:00` and capacity `80`. You can change those before saving.
 
-> **Note:** Defaults for a new draft are start `18:00`, end `20:00`, and capacity `80`.
+### Editing a draft
 
-> **Tip:** If you have no clubs yet, the form shows a reminder to create one under **Clubs** first.
+1. Select **Events**, then the event.
+2. Change the fields and select **Save event**.
+3. **Reset** clears a new form. **Revert changes** puts an existing draft back to the last saved version.
 
-### Editing a draft event
+Only drafts can be edited. If someone else saved the same event first, your save is refused and you should reload it.
 
-**Steps:**
+Changing **Capacity** also updates the attendance number on a request that is still waiting. A request that has already been approved or rejected is left as it was.
 
-1. Select **Events**, then pick an event in **Your events**. The form heading shows
-   **Edit draft event — *title***.
-2. Change fields as needed.
-3. Select **Save event**.
+> **Caution:** After a room is approved, the start and end times are locked to that booking. Title, description, and capacity can still change. To change the times, [release the room](#releasing-an-approved-room) first.
 
-**Expected result:** Feedback confirms the draft was updated. If you change
-**Capacity** and the event still has a pending venue request (`SUBMITTED` /
-`DRAFT`), that request’s expected attendance is updated to match. Already
-approved/rejected requests are left alone.
+### Requesting a room
 
-> **Caution:** Only **draft** events can be edited in this workflow. Concurrent edits use optimistic versioning; a stale save is rejected.
+1. Ask an administrator to create an active room first, if none exist.
+2. Select **Request venue**.
+3. Choose your event and an active room, then select **Submit request**.
 
-> **Caution:** Once a venue request is **approved**, the start and end times are locked to the booked window; saving different times is refused with a message naming the booked times. Title, description and capacity stay editable. To change the times, first [release the venue](#releasing-an-approved-venue). If an older event's times already differ from its booking, set them back to the booked times to publish it.
+You see a success message, and the request status changes to waiting. The administrator sees the same request in **Venue requests**.
 
-### Reset and revert
+You cannot submit a second request while one is still open, and you cannot submit another while an approved booking is still held. The event must be yours.
 
-* **Reset** (while creating): clears the form back to create defaults.
-* **Revert changes** (while editing): reloads the last saved draft from the database and discards unsaved edits.
+### Releasing an approved room
 
-### Requesting a venue
+Use this when a draft needs a different time or a different room.
 
-Submits a `SUBMITTED` venue booking request so a Venue Administrator can approve or reject it, and shows the latest request status on the Organizer side.
+1. Select **Request venue**.
+2. Select the draft that already has an approved room.
+3. Select **Release venue**, then **OK**.
 
-**Prerequisite:** At least one **ACTIVE** venue exists (create it under Venue Administrator → **Venues** first).
-
-**Steps:**
-
-1. Create or select an owned event under **Events**.
-2. Open **Request venue**.
-3. Select the event and an **ACTIVE** venue.
-4. Select **Submit request**.
-5. Check **Request status** (`NONE`, `SUBMITTED` / pending, `APPROVED`, or `REJECTED`). Reselect the event or reopen the screen after Admin decides to refresh.
-6. Open **Venue Administrator** → **Venue requests** and approve or reject.
-
-**Expected result:** Success message includes a request id. Attendance comes from the event capacity. Submit stays disabled while status is pending (`SUBMITTED`/`DRAFT`) or `APPROVED`; after `REJECTED` you may submit again.
-
-> **Caution:** An event may have only **one open** request (`DRAFT` or `SUBMITTED`) at a time. While its latest request is `APPROVED`, a new request is refused until you [release the venue](#releasing-an-approved-venue). Booking conflicts are checked when the administrator **approves**, not at submit time. Events are **not** auto-published when a venue is approved; see [Publishing an event](#publishing-an-event).
-
-> **Tip:** After Admin decides, return to **Request venue** and select the event again to see the updated status.
-
-### Releasing an approved venue
-
-Gives up an approved venue booking for an unpublished draft so you can change its times and request a venue again.
-
-**Steps:**
-
-1. Open **Request venue** and select a **Draft** event whose status is `APPROVED`.
-2. Select **Release venue**, then **OK** in the confirmation.
-3. Under **Events**, change the start/end times and select **Save event**.
-4. Back in **Request venue**, select a venue and **Submit request** again, then have a Venue Administrator approve it.
-
-**Expected result:** The request status changes to `WITHDRAWN`, the booking is cancelled (freeing the venue for that slot), and **Submit request** is enabled again. The release is recorded in the venue audit log.
-
-> **Caution:** Releasing is only available for events that are not yet published; published events keep their booking. The released slot may be booked by someone else before your new request is approved.
+The booking is given up. You can edit the times and submit a new request. A published event keeps its room.
 
 ### Publishing an event
 
-Makes a draft visible to Attendees so they can browse, register and later check in.
+Publishing is what makes the event visible to attendees.
 
-**Prerequisites:** You own the event's club, the event is still a **Draft** that has not started, and a Venue Administrator has **approved** its venue request, giving a confirmed booking at an **ACTIVE** venue with exactly the same start and end times as the event.
+1. The event must still be a draft.
+2. It must start in the future.
+3. It must have an approved booking at an active room for the same start and end.
+4. Select the event, select **Publish**, then **OK**.
 
-**Steps:**
+After that, attendees can find it under **Browse events**. You can no longer edit or delete it.
 
-1. Select **Events**, then pick a draft in **Your events** (each card shows **Draft** or **Published**).
-2. Select **Publish**, then **OK** in the confirmation.
+### Deleting a draft
 
-**Expected result:** Feedback confirms the event was published, its card shows **Published**, and the form becomes read-only. The event now appears in the Attendee **Browse** list.
+1. Select **Events**, then a draft.
+2. Select **Delete**, then **OK**.
 
-If a prerequisite is missing, publishing is refused and the event stays a draft. The message explains why, for example *Publishing needs a confirmed venue booking…* (no approved request yet), *The venue is booked for … Change the event times back to match before publishing.*, *The booked venue is not active…*, or *Events can only be published before they start*.
-
-> **Caution:** Published events cannot be edited or unpublished. If the booking is later cancelled or the venue made inactive, the event stays published but new registrations and check-in are refused.
-
-### Deleting a draft event
-
-Removes a draft you no longer need, together with its venue request or booking.
-
-**Prerequisites:** You own the event's club and the event is still a **Draft**.
-
-**Steps:**
-
-1. Select **Events**, then pick the draft in **Your events**.
-2. Select **Delete**, then **OK** in the confirmation.
-
-**Expected result:** Feedback confirms the deletion and the event disappears from every Organizer screen. A pending (`SUBMITTED`) venue request is withdrawn, so it leaves the Venue Administrator's queue, and an approved booking is released, freeing that venue slot for other events.
-
-> **Caution:** Deletion cannot be undone from the application. Published events cannot be deleted; the **Delete** button only appears for drafts.
+The event disappears from your list. A waiting request is withdrawn, and an approved booking is released. Published events cannot be deleted. There is no undo.
 
 ### Viewing registrations
 
-Shows who is registered for one of your events.
+1. Select **Registrations**.
+2. Select an event.
 
-**Steps:**
+You see who is signed up, including people who have checked in, with the event’s capacity. An event with nobody signed up shows an empty list. You only see events you own.
 
-1. In the sidebar, select **Registrations**.
-2. Select an event in **Your events**.
+### Announcements
 
-**Expected result:** The panel shows the count as *registered / capacity* (for example `12 / 80 registered`) and lists registered attendees by name, sorted alphabetically. Select the event again to refresh.
+1. Select **Announcements**, then an event.
+2. Write a message (up to 1000 characters) and select **Send announcement**.
+3. To remove one, select it and select **Delete selected**, then **OK**.
 
-> **Caution:** The list reads real registrations from the database and counts confirmed and checked-in attendees with active accounts. Attendees can register only after you [publish the event](#publishing-an-event). This Organizer list is read-only; registrations cannot be changed here.
+Registered attendees receive the message in **Notifications** after a short wait. Deleting the announcement does not pull back a message that was already sent. Those attendees later see a short note that the announcement was removed.
 
-### Posting announcements
+### Volunteers
 
-Saves a message for one of your events and queues a notification for each registered attendee.
+1. Select **Volunteers**, then an event.
+2. Choose a registered attendee, optionally type a **Role** such as `Usher` (up to 60 characters), and select **Assign volunteer**.
+3. To remove someone, select them and select **Remove selected**.
 
-**Steps:**
-
-1. In the sidebar, select **Announcements**.
-2. Select an event in **Your events**. **Posted announcements** lists earlier announcements, newest first.
-3. Write a message (up to 1000 characters; the counter shows how many you have used).
-4. Select **Send announcement**.
-
-**Expected result:** The announcement appears at the top of **Posted announcements**, and feedback reports how many notifications were queued (for example *Notification queued for 12 registered attendees*).
-
-> **Caution:** Announcements cannot be edited after sending. The queued count is not a delivery receipt: background delivery places queued messages in each recipient's Attendee **Notifications** inbox. The worker starts after an Attendee workspace initializes and runs while that app remains open. Recipients are the event's current registrants. With no eligible active registrants, feedback shows *No registered attendees to notify yet.*
-
-### Deleting announcements
-
-Permanently removes one of your event's announcements.
-
-**Steps:**
-
-1. In the sidebar, select **Announcements**, then select the event.
-2. In **Posted announcements**, select the announcement.
-3. Select **Delete selected**, then **OK** to confirm (or **Cancel** to keep it).
-
-**Expected result:** The announcement disappears from **Posted announcements** and feedback shows *Announcement deleted.*
-
-> **Caution:** Deletion cannot be undone. Notifications already queued for attendees when the announcement was sent are **not** withdrawn; their inbox entries show *Announcement removed.* instead of the deleted message.
-
-### Assigning volunteers
-
-Assigns attendees who are registered for one of your events as volunteers, with an optional role.
-
-**Steps:**
-
-1. In the sidebar, select **Volunteers**.
-2. Select an event in **Your events**. **Assigned volunteers** lists current volunteers.
-3. Under **Assign a volunteer**, choose an **Attendee**, optionally enter a **Role** (up to 60 characters, e.g. `Usher`), and select **Assign volunteer**.
-4. To remove a volunteer, select them in **Assigned volunteers** and select **Remove selected**.
-
-**Expected result:** Feedback confirms the assignment or removal and the list updates. Assigning the same attendee twice is rejected.
-
-> **Caution:** Only eligible active attendees **registered** for the event can be assigned. If none are registered, the picker shows *No registered attendees available to assign*.
+Only people who are registered for that event can be volunteers. The same person cannot be added twice. If nobody is registered, the list says so.
 
 ---
 
 ## Venue Administrator
 
-### Logging in
+### Dashboard
 
-**Steps:**
+**Dashboard** shows how many requests are waiting and which rooms are available. **Refresh** reloads those numbers. The sidebar also has **Venue requests**, **Venues**, **Users and access**, and **Log out**.
 
-1. Log in with a **Venue Administrator** account at the shared login screen.
-2. Sign in with a local Venue Administrator account.
+### Rooms
 
-> **Note:** If you have no account yet, create one under **Users and access** (after an existing admin session), or use the account your team already seeded (commonly username `admin`).
+1. Select **Venues**, then **Create venue**.
+2. Enter a name, a location, and a capacity greater than zero.
 
-### Creating a venue
+The room starts as available. Select a room and **Edit selected** to change its details. **Toggle availability** switches it between available and unavailable. Unavailable rooms cannot be requested for new bookings. An old booking does not turn the whole room off forever; the room can be used again after that booking’s time has passed.
 
-**Steps:**
+### Reviewing requests
 
-1. Sidebar → **Venues** → **Create venue**.
-2. Enter name, location, and positive capacity.
+1. Select **Venue requests**. The list loads when you open the page.
+2. Select a waiting request.
+3. Select **Approve**, or **Reject** and choose a reason.
 
-**Expected result:** Venue appears in the venue list as **ACTIVE**.
+The reasons are **Venue already booked** and **Requested capacity exceeds venue capacity**.
 
-### Editing and activating venues
+An approved request becomes a booking and leaves the waiting list. A rejected request also leaves the waiting list. Approving fails if that room is already booked for an overlapping time. Every venue administrator can review every request.
 
-Use **Venues** to select an existing venue, edit its details, or toggle its
-administrative status between **ACTIVE** and **INACTIVE**. Inactive venues are
-not available for new organizer requests.
-
-An approved booking does not permanently deactivate the whole venue. Booking
-occupancy remains interval-based, so a venue can be available again after its
-confirmed booking interval ends.
-
-### Reviewing venue requests
-
-**Steps:**
-
-1. Sidebar → **Venue requests** (list reloads on open).
-2. Select a pending row.
-3. **Approve**, or **Reject** (rejection requires a reason).
-
-Rejection reasons are selected from the fixed list **Venue already booked** or
-**Requested capacity exceeds venue capacity**.
-
-**Expected result:** Approved/rejected requests leave the pending list. Dashboard pending count updates when you return to **Dashboard**.
-
-The table presents readable request information: a short request reference,
-venue name and location, event title, organizer username, start time, and
-attendance. Internal UUIDs remain backend identifiers and are not required for
-normal administrator use.
+The table shows a short reference, the room, the event title, the organizer’s username, the start time, and the expected attendance.
 
 ### Users and access
 
-Use **Users and access** to view users, create accounts, edit usernames/roles,
-activate or deactivate accounts, and grant an administrator access to specific
-venues. Roles are selected from the supported role list rather than typed
-manually.
+1. Select **Users and access**.
+2. **Create user** asks for a username, a password, and a role: Attendee, Club Organizer, or Venue Administrator.
+3. **Edit account** changes the username, the role, and whether the account is active.
 
-Password change and password-reset workflows are not currently available and
-are planned for a later secure and audited implementation.
+There is no change-password screen yet. Deactivating an account stops that person from using it.
 
 ---
 
-## Attendee: browse and search events
+## Attendee
 
-1. On the shared login screen, create an **ATTENDEE** account if needed and
-   log in. Your role opens Browse events. The catalogue contains only
-   public event fields; selected details also show your own registration status.
-2. Enter text to search event titles/descriptions (case-insensitive literal
-   substring), and optionally select a name from the **Club** dropdown.
-   **All clubs** is the default; club names are sorted alphabetically.
-3. Optionally choose **From date** and **To date** using the calendar controls.
-   These are inclusive event-start calendar dates in Singapore Time; either
-   bound may be left blank. From must not be later than To.
-4. Select **Search / Refresh** (or press Enter in a text field). Only published
-   upcoming and ongoing events (strictly before their end) are listed, ordered by start time
-   and then event ID. **Clear filters** resets the club to **All clubs**,
-   clears the other fields and reloads the list.
-5. Select an event for its latest title, description, club name, SGT start/end
-   times, venue/location, booking/venue status, remaining seats and your own
-   registration status. Full events remain visible, with an explanation of
-   registration availability. **Refresh details** reloads the selected event.
-6. **← Home** clears personal details and returns to the login screen. If your
-   session expires, the next detail read asks you to log in again.
+### Browsing events
 
-Club names appear in the event list/details, My Registrations and Attendance
-History. Older events whose club cannot be found display **Unknown club** and
-remain visible under **All clubs**. The dropdown lists shared clubs, including
-those without upcoming events. **Search / Refresh** reloads the choices while
-retaining the selected club. If loading clubs fails, existing choices remain
-available and a message offers a retry. If a selected club disappears, its
-filter remains selected as **Unknown club** until you choose another or clear it.
+1. Log in with an Attendee account. **Browse events** opens.
+2. Type words to search titles and descriptions. Matching ignores capital letters.
+3. Optionally pick a club. **All clubs** is the default.
+4. Optionally set **From date** and **To date**. These are the event’s start date in Singapore time. Either box can be left empty. From must not be later than To.
+5. Select **Search / Refresh**. **Clear filters** resets everything and reloads the list.
+6. Select an event to see its title, description, club, times, room, seats left, and whether you are signed up. **Refresh details** reloads that event.
 
-Remaining seats count confirmed and checked-in registrations, including inactive
-accounts whose seats have not been cancelled. Cancelled registrations do not
-occupy seats. This can differ from the Organizer's active-account roster count.
-Availability is a snapshot, not a reservation. A missing/mismatched/unconfirmed
-booking or inactive venue prevents registration even if seats remain.
+The list shows published events that have not ended, soonest first. Full events stay visible, with an explanation of why you cannot sign up. An event that has already started shows **Registration closed**. Drafts never appear.
 
-Ongoing events show **Registration closed** and do not offer a Register or
-Re-register button. Ended or no-longer-published events cannot be reopened through
-the catalogue; your bookings remain available in My Registrations. A separate
-attendance-history screen shows your checked-in events, including ended events.
+> **Note:** Seats count people who are signed up or checked in, including inactive accounts that were not cancelled. Your seat is not held while you are only looking. The app checks again when you press the button.
 
-### Register, cancel and re-register
+### Signing up, cancelling, and signing up again
 
-1. Select an event in **Browse events**, then select **Register** when available.
-   Registration requires a future published event, matching confirmed venue booking,
-   active venue and remaining capacity. You register only yourself; there is no waitlist.
-2. A message confirms the outcome and the details refresh. A seat can fill between
-   viewing and clicking; the service checks again when you submit.
-3. Select **Cancel registration** to cancel a confirmed registration before its start.
-   Cancellation at/after start or after check-in is rejected.
-4. Cancelled registrations offer **Re-register** when the same eligibility conditions
-   hold. Cancellation does not guarantee a seat will remain available.
+1. Select an event and select **Register** when the button is there.
+2. You can register only yourself. There is no waiting list.
+3. **Cancel registration** works only before the event starts, and only for your own confirmed booking.
+4. After you cancel, **Re-register** appears when the event is still open and a seat remains. Cancelling does not keep the seat for you.
 
-Actions and navigation are temporarily disabled while a command runs to prevent
-double submission. A stale-version message means another operation changed your
-record: review the refreshed status before retrying. For expired sessions, return
-Home and log in again. If the outcome is uncertain after a connection failure,
-refresh and check the recorded status before retrying. Closing the app does not
-guarantee that a command already sent to the database was cancelled.
+You cannot register after the event has started, without a confirmed room, or when the event is full. If your record changed while you were looking at it, refresh and try again.
 
-### My Registrations
+### My registrations
 
-Select **My Registrations** in the Attendee sidebar to see only your own upcoming,
-past and cancelled bookings, with event title, SGT start, venue and status.
-Use **Show** to filter **All**, **Upcoming**, **Ongoing**, **Past** or **Cancelled**.
-Ongoing includes the start instant but excludes the end instant; Past starts when
-the event ends. Cancelled bookings appear in Cancelled and All, not the time-based
-filters. **Sort by** orders event starts earliest or latest first.
+Select **My Registrations**. You see only your own bookings.
 
-Select a booking in the left-hand list to show its **event details alongside it**
-on the right, just like Browse events, with its description, club,
-SGT start/end, venue, event status and your registration status—even for past,
-cancelled or no-longer-published events you registered for. The list stays visible;
-there is no separate details tab. Drag the divider to resize the panes.
-Changing filters/sort clears the selection and old details.
-Filters use the current time when selected or refreshed; they do not update
-automatically as time passes.
+**Show** filters **All**, **Upcoming**, **Ongoing**, **Past**, or **Cancelled**. **Sort by** orders them by start time. Select a booking to see its details beside the list. Drag the divider to make either side wider.
 
-Select a confirmed future booking and **Cancel selected registration** to cancel;
-the outcome is shown and the list refreshes, retaining your filter/sort. Use **Refresh registrations** for
-changes made elsewhere. To re-register, return to Browse events.
+**Cancel selected registration** cancels a future confirmed booking and keeps your filter. To sign up again, go back to **Browse events**. **Refresh registrations** picks up changes made elsewhere.
 
-Venue information reflects the current booking, or the most recent historic
-booking if there is no current one. It is not a stored snapshot of the venue when
-you originally registered. A missing booking is shown explicitly. Cancelled
-registrations remain visible. Check-in is available for eligible ongoing bookings;
-use **Attendance history** for the narrower read-only list of actual check-ins.
+Check-in for an event that is happening now is on this screen as well. Events you never joined do not appear here.
 
-### Normal self-check-in
+### Checking in
 
-1. Select your ongoing event in **Browse events**, or select its booking in
-   **My Registrations** (the **Ongoing** filter can help).
-2. Select **Check in**. It appears only for your confirmed registration during
-   the event, with a published event and matching confirmed booking at an active
-   venue. Check-in opens exactly at start and closes exactly at end; no early/late
-   window and no QR code.
-3. Wait for confirmation and refreshed status **Checked in**. Navigation and
-   actions are disabled while the command runs. You cannot cancel after check-in.
+1. Open the event in **Browse events**, or open its booking in **My Registrations**.
+2. Select **Check in** while the event is happening.
 
-Both event-details panes explain check-in availability even when the button is
-hidden:
+Check-in opens at the start time and closes at the end time. There is no early window, no late window, and no QR code. You must already be signed up, the event must still be published, and the room booking must still be in place. After you check in, you cannot cancel.
 
-| Explanation | Meaning |
-| --- | --- |
-| Check-in is open | Your loaded registration is eligible to check in. |
-| You are not registered | You need your own confirmed registration. |
-| Your registration is cancelled | A cancelled registration cannot check in. |
-| You are already checked in | No further action is needed. |
-| Check-in opens at … SGT | It is too early; the message gives the event start time. |
-| Check-in is closed | The event has ended or is no longer published. |
-| Check-in unavailable | A matching confirmed booking at an active venue is required. |
-
-The explanation includes the check-in window in Singapore Time: start is
-**inclusive**, end is **exclusive**. Registration status takes precedence over
-timing, and timing takes precedence over venue availability. For example, a
-cancelled registration still says cancelled after the event ends.
-
-These are loaded snapshots, not live timers. Use **Refresh details** or
-**Refresh registrations** for current information. A freshly refreshed Browse
-view still excludes ended/unpublished events; use My Registrations for your
-past bookings. My Registrations does not create rows for events you never
-registered for. An already-open, stale button cannot bypass the command checks:
-the service rejection is shown if conditions changed after loading.
-
-The button is a preview; the service checks every rule again, including your
-live session and displayed registration version. If timing, booking or status has
-changed, read the rejection and refresh. A duplicate/stale request cannot record
-a second check-in or change its timestamp. If the response is lost, refresh and
-check your status before retrying. Check-in records a business audit entry; it
-does not create a new inbox notification. Self-check-in records your declaration
-of attendance, not independently verified physical presence.
+The details panel explains why the button is missing, for example “too early”, “already checked in”, or “cancelled”. Those words describe what was loaded. Select **Refresh details** or **Refresh registrations** if time has moved on. Checking in does not send you a new notification.
 
 ### Attendance history
 
-Select **Attendance history** in the Attendee sidebar. Only your checked-in
-events appear, ordered by check-in time (newest first); confirmed-but-not-attended
-and cancelled registrations are excluded. A check-in appears immediately on your
-next visit or refresh, even if the event is still ongoing. Ended/completed events
-remain visible here even when they are no longer in Browse.
-
-Select a row to see event title, description, club, start/end times, venue,
-current event status and your recorded check-in time in the side-by-side details
-panel. All times are in Singapore Time. This screen is read-only: no register,
-cancel or check-in actions. Use **Refresh** to reload; no attendance yet is shown
-as an empty state, while load failures offer a retry and invalid sessions ask you
-to return Home and log in again.
-
-The check-in time is persisted attendance evidence. Event details are current
-records, not a snapshot captured at check-in. Venue uses the current booking or
-latest historic booking; missing venue information is labelled unavailable.
+Select **Attendance history**. Only events you have checked into are listed, newest check-in first. Events you skipped are not here. Select a row to see the event and the time you checked in. This page is view-only. **Refresh** reloads it.
 
 ### Notifications
 
-Select **Notifications** in the Attendee sidebar to see your registration
-confirmations, cancellations and event announcements, newest first. The sidebar
-badge and screen show the unread count from the last successful refresh.
+Select **Notifications** to read registration confirmations, cancellations, and announcements. The newest message is first. A badge shows how many are unread.
 
-- **Refresh notifications** reloads the inbox. Opening Notifications also refreshes
-  it; the UI does not continuously poll for newly delivered messages.
-- **Show** filters **All**, **Unread** or **Read**, keeping newest-first order.
-  The filter stays selected after refresh and read-status changes. The badge
-  always counts unread messages across your whole inbox, not just visible rows.
-- Select an unread message and **Mark selected as read**, or select **Mark all as
-  read** to mark your whole inbox, including messages hidden by the filter.
-  A marked message leaves the Unread list after refresh. Read status is saved
-  in PostgreSQL and survives closing/reopening the app.
-- Registration entries show the event's current title and start time in SGT.
-  They describe the original confirmation/cancellation, not your current booking
-  status; use My Registrations for that.
-- Announcements show the current event title and message. A deleted announcement
-  remains as a neutral **Announcement removed.** entry.
+* **Refresh notifications** reloads the list. Opening the page also reloads it. It does not keep checking in the background.
+* **Show** can limit the list to **All**, **Unread**, or **Read**.
+* **Mark selected as read** marks one message. **Mark all as read** marks every message, including ones hidden by the filter.
+* Read and unread status is remembered after you close the app.
 
-Delivery is asynchronous: allow a few seconds after registering/cancelling or an
-Organizer sending an announcement, then refresh. The worker starts when an
-Attendee workspace initializes and stays running until that app closes. Pending
-messages remain queued while the app is closed. This is in-app delivery, not email.
-An invalid/expired session asks you to return Home and log in again. A failed
-refresh displays **Notifications (?)**, not an unverified zero unread count.
-
-Browsing uses the same database settings as the other workspaces. The Attendee
-workspace initializes existing schema prerequisites in the background; opening
-Organizer first is no longer required. It does not seed or publish events.
-On a connection/schema error, fix setup and retry. Failures are shown without raw
-database exception messages.
-
-Drafts are intentionally invisible here. An event appears only after its
-Organizer publishes it (see [Publishing an event](#publishing-an-event)), so a
-freshly initialized database has no catalogue results. There is no automatic
-demo-data insertion.
-Developers can run the separately labelled synthetic UI smoke test described in
-the Developer Guide; those fixtures are not real published events.
+Messages can take a few seconds to arrive after you register or after an organizer sends an announcement. Then refresh. This is inside the app, not email. If an announcement is deleted, you may still see **Announcement removed.**
 
 ---
 
 ## FAQ
 
-**Q: Organizer Request venue shows no venues.**  
-A: Create an ACTIVE venue under Venue Administrator → **Venues**, then reopen **Request venue**.
+**Q: Request venue has no rooms.**  
+A: An administrator needs to create an available room under **Venues**. Then open **Request venue** again.
 
-**Q: I submitted a request but Admin sees nothing.**  
-A: Confirm both roles use the same `DATABASE_URL` / `EVENT_MANAGER_DB_*`. Open **Venue requests** again so the list reloads. Confirm submit showed a success message.
+**Q: I submitted a request and the administrator cannot see it.**  
+A: Both people must be using the same database. Open **Venue requests** again so the list reloads, and check that your submit showed a success message.
 
-**Q: Approve fails / forbidden.**  
-A: Confirm that the signed-in account is an active Venue Administrator. All
-Venue Administrators have the same access to all venues; the backend enforces
-the role check independently of the UI.
+**Q: Approve says the room is already taken.**  
+A: Another booking overlaps that time. Reject this request, or approve a request for a different time.
 
-**Q: How do I add clubs for the Organizer?**
-A: Log in as a Club Organizer and use **Clubs** → **Create club**. `EVENT_MANAGER_CLUB_IDS` / `EVENT_MANAGER_ORGANIZER_ID` in `.env` are no longer used.
+**Q: Where do I add a club?**  
+A: Log in as a Club Organizer and use **Clubs** → **Create club**.
 
-**Q: My old events disappeared after upgrading.**
-A: Events created under the former `.env` demo clubs (for example `demo-club`) are still in the database, but no account owns those clubs, so they are not shown. Create a club and new events under your account.
+**Q: My old events disappeared.**  
+A: Events created under the old demo setup are still stored, but no account owns those clubs, so they are hidden. Create a club and new events with your account.
 
-**Q: Do Club Organizer and Venue Administrator share a login?**  
-A: Yes, the shared login routes by account role. Organizer club ownership is now
-associated with the account that created the club.
+**Q: Can I change my password?**  
+A: Not yet. An administrator can deactivate an account or create a new one.
+
+**Q: Why is Browse events empty?**  
+A: Only published events appear. A draft stays invisible until the organizer publishes it.
 
 ---
 
-## Known Issues
+## Known issues
 
-* No supersede/withdraw of venue requests from the Organizer UI.
-* The inbox badge is refreshed on opening/refreshing Notifications and after read-status changes, not continuously.
-* Notification outbox stores Admin decisions but does not send email yet.
+* An organizer cannot withdraw a request that is still waiting. They can release a room only after it has been approved, and only while the event is still a draft.
+* Clubs cannot be renamed or deleted.
+* There is no email. Messages stay inside **Notifications**.
+* The unread count updates when you open or refresh **Notifications**, not continuously.
+* Published events cannot be unpublished or deleted.
+* Check-in records that you said you attended. It does not prove you were physically in the room.
 
 ---
 
@@ -604,15 +330,15 @@ associated with the account that created the club.
 
 | Term | Meaning |
 | --- | --- |
-| Club Organizer | Role that creates/edits club events and submits venue requests |
-| Venue Administrator | Role that manages venues and approves/rejects booking requests |
-| Draft event | Event that can still be edited in the Organizer workflow |
-| Published event | Event visible to Attendees for browsing, registration and check-in; no longer editable |
-| `SUBMITTED` request | Venue request waiting for Admin decision |
-| `.env` | Local config file for database URL/user and Organizer demo identity |
+| Draft | An organizer’s event that attendees cannot see yet |
+| Published | An event attendees can browse and, when it is still in the future, sign up for |
+| Request | An organizer’s ask for a room, waiting for an administrator |
+| Booking | A room that an administrator has approved for an event |
+| Capacity | How many people the event can take |
+| Check-in | An attendee marking themselves present while the event is happening |
 
 ---
 
 ## Acknowledgements
 
-See the [Developer Guide](DeveloperGuide.md#acknowledgements) for libraries and process acknowledgements.
+Libraries and team notes are in the [Developer Guide](DeveloperGuide.md#acknowledgements).

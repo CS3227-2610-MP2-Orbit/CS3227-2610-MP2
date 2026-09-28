@@ -1,90 +1,31 @@
 # Reflections
+Reflection 1 — What we customized the agent to do
+We started by putting the shared setup in the repository, so Organizer, Venue Administrator, and Attendee work all used the same agent. AGENTS.md holds the guardrails that apply to every task: the user task, the MP2 specification, team decisions, and the current code are the sources that count; an open rule such as a cancellation cutoff or a check-in window stays unresolved; passwords and tokens stay out of logs; and the agent does not commit, push, or overwrite a teammate's files unless we asked it to. The task workflows live in .agents/skills/. We chose the skill from the kind of work in front of us. When the rule was still open, we used requirements-and-acceptance. When the behavior was already agreed, we used test-driven-implementation. When we were checking a diff or an ownership bug, we used code-review-and-verification. When a JavaFX screen was squished or off the shared shell, we used desktop-ui-polish. Security, database, and observability skills were added once those concerns kept appearing across roles. Hooks were also created after that setup. They deny subagents, block destructive shell commands, and refuse secret files, so the guardrails are enforced during a run. The skill is still what we pick for the task, and AGENTS.md is still what decides whether that task is allowed.
 
-This document records reflections on basic Agentic SE, including interesting
-skills, prompts, outcomes, and lessons learned.
+That same split is where the agent actually helped. Requirements passes kept us from building on a guess: cancellation criteria stayed conditional until the cutoff and ownership were settled, Organizer venue requests went into the existing submitted and approved table, and check-in timing was left open until we agreed it. Once a rule was settled, test-driven implementation was the faster path. Create and edit events, capacity, volunteers, clubs, announcements, publishing, draft delete, registration, and venue approval each started from a failing test and then a small fix, so a missing behavior showed up as a red test instead of a bug we found later by hand. A cross-role database suite went further than the separate role tests. Each side passed on its own, and the combined run showed that a second venue request on an already approved event made administrator approval fail. Review passes helped when the question was ownership or a diff, because the agent had to name the missing check and a reproduction before any code changed. The gain across those tasks was fewer invented rules, tests aimed at the real behavior, and one workflow we could reuse on the next role.
 
-## Account-management scope
 
-The current Venue Administrator account-management flow supports editing a
-normal user's username, role, and active status. It intentionally does not
-provide a change-password or password-reset function yet. That capability is a
-future enhancement requiring a dedicated secure and audited workflow.
-## Skills used for Venue Administrator work
 
-The project skills are stored under `.agents/skills/` and are shared through
-the repository. Jordan's detailed evidence is recorded in `logs/jordan/`.
+Reflection 2 — Defining a skill, grading it, and running it again
+We defined our skills as short shared instructions for a kind of task. For the screens, we wrote a simple UI skill that told the agent to tidy a JavaFX layout, line the form up, and match the look of the rest of the app. The first time we ran it on Club Organizer, the screen still had bugs. The form stayed squished, labels were cut off, the Home header and the inner sidebar were both on screen at once, and New event still did not reliably open a blank form. The skill had asked for a cleaner UI, but it never made the agent show which layout problems it had actually checked, so a nicer-looking screen could still be a broken one.
 
-| Skill | Relevance to Jordan's work |
-| --- | --- |
-| [requirements-and-acceptance](../.agents/skills/requirements-and-acceptance/SKILL.md) | Defined venue-request states, validation rules, and observable acceptance criteria. |
-| [test-driven-implementation](../.agents/skills/test-driven-implementation/SKILL.md) | Structured unit, integration, end-to-end, and regression testing. |
-| [code-review-and-verification](../.agents/skills/code-review-and-verification/SKILL.md) | Reviewed RBAC, transactions, error paths, observability, and verification evidence. |
-| [desktop-ui-polish](../.agents/skills/desktop-ui-polish/SKILL.md) | Guided the Venue Administrator dashboard layout and user-facing states. |
-| [security-and-rbac](../.agents/skills/security-and-rbac/SKILL.md) | Captures authentication, role, direct-API, and object-level authorization checks. |
-| [database-migration-and-integrity](../.agents/skills/database-migration-and-integrity/SKILL.md) | Captures PostgreSQL schema, constraints, conflict prevention, and rollback concerns. |
-| [observability-and-error-handling](../.agents/skills/observability-and-error-handling/SKILL.md) | Captures structured logging, safe errors, notifications, audit events, and metrics. |
+We then wrote a Python grader for that skill, tools/graders/grade_desktop_ui_skill.py, using only the standard library. It does not call another model. It reads a JSONL trace of the agent run, the same kind of log codex exec --json writes, and prints PASS or FAIL for seven checks: the trace exists, desktop-ui-polish was actually opened or named, no file under src/ was edited, the final reply names a layout problem, it names the shared shell colors, it includes a before/after checklist, and it marks club creation as out of scope. The whole script exits 0 only when every check passes. The case we graded, U1, is a review-only task: look at a Club Organizer events screen that stacks an outer Home header on an inner sidebar and cuts off form labels, and do not implement anything and do not add club creation. We checked the grader itself with unittest and small fake traces. A good trace passes: the agent reads the skill file, then answers with dual chrome, a squished width, truncated GridPane labels, the colors #172033 and #f7f9fc, a checklist, and “do not add club CRUD.” A trace that mentions the colors and says not to add clubs, but never mentions the layout, fails LAYOUT_FINDINGS. A trace that says to implement a full club-management UI fails SCOPE_RESPECTED. A trace that applies a patch to OrganizerEventView.java fails NO_IMPLEMENTATION, even if the written answer looks complete. Those failing cases were the misses in our first skill. We rewrote the skill around them: one chrome, columns that grow with the window, full labels, the Venue Administrator colors, obvious primary buttons, and an explicit list of things not to invent.
 
-The final three skills were added retrospectively after the related Venue
-Administrator implementation. They describe and organize lessons from work
-already completed; future changes should invoke them before implementation.
+When we ran the revised skill again, we asked for a review first, which is the same shape as the passing U1 trace. It came back with the double header, the missing column constraints, and the weak New event behavior. We then let it apply that list. The follow-up took Home into the sidebar, widened the form, and made New event enter create mode with the navigation highlighted. That second run is the improvement we could point to: the bugs left by the first run were named and then fixed, because the grader had turned a vague formatting instruction into checks the agent had to satisfy. We kept reusing that skill on the later Organizer screens, and on the Venue Administrator and Attendee screens, and the layouts stayed on the same shell.
 
-## Agent skill: Venue Workflow Review Agent
 
-The Venue Workflow Review Agent is used to review venue-related pull requests
-against the project's existing architecture and business rules. It is intended
-to produce review material, not to make code changes automatically.
+Reflection 3 — Where the agent needed us to decide, Human oversight and skill selection
 
-### Task
+The agent needed extra guidance whenever a business rule was still open. A cancellation cutoff, a check-in window, or what should happen to a venue request after approval is a product decision, and the agent had to leave it unresolved. In those cases we used requirements-and-acceptance before any implementation. The skill can list the missing decision and write conditional criteria, and one of us still has to choose the rule. Only after that choice was written down did we switch to test-driven-implementation. Autonomy helped once the rule was settled, because the agent could then write a failing test and a small fix. It created extra work while the decision was still open, because a guessed rule becomes code we have to undo.
 
-Review changes related to venues, bookings, and approval workflows. The review
-checks:
+That showed up a few times. On cancellation and check-in, the agent was ready to fill in a cutoff or a time window that we had not agreed, so we stopped it and kept the criteria conditional. On venue requests, an early draft assumed an approved event could not be requested again. The code allowed that second request, and the combined tests showed it made administrator approval fail. We had to look at the real behavior and choose the fix ourselves. On capacity, the agent added a separate Capacity screen. We then had to tell it we wanted no new button, and the sync was redone inside edit. On publishing, the first attempt landed on a branch we threw away, and the work had to be applied again on main with no git operations. A first skill idea was also too narrow, an Attendee-only skill, and we corrected it into the shared requirements, test-driven, and review skills so the same process applied to every role. The UI skill needed the same kind of correction: “tidy the layout” was too vague, and we had to make the description name the layout checks before a later run was reliable.
 
-- whether state transitions are valid;
-- whether authorization checks are present;
-- whether audit logging is complete;
-- whether important side effects, such as notifications, are handled;
-- whether new business rules have adequate tests;
-- whether database updates could race or become inconsistent;
-- whether business logic is duplicated; and
-- whether the changes violate the existing architecture.
+Skills kept the agent on a process. They did not replace the product decision. We learned that autonomy was useful after requirements were settled, but harmful while business decisions were still open.
 
-### Input
 
-- Git diff for the proposed change;
-- surrounding source code;
-- existing tests;
-- project documentation and architecture; and
-- the current venue, booking, authorization, audit, and notification
-  boundaries.
+Reflection 4 — What the grader cannot see, and what we would change
 
-### Output
+The desktop UI grader improved the skill, and it still cannot prove the screen is right. grade_desktop_ui_skill.py reads a JSONL trace and passes U1 when desktop-ui-polish was used, the reply names the expected layout issues, club creation stays out of scope, no file under src/ is edited, and the answer contains the checklist and the shared-shell wording. That is a check on the agent’s write-up. It never opens the JavaFX window. A passing trace does not show that the screen renders, that labels stay visible when the window is resized, that New, Save, or Home actually work, that #172033 and #f7f9fc are the colors on screen, or that a later implementation matches the review. It also does not compile the program or run the tests. We saw that gap on the Organizer screens: the revised skill named the double header and the squished form, and we still had to look at the running app ourselves.
 
-The agent reports findings under the following headings:
+If we repeated this, we would keep the Python grader for the review-only run and add a second check after implementation. The skill would have to say that OVERALL: PASS only clears the trace, and the screen is done only after someone runs ./gradlew run, resizes the window, reads the labels, clicks the primary buttons, and compares the colors with the Venue Administrator shell, with ./gradlew classes and the relevant tests recorded as well. A useful extra tool is a short manual UI checklist, or a screenshot at two window sizes, stored with the interaction log. The stop hook’s Gradle run does not cover this, because those tests never start JavaFX. We learned that a single agent needs both kinds of evidence: a grader for whether it followed the skill, and a person looking at the screen for whether the skill’s claims are true.
 
-- **Critical**
-- **High**
-- **Medium**
-- **Low**
-
-For each finding, it provides evidence pointing to the relevant file or
-function, the smallest appropriate recommended fix, a test recommendation, and
-the agent's confidence together with any missing information. The agent must
-not invent requirements that are absent from the project specification or
-existing code.
-
-### Human responsibility
-
-The human developer remains responsible for validating the findings against the
-intended requirements, implementing or approving fixes, and deciding whether a
-pull request is ready to merge. The agent's output is review evidence and
-guidance, not an automatic approval or replacement for engineering judgment.
-
-### Reflection prompts
-
-This skill provides evidence for reflecting on Agentic SE:
-
-- What tasks were handled effectively by the agent?
-- Where did the agent require additional guidance or correction?
-- Which findings were confirmed, rejected, or refined by the developer?
-- Did the agent identify tests or workflow risks that would otherwise have been
-  missed?

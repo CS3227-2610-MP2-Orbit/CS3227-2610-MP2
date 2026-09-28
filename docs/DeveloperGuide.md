@@ -1,33 +1,32 @@
 # Event Venue Manager Developer Guide
 
----
-
 ## Acknowledgements
 
-Event Venue Manager is a CS3227 MP2 team project (Club Organizer, Venue Administrator, Attendee).
+Event Venue Manager is a CS3227 MP2 team project with three roles: Club Organizer, Venue Administrator, and Attendee.
 
-Libraries and resources used include:
+Libraries:
 
 1. [JavaFX](https://openjfx.io/)
 2. [JUnit 5](https://junit.org/junit5/)
-3. [PostgreSQL](https://www.postgresql.org/) / JDBC
+3. [PostgreSQL](https://www.postgresql.org/) and JDBC
 4. [Flyway](https://flywaydb.org/)
-5. [dotenv-java](https://github.com/cdimascio/dotenv-java) (local `.env` loading)
-6. Gradle Wrapper for builds
+5. [dotenv-java](https://github.com/cdimascio/dotenv-java)
+6. Gradle Wrapper
 
-Agentic SE process notes and skills live under [`AGENTS.md`](../AGENTS.md) and [Agentic SE](AgenticSE.md). Interaction-log format adapts Johannsen’s MP1 development-record practice; **no MP1 application code** was reused.
+The guide structure follows the team’s earlier AB3-style developer guide: architecture, component notes, then an appendix of user stories, use cases, and non-functional requirements. No MP1 application code was reused. Agentic SE notes live in [`AGENTS.md`](../AGENTS.md) and [Agentic SE](AgenticSE.md).
 
-The Attendee catalogue was developed with Codex using the repository's TDD,
-review and desktop UI skills. The bundled PostgreSQL best-practices skill informed
-the query/index review; no additional database library or external SQL sample was
-copied into the implementation.
+| Role | Owner | Main code |
+| --- | --- | --- |
+| Club Organizer | Joseph | `event`, `club`, `volunteer`, `announcement`, Organizer UI |
+| Venue Administrator | Jordan | `venue`, `VenueAdministratorService`, Admin UI |
+| Attendee | Johannsen | `attendee`, `registration`, Attendee UI |
 
 ---
 
 ## Setting up, getting started
 
-1. Install **JDK 25** and a local **PostgreSQL** instance.
-2. Clone the repository and create a project-root `.env` (see [User Guide — Getting Started](UserGuide.md#getting-started)).
+1. Install JDK 25 and a local PostgreSQL server. Create a database named `event_manager`.
+2. Add a project-root `.env` as described in the [User Guide](UserGuide.md#getting-started). All three roles must point at the same database.
 3. From the project root:
 
    ```sh
@@ -35,9 +34,7 @@ copied into the implementation.
    ./gradlew run
    ```
 
-4. Prefer feature branches; keep role-specific UI separate while sharing persistence and auth boundaries.
-
-> **Note:** Club Organizer and Venue Administrator share one database when `DATABASE_*` / `EVENT_MANAGER_DB_*` point at the same URL. That is configuration compatibility, not unified authentication.
+`EventManagerApplication` loads the database, shows one login screen, and opens the workspace for the account’s role.
 
 ---
 
@@ -45,648 +42,333 @@ copied into the implementation.
 
 ### Architecture
 
+The app is one JavaFX process. The UI calls role services. Services enforce ownership and status rules. JDBC repositories persist to PostgreSQL. Domain types do not depend on JavaFX.
+
 ```mermaid
 flowchart TB
-  Main[Main / EventManagerApplication]
-  OrgUI[OrganizerEventView]
-  AdminUI[VenueAdministratorFxApplication]
-  OrgSvc[EventService / OrganizerVenueRequestService]
-  AdminSvc[VenueAdministratorService]
-  Repos[EventRepository / VenueRequestRepository / VenueRepository]
+  UI[JavaFX workspaces]
+  Org[Organizer services]
+  Admin[VenueAdministratorService]
+  Att[Attendee and registration services]
+  Store[JDBC repositories]
   DB[(PostgreSQL)]
 
-  Main --> OrgUI
-  Main --> AdminUI
-  OrgUI --> OrgSvc
-  AdminUI --> AdminSvc
-  OrgSvc --> Repos
-  AdminSvc --> Repos
-  Repos --> DB
+  UI --> Org
+  UI --> Admin
+  UI --> Att
+  Org --> Store
+  Admin --> Store
+  Att --> Store
+  Store --> DB
 ```
 
 **Main components**
 
 | Component | Responsibility |
 | --- | --- |
-| **UI** | JavaFX role workspaces (`ui` package). Presentation only; no business-rule ownership. |
-| **Application / service** | Workflows such as `EventService`, `OrganizerVenueRequestService`, `VenueAdministratorService`. |
-| **Domain** | Types under `event`, `venue`, `common` (e.g. `Event`, `VenueRequest`, `Actor`). |
-| **Storage** | JDBC repositories, Flyway migrations, organizer SQL migrations, `.env` bootstrap. |
+| UI | Role screens under `seedu.eventmanager.ui`. They collect input and show results. |
+| Logic | Services such as `EventService`, `VenueAdministratorService`, and `RegistrationService`. |
+| Model | Domain types under `event`, `venue`, `club`, `registration`, `attendee`, and `common`. |
+| Storage | JDBC repositories, Flyway migrations, and `DatabaseBootstrap`. |
+| Commons | `Actor`, `Role`, exceptions, audit, and logging helpers. |
 
-**How components interact (venue request happy path)**
+A shared happy path is: an organizer publishes only after an administrator has approved a matching booking, and an attendee can register only for that published event.
 
 ```mermaid
 sequenceDiagram
-  participant Org as OrganizerEventView
-  participant OVS as OrganizerVenueRequestService
+  participant Org as Organizer UI
   participant ES as EventService
-  participant VR as VenueRequestRepository
-  participant Admin as VenueRequestManagementView
+  participant OVS as OrganizerVenueRequestService
+  participant Admin as Admin UI
   participant VAS as VenueAdministratorService
+  participant Att as Attendee UI
+  participant RS as RegistrationService
 
-  Org->>OVS: submit(actor, eventId, venueId)
-  OVS->>ES: getEvent(actor, eventId)
-  OVS->>VR: save(SUBMITTED VenueRequest)
-  Admin->>VR: findSubmitted()
-  Admin->>VAS: approve(actor, requestId)
-  VAS->>VR: save(APPROVED) + booking
+  Org->>ES: createEvent
+  Org->>OVS: submit
+  Admin->>VAS: approve
+  Org->>ES: publishEvent
+  Att->>RS: register
 ```
 
 ### UI component
 
-**Location:** `seedu.eventmanager.ui`
+`seedu.eventmanager.ui`
 
-* `EventManagerApplication` — home screen and role routing.
-* `OrganizerEventView` — create/edit events and **Request venue**.
-* `VenueAdministratorFxApplication` — login, dashboard, venues, requests, users/access.
-* `VenueAdministratorDashboardController` + `VenueAdministratorApiClient` — presentation state without duplicating Admin business rules.
+* `EventManagerApplication` starts the database and routes a session by role.
+* `HomeAuthenticationView` logs in, and can create an Attendee or Club Organizer account.
+* `OrganizerEventView` is the organizer sidebar: Clubs, Events, Request venue, Registrations, Announcements, Volunteers.
+* `VenueAdministratorDashboardView` is the administrator sidebar: Dashboard, Venue requests, Venues, Users and access.
+* Attendee screens are `AttendeeBrowseView`, `MyRegistrationsView`, `AttendanceHistoryView`, and the notifications inbox.
 
-The Organizer and Admin shells share visual tokens (sidebar `#172033`, page `#f7f9fc`, primary actions `#2563eb`).
+The three workspaces share the same shell colours: sidebar `#172033`, page `#f7f9fc`, primary action `#2563eb`.
 
-### Application / logic component
+### Logic component
+
+Services are the API. The UI does not decide whether a draft may be published or whether a seat remains.
 
 **Organizer**
 
-* `ClubService` — create/list clubs for the signed-in `CLUB_ORGANIZER` account (single owner, names unique ignoring case) and build its `OrganizerIdentity` from the clubs it owns in `organizer_club`.
-* `EventService` — create/list/get/edit draft events and publish them; club ownership checks; optimistic versioning.
-* `OrganizerVenueRequestService` — builds Jordan’s `VenueRequest` as `SUBMITTED` (UTC window, attendance = capacity).
-* `OrganizerIds` — transitional `String` → `UUID` mapping for `organizer_id`.
+* `ClubService` creates a club for the signed-in organizer. Names are unique ignoring case. There is no rename or delete.
+* `EventService` creates, edits, publishes, and soft-deletes events. Only drafts can be edited or deleted. Publishing requires a future start and a confirmed booking at an active venue for the same times.
+* Editing capacity updates the expected attendance on an open venue request. Decided requests are left unchanged.
+* `OrganizerVenueRequestService` submits a `SUBMITTED` request, or releases an approved booking on a draft.
+* `AnnouncementService` posts to registered attendees and can delete an announcement. Already queued notifications are not withdrawn.
+* `VolunteerService` assigns a registered attendee, with an optional role of at most 60 characters.
+* `RegistrationOverviewService` lists an owned event’s registrants for the organizer.
 
 **Venue Administrator**
 
-* `VenueAdministratorService` — approve/reject with authorization, conflict check on approve, audit + notification outbox.
-* `AuthorizationService` / `JdbcAuthorizationService` — role + `venue_administrator_venues` scope.
+* `VenueAdministratorService.approve` and `reject` require an active venue administrator. Every administrator may decide every request. Only `SUBMITTED` requests can be decided.
+* Approve refuses an overlapping confirmed booking, then creates a booking, an audit record, and a notification.
+* Reject requires one of two reasons: `Venue already booked` or `Requested capacity exceeds venue capacity`.
 
-### Model / domain component
+**Attendee**
 
-* `event.Event`, `EventDetails`, `EventStatus`, `OrganizerIdentity`
-* `venue.Venue`, `VenueRequest`, `VenueRequestStatus`, `VenueRequestValidator`
-* `common.Actor`, `Role`, shared exceptions
+* `EventCatalogueService` lists published events that have not ended, with search, club, and Singapore-date filters.
+* `RegistrationService` registers, cancels, and checks in the signed-in attendee only.
+* Cancellation closes when the event starts. A checked-in registration cannot be changed.
+* Check-in is open from the start instant inclusive to the end instant exclusive. It needs a confirmed registration, a published event, and a matching confirmed booking at an active venue. It writes an audit record and does not enqueue a notification.
+* `MyRegistrationsService`, `AttendanceHistoryService`, and `InboxService` are the read models for the other attendee screens.
 
-Domain types do not depend on JavaFX.
+### Model component
+
+Important types:
+
+* `Event`, `EventDetails`, `EventStatus` (`DRAFT`, `PUBLISHED`, `DELETED`), `OrganizerIdentity`
+* `Club`
+* `Venue`, `VenueRequest`, `VenueRequestStatus` (`SUBMITTED`, `APPROVED`, `REJECTED`)
+* `Registration` (`CONFIRMED`, `CANCELLED`, `CHECKED_IN`)
+* `Actor`, `Role` (`CLUB_ORGANIZER`, `VENUE_ADMINISTRATOR`, `ATTENDEE`)
+
+Organizer times are entered in Asia/Singapore and stored as UTC instants.
 
 ### Storage component
 
-* Organizer tables via `DatabaseMigration` / `db/organizer` resources (outside Flyway version stream).
-* Venue Admin schema via Flyway under `src/main/resources/db/migration` (`baselineOnMigrate` at `0`).
-* JDBC repositories: `JdbcEventRepository`, `JdbcVenueRequestRepository`, `JdbcVenueRepository`, etc.
-* Config: `DatabaseBootstrap` reads `DATABASE_*` then falls back to `EVENT_MANAGER_DB_*`.
+* Venue-administrator tables are Flyway migrations under `src/main/resources/db/migration`. `DatabaseBootstrap` uses `baselineOnMigrate` so organizer tables can already exist.
+* Organizer, registration, and inbox tables are applied by their own startup migrations.
+* `DatabaseBootstrap` reads `DATABASE_*` and falls back to `EVENT_MANAGER_DB_*`.
+* Writes that must succeed or fail together, such as draft deletion with its venue cleanup, go through `TransactionManager`.
 
 ### Common classes
 
-Shared utilities and cross-cutting types live under `seedu.eventmanager.common` (exceptions, roles, actors, logging helpers).
+`seedu.eventmanager.common` holds `Actor`, `Role`, `AccessDeniedException`, `ValidationException`, `ApplicationException`, and the audit and logging ports. Business audit records are separate from diagnostic logs. Passwords, session tokens, and QR material are not written to those logs. This product does not use QR check-in.
 
 ---
 
 ## Implementation
 
-### Create and edit draft events
+### Clubs and events
 
-**Problem:** Organizers need to persist draft events with ownership and validation.
+`ClubService.identityFor` builds the organizer’s `OrganizerIdentity` from clubs that account owns. `EventService.listEvents` returns events for those clubs and hides `DELETED` rows. Create and edit validate a non-blank title, a start before the end, and a positive capacity. A stale version is rejected. After approval, a draft’s times must stay on the booked window unless the organizer releases the venue first.
 
-**Approach:**
+Publish checks the clock and `EventBookingCheck`. Delete is a soft delete to `DELETED`. The same transaction withdraws a submitted request and releases an approved booking. A published event cannot be deleted.
 
-1. UI collects form fields → `EventFormParser` → `EventDetails`.
-2. `EventService.createEvent` / `editEvent` validates title, interval, capacity, and club ownership.
-3. `EventRepository` persists event + business audit in one transaction.
+### Venue requests
 
-**Key classes:** `EventService`, `JdbcEventRepository`, `OrganizerEventView`.
+`OrganizerVenueRequestService.submit` loads the owned event, requires an `ACTIVE` venue, refuses an open request, and refuses a new request while an approved booking still exists. The request copies the event’s UTC window and uses capacity as expected attendance.
 
-### Publish events
+`VenueAdministratorService` decides inside a transaction: authorization, submitted state, conflict check on approve, save, booking creation, audit, then a best-effort notification. A notification failure does not roll back the decision.
 
-**Problem:** Attendee browse, registration and check-in only consider `PUBLISHED`
-events, so Organizer drafts must be promoted under the same booking rule the
-Attendee side enforces.
+### Attendee registration
 
-**Approach:**
+`RegistrationService` takes the attendee from the live session, not from a caller-supplied user id. Register requires a future published event, a matching confirmed booking at an active venue, and a free seat. Occupied seats include confirmed and checked-in registrations. Cancel is allowed only before the start. An exact retry of a completed change does not write a second audit record. Register and cancel enqueue an in-app notification. Check-in does not.
 
-1. `EventService.publishEvent(actor, eventId, expectedVersion)` checks, in order:
-   existence, club ownership, expected version, `DRAFT` status, `now < startsAt`,
-   then `EventBookingCheck.hasConfirmedActiveBooking(eventId, startsAt, endsAt)`.
-2. `JdbcEventBookingCheck` (in `storage`) reuses the package-private
-   `RegistrationReadSql.matchingConfirmedBooking` and `ACTIVE_VENUE` predicates,
-   so publishing and registration cannot drift apart. It only reads Jordan's
-   `venue_bookings` / `venues` tables.
-3. The event is saved as `PUBLISHED` with the next version through the existing
-   `JdbcEventRepository.update`, with a `PUBLISH_EVENT` audit record in the same
-   transaction. No schema change was needed.
-4. Without a configured `EventBookingCheck`, publishing fails closed with
-   `IllegalStateException`.
-5. `EventBookingCheck.findActiveBooking` returns the event's CONFIRMED/AT_RISK
-   booking window and venue status. `editEvent` uses it to reject time changes
-   after approval unless the new times equal the booked window (so drifted legacy
-   drafts can be restored), and `publishEvent` uses it to explain refusals.
+The catalogue and My Registrations screens call these services. The button label is a preview; the service checks the rules again.
 
-**Team decisions:** a confirmed matching booking at an ACTIVE venue is required;
-published events are not editable (`editEvent` stays draft-only); unpublishing is
-out of scope; events cannot be published at or after their start time; event
-times are locked to the booked window once a venue request is approved.
+### Notifications inbox
 
-**Releasing an approved venue:** `OrganizerVenueRequestService.releaseApprovedVenue`
-checks ownership and `DRAFT` status, then calls the `VenueRelease` port.
-`JdbcVenueRelease` runs one transaction that locks the draft event row
-(`FOR UPDATE`, refusing non-drafts), cancels the CONFIRMED/AT_RISK booking with
-`cancelled_by`/`cancelled_at`/`cancellation_reason`, marks the approved request
-`WITHDRAWN`, and inserts a `VENUE_BOOKING_RELEASED` row (actor role
-`CLUB_ORGANIZER`) into the shared `audit_logs` table. This frees the unique active
-booking per event, so a resubmitted request can be approved. It writes Jordan's
-venue tables from the Organizer side without changing his classes. Until then,
-`OrganizerVenueRequestService.submit` refuses a new request while the event's
-latest request is `APPROVED`; otherwise the admin's approval would hit
-`idx_one_active_booking_per_event` and fail with a raw database error.
+Announcements and registration outcomes are queued in an outbox and delivered into the attendee inbox by a worker that starts with the attendee workspace. The inbox can filter unread and read messages and can mark one or all as read. A deleted announcement remains as the text **Announcement removed.** Delivery is in-app only.
 
-**Deleting drafts:** `EventService.deleteEvent` checks ownership, version and
-`DRAFT` status, then calls the `DraftEventDeletion` port (fails closed when absent).
-Deletion is a soft delete: status `DELETED`, kept for the audit trail. `EventService`
-treats `DELETED` events as not found and omits them from `listEvents`, so every
-Organizer workflow built on it (venue requests, roster, volunteers, announcements)
-refuses them. `JdbcDraftEventDeletion` runs one transaction: a guarded
-`UPDATE ... WHERE version=? AND status='DRAFT'` (a mismatch raises
-`EventVersionConflictException`), then it withdraws `SUBMITTED` requests (audited as
-`VENUE_REQUEST_WITHDRAWN`), releases an active booking through the helper shared with
-`JdbcVenueRelease` (reason code `EVENT_DELETED`), and records `DELETE_EVENT`.
-Team decisions: drafts only; soft delete; venue clean-up in the same transaction.
-Organizer-created requests are never `DRAFT`, so only `SUBMITTED` requests are
-withdrawn (a `WITHDRAWN` row requires `submitted_at`).
+### What is intentionally absent
 
-**Limitations:** a booking cancelled or venue deactivated after publishing leaves
-the event `PUBLISHED`; registration and check-in then refuse it. Published events
-cannot release their venue. A publish that is already past its booking check when
-a release commits can still complete, leaving a published event without a booking.
-
-**Verification:** `EventServiceTest` (publish rules with in-memory fakes) and
-`EventPublishIntegrationTest` (real Organizer and Venue schemas in a dropped
-per-test schema: persistence plus audit, booking-rule cases, audit-failure
-rollback, stale version, and visibility through `JdbcEventCatalogueRepository`).
-
-**Key classes:** `EventService`, `EventBookingCheck`, `JdbcEventBookingCheck`, `OrganizerEventView`.
-
-### Request venues (Organizer → Admin pipeline)
-
-**Problem:** Organizer events must enter the Admin approve/reject queue.
-
-**Approach:**
-
-1. `OrganizerVenueRequestService.submit` loads the owned event, requires an ACTIVE venue, rejects duplicate open requests.
-2. Persists `VenueRequest` with `status = SUBMITTED` through `VenueRequestRepository`.
-3. Admin UI loads pending rows via `findSubmitted()`; `VenueAdministratorService.approve` / `reject` decides them.
-4. Creating a venue (or **Claim access**) grants `venue_administrator_venues` so Approve is authorized.
-5. Navigating to **Venue requests** calls `controller.load()` so the list is not stale.
-
-**Key classes:** `OrganizerVenueRequestService`, `OrganizerIds`, `JdbcVenueRequestRepository`, `VenueAdministratorService`, `VenueAdministratorFxApplication`, `VenueManagementView`.
-
-**Design notes / merge debt:**
-
-* Organizer identity remains env-based until shared users auth.
-* Conflict detection remains on Admin approve (not on Organizer submit).
-* No supersede/withdraw in v1.
-
-### Attendee catalogue and personalized event details
-
-`EventCatalogueService` exposes a public read-only projection of the canonical
-Organizer events. Its `EventCatalogueRepository` boundary has a JDBC adapter in
-`storage`; it does not bypass organizer ownership checks for writes or introduce
-an attendee event table. SQL restricts reads to published events; the service
-also enforces not-yet-ended visibility for both listing and direct-ID details.
-`CatalogueEvent` omits organizer identity and internal version/state fields.
-
-Club display (#37) is an Attendee read-model concern. Catalogue entries and
-the details/registration/history projections resolve `organizer_club.name`
-with a left join shared by `AttendeeClubSql`. The UUID club key is cast to text,
-not the legacy event club ID to UUID, so unmatched/non-UUID IDs remain readable.
-`CatalogueClub.displayName` supplies the neutral "Unknown club" fallback.
-No Organizer domain, repository contract, workflow, UI or migration is changed.
-The catalogue repository also loads public club IDs/names in one query for the
-dropdown; no owner fields are exposed and no per-row club lookup occurs.
-`CatalogueClub.BY_NAME` gives case-insensitive name ordering with an ID tie-break.
-The dropdown includes all shared clubs, not just clubs in the current search.
-It keeps "All clubs" first and sends the selected ID through the unchanged
-`CatalogueQuery.clubId` filter. Club loads run on a separate controller task,
-with superseded/closed callbacks ignored, selection restored by ID and safe
-failure feedback retaining existing choices. A disappeared selected ID is
-retained with the fallback name, rather than silently broadening a live search.
-Reads retain 15-second statement timeouts and acquire no write locks.
-
-`AttendeeClubNamesIntegrationTest` covers known/renamed and unmatched legacy
-clubs across all four projections, ID-only filtering, sorted dropdown data
-and absence of read-side audit/outbox effects in isolated PostgreSQL schemas.
-The Browse/My Registrations/History JavaFX smoke checks cover named display;
-Browse also covers sorted choices, Clear, failure/retry and stale club loads.
-
-`CatalogueQuery` combines literal, case-insensitive title/description search,
-exact club ID and inclusive Singapore-calendar start dates. An injected clock
-defines upcoming/ongoing visibility. `AttendeeBrowseController` uses cancellable JavaFX Tasks on virtual
-threads and ignores superseded results. Database/configuration work is off the
-UI thread; Home/app shutdown cancels pending reads. Failures use safe messages and
-structured failure-type logging, not raw JDBC messages or business audit writes.
-
-`AttendeeEventDetailsService` authenticates a live attendee session before and
-after a read, derives the owner ID internally and returns an immutable private
-projection separate from `CatalogueEvent`. The JDBC adapter reads canonical
-event, current booking, venue, occupied seats and only the caller's registration
-in one statement snapshot, with no write locks. Unique booking/registration keys
-and a separate aggregate prevent join multiplication. A service clock rechecks
-visibility after the read; query timeout is 15 seconds.
-
-`RegistrationEligibilityPolicy`, `AttendeeSessionGuard` and package-private
-`RegistrationReadSql` share rules with commands without making previews execute
-registration or acquire command locks. Occupancy includes CONFIRMED/CHECKED_IN
-records even for inactive users; Joseph's roster is not a capacity counter.
-Remaining seats are clamped at zero for display. Eligibility is advisory and
-separate from own status; existing command locks, version checks, post-lock time
-validation and transactional audit/outbox remain authoritative.
-
-The Attendee route lazily runs `InboxDatabaseMigration`, which first delegates to
-the existing `RegistrationDatabaseMigration` bootstrap, in background tasks,
-independently of Organizer navigation. Successful service initialization is reused
-and failure can be retried. No fixture insertion or publication operation is added here; drafts appear only
-after the Organizer publishes them (see [Publish events](#publish-events)). Register/cancel UI uses existing session-token commands.
-See the [Attendee User Guide](UserGuide.md#attendee-browse-and-search-events)
-for the implemented workflow and current limitations.
-
-Focused verification:
-
-```sh
-./gradlew test --tests 'seedu.eventmanager.attendee.*'
-./gradlew test --tests 'seedu.eventmanager.registration.*'
-./gradlew attendeeUiSmoke
-./gradlew attendeeRegistrationUiSmoke
-./gradlew attendeeInboxUiSmoke
-./gradlew attendeeCheckInUiSmoke
-./gradlew attendeeHistoryUiSmoke
-```
-
-The PostgreSQL catalogue/detail/registration tests require `EVENT_MANAGER_TEST_DB_URL`,
-`EVENT_MANAGER_TEST_DB_USER` and optionally `EVENT_MANAGER_TEST_DB_PASSWORD`.
-Use a disposable test database, never the application database. Each new catalogue
-test creates and drops its own randomized schema; other existing integration
-tests may truncate their test tables. CI explicitly supplies the database settings
-for the Attendee test step. Without them, these database tests are skipped, not
-verified. Details integration tests live in the registration test package to reuse
-its isolated-schema fixtures; the CI registration step includes them. Catalogue
-and detail/policy service tests also run without PostgreSQL.
-
-`e2e/CrossRoleWorkflowIntegrationTest` is the whole-product integration suite. It
-runs every migration stream into one randomized schema and wires the real Organizer,
-Venue Administrator and Attendee services and JDBC repositories together; only the
-clocks are fixed. It covers the full lifecycle (draft, venue approval, publish,
-catalogue, registration, roster, volunteer, announcement delivered through the outbox
-to the inbox, check-in, attendance history, and both audit trails), release and
-re-request, admin rejection and booking conflict, cross-organizer access denial,
-capacity with cancellation, a venue deactivated after publishing, and draft deletion
-(freed slot re-approved for another club, withdrawn request no longer approvable,
-published events not deletable). It needs the
-same database variables and is skipped without them. It does not exercise JavaFX.
-
-`attendeeUiSmoke` is opt-in and requires a graphical desktop. It opens the actual
-JavaFX browse view with synthetic repositories, checks venue/seats/own status,
-refresh, full state, expired session, delayed stale responses, clearing on Home,
-search/empty/validation/error/retry behavior and saves snapshots under
-`build/attendee-smoke/`. This is real UI interaction with fixture data, not
-database-connected or cross-role E2E coverage. It is not run in headless CI.
-
-### Attendee persistent notifications inbox (#30)
-
-`InboxNotificationDelivery` adapts the existing `NotificationDelivery` contract to
-`JdbcInboxRepository`. It accepts only `REGISTRATION_CONFIRMED`,
-`REGISTRATION_CANCELLED` and `EVENT_ANNOUNCEMENT`; an explicitly routed unsupported
-type fails with `UNSUPPORTED_NOTIFICATION`. Payload/recipient failures use a safe
-`INVALID_NOTIFICATION` message, without exposing the payload or SQL exception.
-
-The Attendee-owned Flyway stream `db/attendee_inbox` uses
-`attendee_inbox_schema_history`. Its V1 creates `attendee_notification_inbox` and
-an owner/newest-first index; no applied migration is edited. `notification_id` is
-the primary key and references the outbox. Delivery uses `ON CONFLICT DO NOTHING`,
-so retrying after a lost `markSent` response cannot duplicate an entry or reset
-read status. Outbox cleanup must respect this FK; no cleanup job is added here.
-
-The adapter resolves IDs from the canonical outbox row and verifies the recipient
-has the ATTENDEE role. Registration references must belong to that recipient.
-Deactivated attendees can still receive durable entries, but cannot read/mark
-them until they have an active valid session again. The inbox stores IDs, original
-notification type/time and read time, not copied message bodies. Event and
-announcement IDs deliberately have no deletion-cascading FK. A single left-joined
-read resolves current titles/start times and announcement text; removed sources
-show neutral fallbacks. Registration notification kind remains historical even
-if the registration has since changed. This is a notification inbox, not an audit
-snapshot or proof of current registration status.
-
-`InboxService` derives the owner from the live token through the existing
-`AttendeeSessionGuard`, checks again after reads/before committing marks, and
-never accepts an attendee ID. Mark-one filters by owner and notification ID;
-unknown and other-owned IDs return the same safe error. Mark-all affects only
-that owner. Marking is transactional and repeatable without changing an existing
-read timestamp. `InboxSnapshot` derives the unread count from the same immutable
-message list, avoiding inconsistent count/list queries.
-
-The application starts one daemon `InboxDispatcher` after successful background
-Attendee initialization. It runs the existing outbox worker in batches of up to
-25 every two seconds, continues across Home navigation, and shuts down with the
-app. `JdbcNotificationOutboxRepository` has an optional event-type scope: this
-worker claims only the three supported attendee types. Its original constructor
-still claims all types. Venue notifications are left untouched for their own
-delivery route, not marked sent or silently discarded by the inbox adapter.
-The existing claim lease/retry behavior is unchanged: five-minute claim expiry
-also delays a failed attempt; the fifth failed attempt becomes FAILED.
-
-`InboxActions` binds the session once at composition; `InboxController` executes
-reads/marks off the FX thread, prevents duplicate marks and ignores stale/closed
-callbacks. `InboxView` lives in the existing sidebar shell. Badge refresh happens
-at initialization, opening Notifications, manual refresh and after marks—not via
-UI polling. Its All/Unread/Read filter operates only on the loaded owner snapshot,
-preserves newest-first order and remains selected through refresh/mark operations.
-The unread count and mark-all command always cover the whole owner inbox; filtering
-does not change service authorization or mark scope. Loading/failure discards the
-cached snapshot and disables filtering, so it cannot restore stale personal rows.
-Loading/failure displays an unknown count, rather than stale personal
-data or a false zero. No email, push delivery, check-in, producer rewrite or
-teammate business-rule changes are included. Announcement enqueue remains the
-existing best-effort operation outside its save transaction; this feature cannot
-recover announcements that were never queued.
-
-`InboxIntegrationTest` uses isolated PostgreSQL schemas and real sessions/outbox
-delivery to cover persistence, retry/concurrent idempotence, ownership, invalid
-sessions, source changes/deletion, payload rejection, type-scoped routing and
-transaction rollback. Its late-revocation case injects a session resolver; it is
-not proof of clock-driven expiry during a database transaction. Unit tests cover
-the service/adapter and dispatcher lifecycle. `attendeeInboxUiSmoke` opens actual
-JavaFX controls with synthetic callbacks, exercises read/unread, badge, duplicate
-guard, errors, expired sessions, stale reads and Home, and saves 1280/1000-wide
-snapshots under `build/attendee-smoke/`. It is opt-in on a graphical desktop, not
-a real-login/database-connected end-to-end test.
-
-### Attendee registration commands and My Registrations (#29)
-
-The composition root binds `RegistrationService.register`, `cancel` and
-`myRegistrations` to the current session token. Views never supply an attendee ID.
-`AttendeeEventDetails` includes the own record's version (including CANCELLED),
-or -1 only when absent. Controls submit that displayed version unchanged.
-`AttendeeBrowseController` shares one in-flight command gate across both screens,
-runs callbacks on virtual threads, ignores stale read results and refreshes the
-active screen after every command outcome. Navigation is disabled during writes;
-app shutdown detaches UI callbacks without pretending to roll back a database commit.
-`RegistrationFeedback` allowlists every existing service rejection code and treats
-unknown failures as uncertain outcomes, without exposing raw exceptions.
-
-`MyRegistrationsService` enriches `RegistrationService.myRegistrations` in one
-batch metadata query; it does not filter through the not-yet-ended public catalogue.
-It revalidates the session after enrichment and rejects non-owner records.
-`JdbcRegistrationEventInfoRepository` uses a bound UUID array and a lateral join
-from `RegistrationReadSql` that selects at most one venue booking per event:
-current CONFIRMED/AT_RISK first, otherwise latest `confirmed_at` with booking ID
-as tie-breaker. Thus completed/cancelled historic bookings remain displayable.
-This is current event metadata, not a historical registration-time snapshot.
-The same owner projection carries end time, club, description and event status
-for the My Registrations detail pane, without broadening public-catalogue visibility.
-`RegistrationListQuery` is a pure presentation filter/sort over these authorized
-snapshots, with explicit current-time input: upcoming before start, ongoing
-start-inclusive/end-exclusive, past from end, and cancelled in its own bucket
-(also included in All). Earliest/latest start order uses event ID to break ties.
-`MyRegistrationsView` uses the Browse-style horizontal split: bookings on the left,
-scrollable event details on the right, updated on selection. Changing filters,
-refreshing or failing a read clears the old details. Filter/sort choices persist
-across refresh; time groups are recomputed on filter/sort/refresh, not on a timer.
-The command service remains authoritative for ownership, time, capacity, versions,
-and atomic state/audit/outbox writes. No tables, migrations or new dependencies.
-
-`MyRegistrationsIntegrationTest` verifies real PostgreSQL owner-only enrichment,
-past/cancelled visibility, historic/current venue selection and a real
-register→cancel→re-register workflow with one row and three audit/outbox effects.
-`attendeeRegistrationUiSmoke` checks actual JavaFX controls with synthetic callbacks:
-exact submitted versions, double-click suppression, background execution, both
-cancel entry points, rejection feedback, refresh, expiry, empty states and layouts
-at 1280/1000px. It is not login-to-database E2E and requires a graphical desktop.
-
-Historical verification before this main sync: on the inspected local SGT environment, the two
-existing `PostgreSqlVenueAdministratorIntegrationTest` cases fail because record
-equality distinguishes `+08:00` from equivalent UTC offsets returned by JDBC.
-At that revision, the full suite passed with `JAVA_TOOL_OPTIONS=-Duser.timezone=UTC`; this is a
-diagnostic environment setting, not a fix for those tests or a global app change.
-The catalogue's Instant/SGT conversion tests pass in the normal local environment.
-The catalogue fetches upcoming/ongoing published events then filters text/club/date
-in memory. Large-data pagination and a publication-specific index need a measured,
-coordinated follow-up; no existing migration was modified or performance claim made.
-
-### Normal self-check-in (#31)
-
-`RegistrationService.checkIn(token, eventId, expectedVersion)` extends the existing
-command boundary. It reuses `AttendeeSessionGuard`, the shared transaction manager
-and event/account locking helper. Lock order is event → account → booking/venue →
-registration update; the event lock serializes all supported registration writers.
-After potentially blocking locks, it re-resolves the session and reads the command
-clock before evaluating `CheckInPolicy`. Only own CONFIRMED registrations may
-transition while PUBLISHED with a matching CONFIRMED booking at an ACTIVE venue,
-from start inclusive to end exclusive. Capacity is not rechecked for a seat already
-reserved. No applied migration or Organizer/Venue Administrator workflow changes.
-
-Check-in strictly rejects stale versions, including a repeated old version after
-a successful response was lost. A current-version repeat reports ALREADY_CHECKED_IN
-without updating the timestamp, version or audit. Existing register/cancel retry
-semantics are preserved. The transition increments version once, sets checked-in
-time once and writes REGISTRATION_CHECKED_IN through the shared business audit
-service in the same transaction. Audit failure rolls back the transition. Check-in
-is audit-only: it does not enqueue a new outbox type or change inbox routing.
-
-The same pure `CheckInPolicy` supplies `canCheckIn` previews to event details and
-My Registrations. The batch registration metadata read uses an EXISTS query with
-the shared booking predicates; historical venue display is not eligibility proof.
-Browse now uses `findPublishedNotEnded` and includes ongoing events until exact
-end. Registration eligibility still requires a future start. Ongoing details omit
-the Register/Re-register control entirely. Both check-in entry points share the
-existing controller's in-flight gate, safe feedback, expected-version submission
-and post-command refresh. The UI clock is injectable for deterministic fixtures;
-production defaults to UTC instants, displayed in SGT.
-
-`CheckInIntegrationTest` checks real PostgreSQL persistence, boundaries, identity,
-eligibility changes, concurrent submissions, unchanged Organizer roster behavior
-and audit rollback. Unit tests simulate time advancing during booking-lock wait
-and session revocation during a command. These injected tests are not evidence of
-real wall-clock expiry during an SQL transaction: the shared session resolver
-still uses PostgreSQL transaction-time expiry behavior. `attendeeCheckInUiSmoke`
-exercises both real JavaFX entry points with synthetic callbacks and saves desktop
-snapshots, including no Register on ongoing events and safe rejection messages.
-This is separate from PostgreSQL integration, not real-login desktop E2E. There is
-no QR verification, location/proximity check or proof of physical presence.
-
-### Attendance history (#32)
-
-`AttendanceHistoryService.list(sessionToken)` resolves the existing live attendee
-session before and after its repository read. No caller-supplied attendee ID is
-accepted at this service boundary. `JdbcAttendanceHistoryRepository` binds the
-resolved owner and joins active ATTENDEE users, CHECKED_IN registrations, event
-metadata and one venue from `RegistrationReadSql.displayBooking`. A single SQL
-statement provides the history snapshot, with a 15-second statement timeout and
-no write locks. It uses the existing owner index; no migrations or duplicated
-attendance table. Results are newest check-in first, registration ID breaking
-ties. No public-catalogue time/status filter is applied: history includes ongoing,
-ended and no-longer-published events with a stored check-in. Read failures remain
-failures rather than being converted to empty history.
-
-`AttendanceRecord` contains only display metadata and check-in time, not account
-secrets or mutation versions. Event and venue details reflect current records,
-not immutable attendance-time snapshots. The existing foreign keys retain event
-references; the shared venue lookup falls back to the latest recorded booking.
-
-The dedicated `AttendanceHistoryController` follows Browse's virtual-thread Task,
-cancellation and latest-result checks. Refresh clears old private details;
-navigation away/Home invalidates pending responses even when a driver ignores
-interruption. `AttendanceHistoryView` is a read-only list with side-by-side
-details in the existing attendee shell. Application wiring binds the login token
-to the history callback. Reads produce no business audit/outbox effects.
-
-Service tests cover session validation, immutable/empty results and in-flight
-revocation/account switches. PostgreSQL tests cover owner isolation, status
-filtering, order, metadata/venue fallback, a real #31 check-in, and no write side
-effects. `attendeeHistoryUiSmoke` covers actual JavaFX controls with synthetic
-callbacks, not real-login/database desktop E2E. Pagination and immutable event
-snapshots are outside this slice; no large-data performance claim is made.
-
-### Team ownership
-
-The shared registration contract is documented in the
-[registration README](../src/main/java/seedu/eventmanager/registration/README.md).
-The shared EventRegistrations/RegisteredAttendee contract comes unchanged from
-Joseph's feature-view-registration branch; Johannsen supplies its JDBC adapter.
-Use RegistrationDatabaseMigration for explicit startup, then
-RegistrationServiceFactory for authenticated commands. The factory shares one
-JdbcDatabase across state, audit and notification-outbox writes. Organizer startup
-now wires the reader into volunteers, registration overview and announcements; no registration UI is added by
-this backend slice. Confirmed booking plus active venue and PUBLISHED future
-event are required for registration.
-
-| Role | Owns |
-| --- | --- |
-| Club Organizer (Joseph) | Events, volunteers/announcements (as scheduled), Organizer→venue submit |
-| Venue Administrator (Jordan) | Venues, availability, request decide, bookings, Admin UI |
-| Attendee (Johannsen) | Catalogue/details, registration backend, register/cancel/My Registrations, persistent Notifications, normal self-check-in and attendance history |
+* Club rename, delete, and multiple owners.
+* Withdraw of a still-submitted request. Release applies only to an approved booking on a draft.
+* Unpublish, and delete of a published event.
+* Password change or password reset.
+* Email delivery, waitlist, and QR check-in.
+* A per-venue permission split. Every venue administrator has the same access.
 
 ---
 
 ## Documentation, logging, testing, configuration
 
-### Documentation
-
-Update [UserGuide.md](UserGuide.md) and this Developer Guide when behaviour changes. Keep Agentic SE notes in [AgenticSE.md](AgenticSE.md).
-
-### Logging and interaction records
-
-* Business audit records (e.g. venue decisions) are distinct from diagnostic logs.
-* Meaningful agent tasks are recorded under `logs/<contributor>/` using [logs/templates/interaction.md](../logs/templates/interaction.md).
-* Summaries: [logs/prompts_summary.md](../logs/prompts_summary.md).
-
-### Testing
-
-| Level | Examples | What it proves |
-| --- | --- | --- |
-| Unit | `EventServiceTest`, `OrganizerVenueRequestServiceTest`, `OrganizerIdsTest`, `VenueRequestValidatorTest` | Domain rules with fakes |
-| In-process pipeline / E2E (no JavaFX) | `OrganizerToAdminVenuePipelineE2ETest`, `VenueAdministratorWorkflowE2ETest` | Submit → pending → approve wiring |
-| Optional Postgres | `PostgreSqlVenueAdministratorIntegrationTest` (env `DATABASE_INTEGRATION_TESTS=true`) | Real JDBC for Admin persistence |
-| Manual UI | See [Appendix: Instructions for manual testing](#appendix-instructions-for-manual-testing) | Desktop flows |
-
-Run:
+Update [UserGuide.md](UserGuide.md) and this guide when behaviour changes. Agent task logs stay under `logs/<contributor>/`.
 
 ```sh
 ./gradlew test
 ```
 
-Focused Organizer request tests:
-
-```sh
-./gradlew test --tests 'seedu.eventmanager.event.OrganizerVenueRequestServiceTest' --tests 'seedu.eventmanager.e2e.OrganizerToAdminVenuePipelineE2ETest'
-```
-
-### Configuration
+PostgreSQL integration tests run when their database environment variables are set. A full Gradle run inside a restricted sandbox can exit without executing; that result is not a pass. JavaFX behaviour is not covered by an automated end-to-end desktop test. Manual checks are in the [testing appendix](#appendix-instructions-for-manual-testing).
 
 | Variable | Purpose |
 | --- | --- |
 | `DATABASE_URL` / `EVENT_MANAGER_DB_URL` | JDBC URL |
-| `DATABASE_USER` / `EVENT_MANAGER_DB_USER` | DB user |
+| `DATABASE_USER` / `EVENT_MANAGER_DB_USER` | Database user |
 | `DATABASE_PASSWORD` / `EVENT_MANAGER_DB_PASSWORD` | Optional password |
-### Agentic SE workflow
-
-Project instructions: [`AGENTS.md`](../AGENTS.md). Skills under `.agents/skills/`:
-
-* requirements-and-acceptance
-* test-driven-implementation
-* code-review-and-verification
-* desktop-ui-polish
-
-See [Agentic SE](AgenticSE.md). Cursor project hooks (optional process guardrails): [hook-design.md](hook-design.md).
 
 ---
 
 ## Appendix: Requirements
 
-### Product scope
+### Target users and value
 
-**Target users:** Campus club organizers and venue administrators coordinating events and room bookings.
+**Target users:** a student club organizer, a campus venue administrator, and a student attendee.
 
-**Value:** One desktop app with role workspaces over a shared database so Organizer drafts can enter the Admin venue pipeline.
+**Value:** one desktop app and one database, so a draft can become an approved booking and then a published event that attendees can join.
 
-### User stories (selected)
+### User stories
 
 | Priority | As a… | I want to… | So that… |
 | --- | --- | --- | --- |
-| High | Club Organizer | create and edit draft events | I can plan club activities |
-| High | Club Organizer | request a venue for an event | Admin can approve a booking |
-| High | Venue Administrator | see submitted requests | I can approve or reject them |
-| Medium | Venue Administrator | manage venues and access | I only decide venues I control |
-| Low | Club Organizer | create my own clubs in the UI | only my account manages my clubs' events *(create/list implemented; rename/delete not)* |
+| High | new user | create an Attendee or Organizer account and log in | I reach the right workspace |
+| High | organizer | create a club | my events belong to me |
+| High | organizer | create and edit a draft event | I can plan before anyone else sees it |
+| High | organizer | request a room | an administrator can approve it |
+| High | organizer | publish an approved future draft | attendees can find it |
+| High | administrator | approve or reject a waiting request | the room is booked or refused for a clear reason |
+| High | administrator | create and deactivate rooms | organizers can request only available rooms |
+| High | attendee | search published events | I can find one I can attend |
+| High | attendee | register and cancel before the start | I can manage my own seat |
+| High | attendee | check in during the event | my attendance is recorded |
+| Medium | organizer | see registrations, send announcements, and assign volunteers | I can run the event |
+| Medium | attendee | read notifications and attendance history | I can see what changed and where I checked in |
+| Medium | administrator | create accounts and turn them on or off | I can control who can sign in |
+| Low | organizer | delete a draft | I can drop a plan and free its room |
 
-### Non-functional requirements (selected)
+### Use cases
 
-* Desktop JavaFX on JDK 25.
-* PostgreSQL persistence for events and venue requests.
-* Authorization for Admin decisions enforced in the service layer, not only UI visibility.
-* Do not log passwords, tokens, or unnecessary personal data.
+**UC01 — Create an account and sign in**
 
----
+**MSS**
 
-## Appendix: Planned Enhancements
+1. User chooses **Create normal user account**.
+2. System offers Attendee or Club Organizer.
+3. User enters a username and a password of at least 8 characters.
+4. System stores the account and asks the user to log in.
+5. User logs in.
+6. System opens that role’s workspace.
 
-* Organizer supersede/withdraw of open requests.
-* Club rename/delete and multi-organizer clubs.
-* Delivery routes for non-attendee outbox events and email (attendee in-app delivery is implemented).
-* Broader Postgres integration tests for the Organizer submit path.
+**Extensions**
+
+* 2a. The user wants a Venue Administrator account. An existing administrator creates it in **Users and access** instead.
+* 3a. The username is taken or the password is too short. System shows the error and does not sign the user in.
+
+**UC02 — Create a club and a draft event**
+
+**MSS**
+
+1. Organizer opens **Clubs** and enters a name.
+2. System saves the club for that account.
+3. Organizer opens **Events**, chooses **+ New event**, fills the form, and saves.
+4. System stores a draft owned by that club.
+
+**Extensions**
+
+* 1a. The name is blank, longer than 80 characters, or already used ignoring case. System rejects it.
+* 3a. The organizer has no club, the title is blank, the end is not after the start, or the capacity is not positive. System rejects the save.
+
+**UC03 — Request, decide, and publish**
+
+**MSS**
+
+1. Organizer submits a request for an owned event and an active room.
+2. System stores a waiting request.
+3. Administrator approves it.
+4. System stores a booking and removes the request from the waiting list.
+5. Organizer publishes the draft before it starts.
+6. System marks the event published, and attendees can browse it.
+
+**Extensions**
+
+* 1a. A request is already open, or an approved booking still exists. System rejects the submit.
+* 3a. Administrator rejects with one of the two supported reasons. No booking is created. Use case ends.
+* 3b. The room is already booked for an overlapping time. System refuses approval.
+* 5a. The event is not a draft, has already started, or has no matching confirmed booking at an active room. System refuses publish.
+
+**UC04 — Register, cancel, and check in**
+
+**MSS**
+
+1. Attendee searches **Browse events** and selects a published event.
+2. Attendee selects **Register**.
+3. System confirms the seat and later shows a notification.
+4. Before the start, attendee cancels.
+5. During the event, attendee checks in.
+6. System records the check-in time. **Attendance history** shows it.
+
+**Extensions**
+
+* 2a. The event has started, is full, or has no matching active booking. System rejects registration.
+* 4a. The event has started, or the attendee is already checked in. System rejects cancellation.
+* 5a. It is before the start or at or after the end, or the booking is no longer valid. System rejects check-in and does not write a second check-in.
+
+**UC05 — Announce and assign a volunteer**
+
+**MSS**
+
+1. Organizer selects an owned event under **Announcements** and sends a message.
+2. System stores the announcement and queues a notification for each current registrant.
+3. Organizer selects **Volunteers**, chooses a registered attendee, and assigns an optional role.
+4. System stores one volunteer assignment.
+
+**Extensions**
+
+* 1a. The message is blank or longer than 1000 characters. System rejects it.
+* 3a. The person is not registered, or is already a volunteer. System rejects the assignment.
+* 2a. The organizer later deletes the announcement. People who already received it see **Announcement removed.**
+
+### Non-functional requirements
+
+1. The desktop UI runs on JDK 25 with JavaFX. The same project runs on macOS, Windows, and Linux where JDK 25 and PostgreSQL are installed.
+2. Events, bookings, registrations, and the inbox are stored in PostgreSQL, not in a local JSON file.
+3. Authorization is enforced in services. Hiding a button is not the only check. An attendee acts only as the signed-in account.
+4. A failed decision or registration does not leave a partial booking or a second check-in. Related writes share a transaction.
+5. Error text shown to users names the problem in plain language. Database exception text is not shown on the attendee workspace.
+6. Diagnostic logs must not contain passwords, session tokens, or unnecessary personal data.
+7. The three role screens share one visual shell so a user can move between them without learning a new layout.
+8. Automated tests cover service rules and PostgreSQL integrations. A person still has to click through JavaFX before a screen is called done. No performance target for thousands of rows is claimed.
 
 ---
 
 ## Appendix: Instructions for manual testing
 
+These steps are a starting point. Exploratory testing should go beyond them. Use one shared database.
+
 ### Launch
 
-1. Ensure Postgres is running and `.env` is set.
-2. `./gradlew run`
-3. Confirm the shared login routes an ATTENDEE account to the catalogue and retains
-   Organizer/Admin role routing. Attendee Home returns to the login screen.
+1. Start PostgreSQL and `./gradlew run`.
+2. Create an Attendee and a Club Organizer from the login screen. Create a Venue Administrator from **Users and access**.
+3. Each login opens a different sidebar. **Home** or **Log out** returns to login.
 
-### Organizer create/edit event
+### Organizer
 
-1. Open **Club Organizer**.
-2. **Events** → **+ New event** → fill required fields → **Save event**.
-3. Select the event, change the title, **Save event**.
-4. **Revert changes** after editing without saving — last saved draft returns.
+1. Create a club, then a draft. Expected: the draft is listed and is not in the attendee catalogue.
+2. Submit a venue request. Expected: the administrator’s waiting list shows it.
+3. After approval, publish. Expected: the attendee catalogue shows it. Edit and Delete are refused.
+4. On a different draft, approve a room, then try to change the times. Expected: the save is refused until **Release venue**.
 
-### Venue request pipeline
+### Administrator
 
-1. **Venue Administrator** → log in → **Venues** → **Create venue** (or **Claim access** on an existing venue).
-2. Home → **Club Organizer** → create/select an event → **Request venue** → submit.
-3. Home → **Venue Administrator** → **Venue requests** → confirm the row appears → **Approve** (or **Reject** with reason).
-4. Confirm the request leaves the pending list.
+1. Create a room, then toggle it unavailable. Expected: the organizer cannot request it.
+2. Approve a waiting request. Expected: it leaves the waiting list.
+3. Submit a second request that overlaps that booking. Expected: approval is refused.
+4. Reject another request with each of the two reasons. Expected: a blank or other reason is refused.
 
-### Typical failure checks
+### Attendee
 
-| Test | Expected |
-| --- | --- |
-| Submit with no ACTIVE venues | Cannot choose a venue / clear guidance |
-| Submit twice for same event | Duplicate open-request error |
-| Approve without venue access | Forbidden until **Claim access** |
-| Different DB URLs per role | Admin does not see Organizer requests |
+1. Register for a future published event. Expected: My Registrations shows it, and a notification arrives after a refresh.
+2. Cancel before the start, then try again after the start on another event. Expected: only the first cancel works.
+3. At the start time, check in. Expected: Attendance history shows that check-in. Cancel is refused.
 
 ---
 
-## Appendix: Current implementation status
+## Appendix: Planned enhancements
 
-**Implemented (selected):** shared role-based login; Attendee catalogue, registration backend, register/cancel, My Registrations, normal self-check-in, attendance history and persistent Notifications inbox; Organizer account-owned clubs, draft events, venue requests, volunteers, registration overview and announcements; Admin venues, user management and request approve/reject; Flyway + JDBC persistence; unit and PostgreSQL integration tests.
+* Rename and delete clubs.
+* Withdraw a request that is still waiting.
+* Password change in a separate audited flow.
+* Email delivery.
+* Automated JavaFX checks for resize, labels, and primary buttons.
 
-**Not yet implemented (selected):** club rename/delete; Organizer supersede/withdraw; email notification delivery; production deployment tooling.
+**Implemented now:** shared login; organizer clubs, drafts, requests, release, publish, draft delete, registrations, announcements, and volunteers; administrator rooms, decisions, and accounts; attendee browse, register, cancel, check-in, history, and inbox.
