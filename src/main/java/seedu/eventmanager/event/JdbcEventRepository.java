@@ -95,7 +95,7 @@ public final class JdbcEventRepository implements EventRepository {
         inTransaction(connection -> {
             if (event.status() == EventStatus.PUBLISHED) {
                 lockDraftForPublish(connection, event.id(), expectedVersion);
-                if (!JdbcEventBookingCheck.hasConfirmedActiveBooking(
+                if (!JdbcEventBookingCheck.lockConfirmedActiveBooking(
                         connection, event.id(), event.startsAt(), event.endsAt())) {
                     throw new ValidationException(
                             "Publishing needs a confirmed venue booking at an active venue matching the event times");

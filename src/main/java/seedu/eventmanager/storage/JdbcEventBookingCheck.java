@@ -16,6 +16,10 @@ public final class JdbcEventBookingCheck implements EventBookingCheck {
     private static final String QUERY = "SELECT EXISTS (SELECT 1 FROM venue_bookings b "
             + "JOIN venues v ON v.venue_id=b.venue_id WHERE b.event_id=? AND "
             + RegistrationReadSql.matchingConfirmedBooking("?", "?") + " AND " + RegistrationReadSql.ACTIVE_VENUE + ")";
+    private static final String LOCK_CONFIRMED = "SELECT 1 FROM venue_bookings b "
+            + "JOIN venues v ON v.venue_id=b.venue_id WHERE b.event_id=? AND "
+            + RegistrationReadSql.matchingConfirmedBooking("?", "?") + " AND " + RegistrationReadSql.ACTIVE_VENUE
+            + " FOR SHARE";
     // Venue schema allows at most one CONFIRMED/AT_RISK booking per event.
     private static final String ACTIVE_BOOKING = "SELECT b.starts_at, b.ends_at, " + RegistrationReadSql.ACTIVE_VENUE
             + " AS venue_active FROM venue_bookings b JOIN venues v ON v.venue_id=b.venue_id"
@@ -36,11 +40,7 @@ public final class JdbcEventBookingCheck implements EventBookingCheck {
         }
     }
 
-    /**
-     * Same matching-booking predicate as the DataSource check, using the caller's transaction so a
-     * publish can re-check after locking {@code organizer_event}.
-     */
-    public static boolean hasConfirmedActiveBooking(
+    static boolean hasConfirmedActiveBooking(
             Connection connection, UUID eventId, Instant startsAt, Instant endsAt) throws SQLException {
         try (var statement = connection.prepareStatement(QUERY)) {
             statement.setObject(1, eventId);
@@ -49,6 +49,22 @@ public final class JdbcEventBookingCheck implements EventBookingCheck {
             try (var result = statement.executeQuery()) {
                 result.next();
                 return result.getBoolean(1);
+            }
+        }
+    }
+
+    /**
+     * Re-checks the matching booking on the caller's transaction and holds a share lock until
+     * commit, so a concurrent cancel waits behind publish.
+     */
+    public static boolean lockConfirmedActiveBooking(
+            Connection connection, UUID eventId, Instant startsAt, Instant endsAt) throws SQLException {
+        try (var statement = connection.prepareStatement(LOCK_CONFIRMED)) {
+            statement.setObject(1, eventId);
+            statement.setTimestamp(2, Timestamp.from(startsAt));
+            statement.setTimestamp(3, Timestamp.from(endsAt));
+            try (var result = statement.executeQuery()) {
+                return result.next();
             }
         }
     }

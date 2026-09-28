@@ -2,6 +2,7 @@ package seedu.eventmanager.event;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -15,9 +16,16 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.postgresql.ds.PGSimpleDataSource;
 import seedu.eventmanager.common.ValidationException;
@@ -233,6 +241,63 @@ class EventPublishIntegrationTest {
         assertTrue(bookingCheck.findActiveBooking(EVENT_ID).isEmpty());
         assertEquals(List.of("CREATE_EVENT"), auditActions());
         assertTrue(new JdbcEventCatalogueRepository(database).findPublishedNotEnded(NOW).isEmpty());
+    }
+
+    @RepeatedTest(10)
+    void publishAndRelease_overlapping_neverLeavesPublishedEventWithoutBooking() throws Exception {
+        booking(EVENT_ID, "ACTIVE", "CONFIRMED", STARTS, ENDS);
+        JdbcVenueRelease release = new JdbcVenueRelease(database);
+        UUID organizer = OrganizerIds.toUuid("organizer-1");
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        CountDownLatch start = new CountDownLatch(2);
+        CountDownLatch done = new CountDownLatch(2);
+        AtomicReference<Exception> publishFailure = new AtomicReference<>();
+        AtomicBoolean released = new AtomicBoolean(false);
+
+        pool.submit(() -> {
+            start.countDown();
+            try {
+                start.await();
+                service.publishEvent(ORGANIZER, EVENT_ID, 0);
+            } catch (Exception exception) {
+                publishFailure.set(exception);
+            } finally {
+                done.countDown();
+            }
+        });
+        pool.submit(() -> {
+            start.countDown();
+            try {
+                start.await();
+                released.set(release.releaseApprovedBooking(EVENT_ID, organizer));
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+            } finally {
+                done.countDown();
+            }
+        });
+
+        assertTrue(done.await(15, TimeUnit.SECONDS), "publish and release did not finish");
+        pool.shutdownNow();
+
+        Event stored = events.findById(EVENT_ID).orElseThrow();
+        boolean published = stored.status() == EventStatus.PUBLISHED;
+        boolean hasBooking = bookingCheck.findActiveBooking(EVENT_ID).isPresent();
+        assertFalse(published && !hasBooking, "a published event must still have its confirmed booking");
+        assertFalse(published && released.get(), "release must not succeed after the event is published");
+        if (published) {
+            assertNull(publishFailure.get());
+            assertEquals(List.of("CREATE_EVENT", "PUBLISH_EVENT"), auditActions());
+            assertEquals(List.of(EVENT_ID), new JdbcEventCatalogueRepository(database)
+                    .findPublishedNotEnded(NOW).stream().map(entry -> entry.event().id()).toList());
+        } else {
+            assertEquals(EventStatus.DRAFT, stored.status());
+            assertTrue(publishFailure.get() instanceof ValidationException);
+            assertTrue(released.get());
+            assertFalse(hasBooking);
+            assertEquals(List.of("CREATE_EVENT"), auditActions());
+            assertTrue(new JdbcEventCatalogueRepository(database).findPublishedNotEnded(NOW).isEmpty());
+        }
     }
 
     @Test
