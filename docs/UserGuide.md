@@ -2,9 +2,9 @@
 title: User guide
 ---
 
-# Event Venue Manager User Guide
+# Orbit User Guide
 
-Event Venue Manager is a desktop app for campus events. Three kinds of people use it:
+Orbit is an event venue manager: a desktop app for campus events. Three kinds of people use it:
 
 * A **Club Organizer** plans a club’s events, asks for a room, and tells registered students what is happening.
 * A **Venue Administrator** looks after rooms and says yes or no to booking requests.
@@ -42,7 +42,7 @@ You click through a window. You do not type commands. Everyone signs in on the s
 
    Then create a database named `event_manager`, for example with `createdb event_manager` (or `sudo -u postgres createdb event_manager` on Linux, or pgAdmin on Windows). The database user in `.env` should own that database, because the first start creates the tables and the `btree_gist` extension.
 3. Get the app in one of two ways:
-   * **Download the jar (recommended for testers).** On the [Releases page](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/releases), download `EventVenueManager-<version>.jar`. The same jar runs on Windows, Linux and Apple Silicon Macs. Put it in its own folder.
+   * **Download the jar (recommended for testers).** On the [Releases page](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/releases), download `Orbit-<version>.jar`. The same jar runs on Windows, Linux and Apple Silicon Macs. Put it in its own folder.
    * **Run from the source code.** Clone the repository and work in the project folder.
 4. In that folder, create a file named `.env`. Copy [`.env.example`](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/blob/HEAD/.env.example) (release downloads include it as `env.example`; rename it to `.env`) and use your own database username:
 
@@ -58,7 +58,7 @@ You click through a window. You do not type commands. Everyone signs in on the s
 5. Start the app from that folder:
 
    ```sh
-   java -jar EventVenueManager-<version>.jar
+   java -jar Orbit-<version>.jar
    ```
 
    From the source code, run `./gradlew run` instead (on Windows: `.\gradlew.bat run`).
@@ -76,7 +76,7 @@ You click through a window. You do not type commands. Everyone signs in on the s
 A new database has no events. To get sample data for every role, run this once from the folder that contains your `.env`:
 
 ```sh
-java -jar EventVenueManager-<version>.jar --seed-demo
+java -jar Orbit-<version>.jar --seed-demo
 ```
 
 From the source code: `./gradlew seedDemo`. Running it again changes nothing.
@@ -397,7 +397,7 @@ A: Only published events appear. A draft stays invisible until the organizer pub
 A: Check that PostgreSQL is running and that `.env` is in the folder you started the app from (the screen shows that folder). Fix `.env`, then select **Try again**.
 
 **Q: Where can I find the app’s log if something goes wrong?**  
-A: In `~/.event-venue-manager/logs/app-0.log` (your home folder). The login screen shows the exact path. The log never contains your password.
+A: In `~/.orbit/logs/app-0.log` (your home folder). The login screen shows the exact path. The log never contains your password.
 
 ---
 

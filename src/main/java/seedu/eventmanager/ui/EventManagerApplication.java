@@ -87,7 +87,7 @@ public final class EventManagerApplication extends Application {
         }
         LOGGER.info("app_started", Map.of("version", Main.VERSION, "java", Runtime.version().toString(),
                 "os", System.getProperty("os.name") + " " + System.getProperty("os.arch")));
-        stage.setTitle("Event Venue Manager");
+        stage.setTitle("Orbit");
         BorderPane root = new BorderPane();
         root.setStyle("-fx-background-color: #f7f9fc;");
         showHome(root);

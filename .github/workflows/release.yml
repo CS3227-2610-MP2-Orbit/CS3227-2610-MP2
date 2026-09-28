@@ -63,16 +63,16 @@ jobs:
           java-version: '25'
       - name: Version check
         shell: bash
-        run: java -jar dist/EventVenueManager-*.jar --version
+        run: java -jar dist/Orbit-*.jar --version
       - name: JavaFX native libraries load (Linux, virtual display)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -y && sudo apt-get install -y xvfb libgtk-3-0
-          xvfb-run -a java -jar dist/EventVenueManager-*.jar --check-javafx
+          xvfb-run -a java -jar dist/Orbit-*.jar --check-javafx
       - name: JavaFX native libraries load
         if: runner.os != 'Linux'
         shell: bash
-        run: java -jar dist/EventVenueManager-*.jar --check-javafx
+        run: java -jar dist/Orbit-*.jar --check-javafx
 
   publish:
     name: Publish GitHub Release
@@ -100,7 +100,7 @@ jobs:
             echo "Version must look like v1.0.0, got: $TAG" >&2
             exit 1
           fi
-          if [[ ! -f "dist/EventVenueManager-${TAG#v}.jar" ]]; then
+          if [[ ! -f "dist/Orbit-${TAG#v}.jar" ]]; then
             echo "Tag $TAG does not match the jar version (set version in build.gradle first):" >&2
             ls dist >&2
             exit 1
@@ -109,6 +109,6 @@ jobs:
             gh release upload "$TAG" dist/* --clobber --repo "$GITHUB_REPOSITORY"
           else
             gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-              --title "Event Venue Manager $TAG" --generate-notes \
+              --title "Orbit $TAG" --generate-notes \
               --notes "One jar for Windows, Linux and Apple Silicon macOS. Save env.example as .env next to the jar. Requires Java 25 and PostgreSQL; see the User Guide."
           fi
