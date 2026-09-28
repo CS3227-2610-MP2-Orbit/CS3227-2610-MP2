@@ -161,10 +161,10 @@ application work is Attendee UI plus team publication/lifecycle coordination.
 
 ## Student review
 
-- [ ] I verified prompts, policy replies, scope and commands.
-- [ ] I verified changed files and red/green evidence.
-- [ ] I verified test results and limitations.
-- [ ] I added omitted mistakes or disagreements.
+- [x] I verified prompts, policy replies, scope and commands.
+- [x] I verified changed files and red/green evidence.
+- [x] I verified test results and limitations.
+- [x] I added omitted mistakes or disagreements.
 
-Reviewed by:
-Review date:
+Reviewed by: Johannsen Lum
+Review date: 29 September 2026
