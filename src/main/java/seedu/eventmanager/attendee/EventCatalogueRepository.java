@@ -8,7 +8,13 @@ import seedu.eventmanager.event.Event;
 
 /** Read-only projection of Organizer events; never grants organizer write access. */
 public interface EventCatalogueRepository {
-    List<Event> findPublishedNotEnded(Instant now);
+    record Entry(Event event, String clubName) {
+        public Entry(Event event) { this(event, null); }
+    }
 
-    Optional<Event> findPublishedById(UUID id);
+    List<Entry> findPublishedNotEnded(Instant now);
+
+    Optional<Entry> findPublishedById(UUID id);
+
+    List<CatalogueClub> findClubs();
 }

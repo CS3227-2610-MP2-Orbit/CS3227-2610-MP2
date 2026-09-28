@@ -10,6 +10,7 @@ import java.time.Clock;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
@@ -23,6 +24,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import seedu.eventmanager.attendee.CatalogueEvent;
+import seedu.eventmanager.attendee.CatalogueClub;
 import seedu.eventmanager.attendee.AttendeeEventDetails;
 import seedu.eventmanager.attendee.CatalogueQuery;
 import seedu.eventmanager.attendee.EventCatalogueService;
@@ -43,7 +45,9 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
     private final AttendeeBrowseController controller;
     private final StructuredLogger logger = new JavaUtilStructuredLogger(AttendeeBrowseView.class);
     private final TextField search = new TextField();
-    private final TextField club = new TextField();
+    private static final CatalogueClub ALL_CLUBS = new CatalogueClub("", "All clubs");
+    private final ComboBox<CatalogueClub> club = new ComboBox<>();
+    private final Label clubFeedback = text("", "#61708a", 12);
     private final DatePicker from = new DatePicker();
     private final DatePicker to = new DatePicker();
     private final ListView<CatalogueEvent> events = new ListView<>();
@@ -83,7 +87,8 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
             InboxActions inboxActions, Supplier<List<AttendanceRecord>> historyReader, Runnable onHome, Clock clock) {
         this.clock = Objects.requireNonNull(clock);
         Objects.requireNonNull(services);
-        controller = new AttendeeBrowseController(query -> services.get().search(query), detailReader, actions, this);
+        controller = new AttendeeBrowseController(query -> services.get().search(query),
+                () -> services.get().clubs(), detailReader, actions, this);
         browseContent = content();
         registrations = new MyRegistrationsView(controller::loadRegistrations,
                 row -> controller.cancelRegistration(row.eventId(), row.version()),
@@ -173,9 +178,11 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
         search.setPromptText("Search title or description");
         search.setId("attendee-search-text");
         search.setOnAction(ignored -> refresh());
-        club.setPromptText("Exact club ID, or leave blank");
+        club.getItems().setAll(ALL_CLUBS);
+        club.setValue(ALL_CLUBS);
+        club.setAccessibleText("Filter events by club");
         club.setId("attendee-club");
-        club.setOnAction(ignored -> refresh());
+        clubFeedback.setId("attendee-club-feedback");
         from.setEditable(false);
         to.setEditable(false);
         from.setId("attendee-from");
@@ -188,7 +195,7 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
         clear.setId("attendee-clear");
         clear.setOnAction(ignored -> {
             search.clear();
-            club.clear();
+            club.setValue(ALL_CLUBS);
             from.setValue(null);
             to.setValue(null);
             refresh();
@@ -198,7 +205,7 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
         refreshDetails.disableProperty().bind(events.getSelectionModel().selectedItemProperty().isNull());
         refreshDetails.setOnAction(ignored -> controller.loadDetails(events.getSelectionModel().getSelectedItem().id()));
         FlowPane filters = new FlowPane(12, 12,
-                field("Search", search), field("Club ID", club),
+                field("Search", search), field("Club", club),
                 field("From date (SGT)", from), field("To date (SGT)", to), submit, clear, refreshDetails);
         filters.setAlignment(Pos.BOTTOM_LEFT);
         feedback.setId("attendee-feedback");
@@ -216,7 +223,9 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
                     title.maxWidthProperty().bind(events.widthProperty().subtract(48));
                     Label time = text(SingaporeDateTimes.display(event.startsAt()), "#61708a", 12);
                     time.maxWidthProperty().bind(events.widthProperty().subtract(48));
-                    VBox row = new VBox(6, title, time);
+                    Label clubName = text(event.clubName(), "#61708a", 12);
+                    clubName.maxWidthProperty().bind(events.widthProperty().subtract(48));
+                    VBox row = new VBox(6, title, clubName, time);
                     row.setPadding(new Insets(8));
                     setGraphic(row);
                 }
@@ -242,13 +251,48 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
         VBox content = new VBox(14, text("Attendee · Browse events", "#61708a", 13),
                 text("Upcoming and ongoing events", "#172033", 26),
                 text("Published events only. Dates and times are shown in Singapore Time.", "#61708a", 13),
-                filters, feedback, body);
+                filters, clubFeedback, feedback, body);
         content.setPadding(new Insets(24));
         return content;
     }
 
     private void refresh() {
-        controller.search(new CatalogueQuery(search.getText(), club.getText(), from.getValue(), to.getValue()));
+        controller.loadClubs();
+        var selected = club.getValue();
+        controller.search(new CatalogueQuery(search.getText(), selected == null ? "" : selected.id(),
+                from.getValue(), to.getValue()));
+    }
+
+    @Override public void loadingClubs() {
+        club.setDisable(true);
+        clubFeedback.setText("Loading clubs…");
+    }
+
+    @Override public void loadedClubs(List<CatalogueClub> clubs) {
+        var selected = club.getValue();
+        club.getItems().setAll(ALL_CLUBS);
+        club.getItems().addAll(clubs);
+        var restored = selected == null || selected.id().isEmpty() ? ALL_CLUBS
+                : clubs.stream().filter(value -> value.id().equals(selected.id())).findFirst()
+                        .orElse(new CatalogueClub(selected.id(), null));
+        // Preserve an already-selected ID if it disappears: never silently broaden the query.
+        if (!club.getItems().contains(restored)) {
+            var choices = new java.util.ArrayList<>(clubs);
+            choices.add(restored);
+            choices.sort(CatalogueClub.BY_NAME);
+            club.getItems().setAll(ALL_CLUBS);
+            club.getItems().addAll(choices);
+        }
+        club.setValue(restored);
+        club.setDisable(false);
+        clubFeedback.setText("");
+    }
+
+    @Override public void clubsFailed(Throwable failure) {
+        club.setDisable(false);
+        clubFeedback.setText("Unable to refresh clubs. Existing choices remain available; use Search / Refresh to retry.");
+        logger.warn("attendee_clubs_load_failed", Map.of(
+                "failureType", failure == null ? "unknown" : failure.getClass().getSimpleName()));
     }
 
     @Override public void searching() {
@@ -320,7 +364,7 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
             actions.getChildren().add(checkIn);
         }
         details.getChildren().setAll(
-                text(event.title(), "#172033", 22), text("Club: " + event.clubId(), "#61708a", 13),
+                text(event.title(), "#172033", 22), text("Club: " + event.clubName(), "#61708a", 13),
                 text("Starts: " + SingaporeDateTimes.display(event.startsAt()), "#172033", 14),
                 text("Ends: " + SingaporeDateTimes.display(event.endsAt()), "#172033", 14),
                 text(event.description().isBlank() ? "No description provided." : event.description(), "#172033", 14),

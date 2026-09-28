@@ -11,6 +11,7 @@ import java.util.Optional;
 import java.util.UUID;
 import javax.sql.DataSource;
 import seedu.eventmanager.attendee.EventCatalogueRepository;
+import seedu.eventmanager.attendee.CatalogueClub;
 import seedu.eventmanager.event.Event;
 import seedu.eventmanager.event.EventPersistenceException;
 import seedu.eventmanager.event.EventStatus;
@@ -18,10 +19,10 @@ import seedu.eventmanager.event.EventStatus;
 /** Read-only access to the canonical Organizer table; does not migrate or publish events. */
 public final class JdbcEventCatalogueRepository implements EventCatalogueRepository {
     private static final String PUBLIC_EVENTS = """
-            SELECT id, club_id, organizer_id, title, description, starts_at, ends_at,
-                   capacity, status, version
-            FROM organizer_event WHERE status = 'PUBLISHED'
-            """;
+            SELECT e.id, e.club_id, e.organizer_id, e.title, e.description, e.starts_at, e.ends_at,
+                   e.capacity, e.status, e.version, c.name AS club_name
+            FROM organizer_event e
+            """ + AttendeeClubSql.JOIN + " WHERE e.status = 'PUBLISHED' ";
     private final DataSource dataSource;
 
     public JdbcEventCatalogueRepository(DataSource dataSource) {
@@ -29,14 +30,14 @@ public final class JdbcEventCatalogueRepository implements EventCatalogueReposit
     }
 
     @Override
-    public List<Event> findPublishedNotEnded(Instant now) {
+    public List<Entry> findPublishedNotEnded(Instant now) {
         try (var connection = dataSource.getConnection();
                 var statement = connection.prepareStatement(
-                        PUBLIC_EVENTS + " AND ends_at > ? ORDER BY starts_at, id")) {
+                        PUBLIC_EVENTS + " AND e.ends_at > ? ORDER BY e.starts_at, e.id")) {
             statement.setQueryTimeout(15);
             statement.setTimestamp(1, Timestamp.from(now));
             try (var rows = statement.executeQuery()) {
-                List<Event> events = new ArrayList<>();
+                List<Entry> events = new ArrayList<>();
                 while (rows.next()) {
                     events.add(read(rows));
                 }
@@ -48,9 +49,9 @@ public final class JdbcEventCatalogueRepository implements EventCatalogueReposit
     }
 
     @Override
-    public Optional<Event> findPublishedById(UUID id) {
+    public Optional<Entry> findPublishedById(UUID id) {
         try (var connection = dataSource.getConnection();
-                var statement = connection.prepareStatement(PUBLIC_EVENTS + " AND id = ?")) {
+                var statement = connection.prepareStatement(PUBLIC_EVENTS + " AND e.id = ?")) {
             statement.setQueryTimeout(15);
             statement.setObject(1, id);
             try (var rows = statement.executeQuery()) {
@@ -61,10 +62,28 @@ public final class JdbcEventCatalogueRepository implements EventCatalogueReposit
         }
     }
 
-    private static Event read(ResultSet rows) throws SQLException {
-        return new Event(rows.getObject("id", UUID.class), rows.getString("club_id"),
+    @Override
+    public List<CatalogueClub> findClubs() {
+        try (var connection = dataSource.getConnection();
+                var statement = connection.prepareStatement("SELECT id, name FROM organizer_club")) {
+            statement.setQueryTimeout(15);
+            try (var rows = statement.executeQuery()) {
+                List<CatalogueClub> clubs = new ArrayList<>();
+                while (rows.next()) {
+                    clubs.add(new CatalogueClub(rows.getString("id"), rows.getString("name")));
+                }
+                return List.copyOf(clubs);
+            }
+        } catch (SQLException exception) {
+            throw new EventPersistenceException("Unable to load clubs.", exception);
+        }
+    }
+
+    private static Entry read(ResultSet rows) throws SQLException {
+        return new Entry(new Event(rows.getObject("id", UUID.class), rows.getString("club_id"),
                 rows.getString("organizer_id"), rows.getString("title"), rows.getString("description"),
                 rows.getTimestamp("starts_at").toInstant(), rows.getTimestamp("ends_at").toInstant(),
-                rows.getInt("capacity"), EventStatus.valueOf(rows.getString("status")), rows.getLong("version"));
+                rows.getInt("capacity"), EventStatus.valueOf(rows.getString("status")), rows.getLong("version")),
+                rows.getString("club_name"));
     }
 }

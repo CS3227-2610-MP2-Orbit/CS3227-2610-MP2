@@ -49,8 +49,9 @@ public final class AttendeeRegistrationSmoke {
                     "Synthetic registration UI fixture.", NOW.plusSeconds(3600), NOW.plusSeconds(7200),
                     20, EventStatus.PUBLISHED, 0);
             var catalogue = new EventCatalogueService(new EventCatalogueRepository() {
-                public List<Event> findPublishedNotEnded(Instant now) { return List.of(event); }
-                public Optional<Event> findPublishedById(UUID id) { return Optional.of(event); }
+                public List<Entry> findPublishedNotEnded(Instant now) { return List.of(new Entry(event, "Campus Technology")); }
+                public Optional<Entry> findPublishedById(UUID id) { return Optional.of(new Entry(event, "Campus Technology")); }
+                public List<seedu.eventmanager.attendee.CatalogueClub> findClubs() { return List.of(); }
             }, Clock.fixed(NOW, ZoneOffset.UTC));
             view = new AttendeeBrowseView(() -> catalogue, id -> {
                 checkSession();
@@ -235,7 +236,8 @@ public final class AttendeeRegistrationSmoke {
                 String text = details.getChildren().stream().filter(Label.class::isInstance).map(Label.class::cast)
                         .map(Label::getText).reduce("", (a, b) -> a + "\n" + b);
                 require(text.contains(expected.getValue() + " description") && text.contains("Ends:")
-                        && text.contains("Club: test-club") && text.contains("SGT"), "full owner event details");
+                        && text.contains("Club: Campus Technology") && !text.contains("test-club")
+                        && text.contains("SGT"), "full owner event details");
             }
             screen.applyCss(); screen.layout();
             require(details.getChildren().size() > 1 && ((Label) details.getChildren().getFirst()).getText().equals("Cancelled workshop"),
@@ -263,7 +265,8 @@ public final class AttendeeRegistrationSmoke {
         private MyRegistration sample(long id, String title, long start, long end, Registration.Status status) {
             return new MyRegistration(new UUID(0, id), title, NOW.plusSeconds(start), "Seminar Room · COM1",
                     status, 1, start > 0 && status == Registration.Status.CONFIRMED, NOW.plusSeconds(end),
-                    "test-club", title + " description", end <= 0 ? "COMPLETED" : "PUBLISHED");
+                    "test-club", title + " description", end <= 0 ? "COMPLETED" : "PUBLISHED",
+                    false, "Campus Technology");
         }
 
         private String message() { return ((Label) view.lookup("#attendee-command-feedback")).getText(); }

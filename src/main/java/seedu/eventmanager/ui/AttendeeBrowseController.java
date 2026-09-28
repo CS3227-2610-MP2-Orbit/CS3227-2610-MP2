@@ -4,12 +4,14 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.function.BiFunction;
 import javafx.concurrent.Task;
 import javafx.beans.property.ReadOnlyBooleanProperty;
 import javafx.beans.property.ReadOnlyBooleanWrapper;
 import seedu.eventmanager.attendee.AttendeeEventDetails;
 import seedu.eventmanager.attendee.CatalogueEvent;
+import seedu.eventmanager.attendee.CatalogueClub;
 import seedu.eventmanager.attendee.CatalogueQuery;
 import seedu.eventmanager.attendee.MyRegistration;
 import seedu.eventmanager.registration.Registration;
@@ -17,6 +19,9 @@ import seedu.eventmanager.registration.Registration;
 /** JavaFX-thread coordinator. Business rules and persistence live behind session-bound callbacks. */
 public final class AttendeeBrowseController implements AutoCloseable {
     public interface View {
+        void loadingClubs();
+        void loadedClubs(List<CatalogueClub> clubs);
+        void clubsFailed(Throwable failure);
         void searching();
         void searched(List<CatalogueEvent> events);
         void searchFailed(Throwable failure);
@@ -31,11 +36,13 @@ public final class AttendeeBrowseController implements AutoCloseable {
     }
 
     private final Function<CatalogueQuery, List<CatalogueEvent>> search;
+    private final Supplier<List<CatalogueClub>> clubs;
     private final Function<UUID, AttendeeEventDetails> details;
     private final View view;
     private final AttendeeRegistrationActions actions;
     private final ReadOnlyBooleanWrapper busy = new ReadOnlyBooleanWrapper();
     private Task<List<CatalogueEvent>> searchTask;
+    private Task<List<CatalogueClub>> clubsTask;
     private Task<AttendeeEventDetails> detailTask;
     private Task<List<MyRegistration>> registrationsTask;
     private Task<Registration> commandTask;
@@ -44,14 +51,33 @@ public final class AttendeeBrowseController implements AutoCloseable {
     private boolean closed;
 
     public AttendeeBrowseController(Function<CatalogueQuery, List<CatalogueEvent>> search,
+            Supplier<List<CatalogueClub>> clubs,
             Function<UUID, AttendeeEventDetails> details, AttendeeRegistrationActions actions, View view) {
         this.search = Objects.requireNonNull(search);
+        this.clubs = Objects.requireNonNull(clubs);
         this.details = Objects.requireNonNull(details);
         this.view = Objects.requireNonNull(view);
         this.actions = Objects.requireNonNull(actions);
     }
 
     public ReadOnlyBooleanProperty busyProperty() { return busy.getReadOnlyProperty(); }
+
+    public void loadClubs() {
+        if (closed || busy.get()) return;
+        cancel(clubsTask);
+        view.loadingClubs();
+        Task<List<CatalogueClub>> task = new Task<>() {
+            @Override protected List<CatalogueClub> call() { return clubs.get(); }
+        };
+        clubsTask = task;
+        task.setOnSucceeded(ignored -> {
+            if (!closed && clubsTask == task) view.loadedClubs(task.getValue());
+        });
+        task.setOnFailed(ignored -> {
+            if (!closed && clubsTask == task) view.clubsFailed(task.getException());
+        });
+        Thread.ofVirtual().name("attendee-catalogue-clubs").start(task);
+    }
 
     public void search(CatalogueQuery query) {
         if (closed || busy.get()) return;
@@ -165,6 +191,8 @@ public final class AttendeeBrowseController implements AutoCloseable {
 
     @Override public void close() {
         closed = true;
+        cancel(clubsTask);
+        clubsTask = null;
         cancel(searchTask);
         cancel(registrationsTask);
         // A database command may already be committing: never imply that closing rolls it back.

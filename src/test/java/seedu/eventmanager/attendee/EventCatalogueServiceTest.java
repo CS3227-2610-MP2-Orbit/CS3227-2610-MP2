@@ -86,10 +86,11 @@ class EventCatalogueServiceTest {
     private static EventCatalogueService service(List<Event> events) {
         // Deliberately includes hidden events: service must enforce its own public boundary.
         return new EventCatalogueService(new EventCatalogueRepository() {
-            public List<Event> findPublishedNotEnded(Instant now) { return events; }
-            public Optional<Event> findPublishedById(UUID id) {
-                return events.stream().filter(event -> event.id().equals(id)).findFirst();
+            public List<Entry> findPublishedNotEnded(Instant now) { return events.stream().map(Entry::new).toList(); }
+            public Optional<Entry> findPublishedById(UUID id) {
+                return events.stream().filter(event -> event.id().equals(id)).findFirst().map(Entry::new);
             }
+            public List<CatalogueClub> findClubs() { return List.of(); }
         }, Clock.fixed(NOW, ZoneOffset.UTC));
     }
 

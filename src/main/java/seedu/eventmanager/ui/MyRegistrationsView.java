@@ -76,6 +76,7 @@ final class MyRegistrationsView extends VBox {
                 title.setStyle("-fx-text-fill: #172033; -fx-font-size: 16px; -fx-font-weight: bold;");
                 Label info = label(SingaporeDateTimes.display(row.startsAt()) + "\nVenue: "
                         + (row.venue().isBlank() ? "No booking recorded" : row.venue())
+                        + "\nClub: " + row.clubName()
                         + "\nStatus: " + row.status().name().replace('_', ' '));
                 title.maxWidthProperty().bind(rows.widthProperty().subtract(56));
                 info.maxWidthProperty().bind(rows.widthProperty().subtract(56));
@@ -160,7 +161,7 @@ final class MyRegistrationsView extends VBox {
     private void showDetails(MyRegistration row) {
         Label title = label(row.title());
         title.setStyle("-fx-text-fill: #172033; -fx-font-size: 22px; -fx-font-weight: bold;");
-        details.getChildren().setAll(title, label("Club: " + row.clubId()),
+        details.getChildren().setAll(title, label("Club: " + row.clubName()),
                 label("Starts: " + SingaporeDateTimes.display(row.startsAt())),
                 label("Ends: " + SingaporeDateTimes.display(row.endsAt())),
                 label("Venue: " + (row.venue().isBlank() ? "No booking recorded" : row.venue())),

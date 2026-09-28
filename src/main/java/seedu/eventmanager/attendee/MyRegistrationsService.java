@@ -49,7 +49,7 @@ public final class MyRegistrationsService {
                     event.endsAt(), event.clubId(), event.description(), event.eventStatus(),
                     CheckInPolicy.evaluate(new RegistrationEvent(row.eventId(), event.eventStatus(), 0,
                             event.startsAt(), event.endsAt()), row.status(), event.confirmedActiveBooking(), now)
-                            == CheckInPolicy.Result.AVAILABLE);
+                            == CheckInPolicy.Result.AVAILABLE, event.clubName());
         }).toList();
     }
 }
