@@ -129,7 +129,7 @@ Event dates are set relative to the day you load the data. **Street Dance Showca
 
 1. Type your username and password, then select **Log in**.
 2. The app opens Club Organizer, Venue Administrator, or Attendee, depending on the account.
-3. **← Home** or **Log out** returns you to the login screen.
+3. **← Home** or **Log out** returns you to the shared login screen, whichever role you are in. You can then log in with another account, including one with a different role, without restarting the app.
 
 To make your own Attendee or Club Organizer account, select **Create normal user account**, pick the role, then enter a username and a password of at least 8 characters. You still need to log in afterwards.
 
@@ -171,7 +171,7 @@ Only drafts can be edited. If the event was saved again after you opened it, you
 
 Changing **Capacity** also updates the attendance number on a request that is still waiting. A request that has already been approved or rejected is left as it was.
 
-> **Caution:** After a room is approved, the start and end times are locked to that booking. Title, description, and capacity can still change. To change the times, [release the room](#releasing-an-approved-room) first.
+> **Caution:** After a room is approved, the start and end times are locked to that booking. Title and description can still change. You can lower the capacity or change it within the room’s size, but you cannot raise it above the approved room’s capacity. A save that would go over that limit is refused, and the event stays as it was. To change the times, [release the room](#releasing-an-approved-room) first.
 
 ### Requesting a room
 
@@ -259,7 +259,7 @@ Changing a room to unavailable is allowed even when it has previously approved r
 
 The reasons are **Venue already booked** and **Requested capacity exceeds venue capacity**.
 
-An approved request becomes a booking and leaves the waiting list. A rejected request also leaves the waiting list. Approving fails if that room is already booked for an overlapping time or is no longer active. Every venue administrator can review every request.
+An approved request becomes a booking and leaves the waiting list. A rejected request also leaves the waiting list. Approving fails if that room is already booked for an overlapping time, is no longer active, or has fewer seats than the request’s expected attendance. In the last case, reject it with **Requested capacity exceeds venue capacity**. Every venue administrator can review every request.
 
 The table shows a short reference, the room, the event title, the organizer’s username, the start time, and the expected attendance.
 
@@ -269,7 +269,7 @@ The table shows a short reference, the room, the event title, the organizer’s 
 2. **Create user** asks for a username, a password of at least 8 characters, and a role: Attendee, Club Organizer, or Venue Administrator.
 3. **Edit account** changes the username, the role, and whether the account is active.
 
-There is no change-password screen yet. Deactivating an account stops that person from using it.
+There is no change-password screen yet. Deactivating an account stops that person from logging in. If they are already logged in, their next action is refused and their session ends, so they must log in again, which an inactive account cannot do. For an administrator, this applies to approving and rejecting requests (see [Known issues](#known-issues)).
 
 ---
 
@@ -376,6 +376,7 @@ A: In `~/.event-venue-manager/logs/app-0.log` (your home folder). The login scre
 
 * An organizer cannot withdraw a request that is still waiting. They can release a room only after it has been approved, and only while the event is still a draft.
 * Clubs cannot be renamed or deleted.
+* An administrator who is deactivated or demoted while logged in can still view the dashboard and the request list, and use **Venues** and **Users and access**, until they log out. Approving and rejecting requests are blocked straight away.
 * There is no email. Messages stay inside **Notifications**.
 * The unread count updates when you open or refresh **Notifications**, not continuously.
 * Published events cannot be unpublished or deleted.

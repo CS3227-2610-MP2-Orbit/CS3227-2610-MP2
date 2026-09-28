@@ -128,7 +128,8 @@ Services are the API. The UI does not decide whether a draft may be published or
 
 * `ClubService` creates a club for the signed-in organizer. Names are unique ignoring case. There is no rename or delete.
 * `EventService` creates, edits, publishes, and soft-deletes events. Only drafts can be edited or deleted. Publishing requires a future start and a confirmed booking at an active venue for the same times.
-* Editing capacity updates the expected attendance on an open venue request. Decided requests are left unchanged.
+* Editing capacity updates the expected attendance on an open venue request. Decided requests are left unchanged. Once the latest request is approved, capacity may be lowered but not raised above the approved venue’s capacity; such an edit is rejected and nothing is saved.
+* `ClubService` and `EventService` check the live account through `ActiveUserChecker` on every call. A deactivated organizer is refused with `ACCOUNT_INACTIVE`, and their sessions are revoked.
 * `OrganizerVenueRequestService` submits a `SUBMITTED` request, or releases an approved booking on a draft.
 * `AnnouncementService` posts to registered attendees and can delete an announcement. Already queued notifications are not withdrawn.
 * `VolunteerService` assigns a registered attendee, with an optional role of at most 60 characters.
@@ -136,7 +137,7 @@ Services are the API. The UI does not decide whether a draft may be published or
 
 **Venue Administrator**
 
-* `VenueAdministratorService.approve` and `reject` require an active venue administrator. Every administrator may decide every request. Only `SUBMITTED` requests can be decided.
+* `VenueAdministratorService.approve` and `reject` require an active venue administrator. `JdbcAuthorizationService.requireRole` re-reads the account when the workspace opens and on each approve or reject: an inactive account gets `ACCOUNT_INACTIVE` and its sessions are revoked, and a changed role gets `FORBIDDEN`. Dashboard reloads, **Venues** and **Users and access** do not re-check yet (see the User Guide’s known issues). Every administrator may decide every request. Only `SUBMITTED` requests can be decided.
 * Approve requires the venue to still be `ACTIVE` and the request's expected attendance not to exceed the venue capacity. It refuses an overlapping confirmed booking, then creates a booking, an audit record, and a notification.
 * Reject requires one of two reasons: `Venue already booked` or `Requested capacity exceeds venue capacity`.
 * Venue availability can be changed after approval. Deactivating a venue blocks future approvals and active-venue checks for publishing and registration; it does not automatically cancel existing approved bookings.
@@ -144,7 +145,7 @@ Services are the API. The UI does not decide whether a draft may be published or
 **Attendee**
 
 * `EventCatalogueService` lists published events that have not ended, with search, club, and Singapore-date filters.
-* `RegistrationService` registers, cancels, and checks in the signed-in attendee only.
+* `RegistrationService` registers, cancels, and checks in the signed-in attendee only. Every attendee service resolves the session token on each call, and a session of an inactive account no longer resolves.
 * Cancellation closes when the event starts. A checked-in registration cannot be changed.
 * Check-in is open from the start instant inclusive to the end instant exclusive. It needs a confirmed registration, a published event, and a matching confirmed booking at an active venue. It writes an audit record and does not enqueue a notification.
 * `MyRegistrationsService`, `AttendanceHistoryService`, and `InboxService` are the read models for the other attendee screens.
@@ -387,7 +388,7 @@ The app’s own log events never include passwords, session tokens, connection s
 2. Events, bookings, registrations, and the inbox are stored in PostgreSQL, not in a local JSON file.
 3. Authorization is enforced in services. Hiding a button is not the only check. An attendee acts only as the signed-in account.
 4. A failed decision or registration does not leave a partial booking or a second check-in. Related writes share a transaction.
-5. Error text shown on a role screen names the problem in plain language. If the database cannot be reached at startup, the app shows the exception type and message, and it does not show the password or the full connection string.
+5. Error text shown on a role screen names the problem in plain language. If the database is not configured or cannot be reached at startup, the app shows a plain-language cause, the current folder, the diagnostic log path and a **Try again** button. It does not show the password or the full connection string.
 6. Diagnostic logs must not contain passwords, session tokens, or unnecessary personal data.
 7. The three role screens share one visual shell so a user can move between them without learning a new layout.
 8. Automated tests cover service rules and PostgreSQL integrations. A person still has to click through JavaFX before a screen is called done. No performance target for thousands of rows is claimed.
@@ -402,7 +403,7 @@ These steps are a starting point. Exploratory testing should go beyond them. Use
 
 1. Start PostgreSQL and `./gradlew run`. For a quick start, run `./gradlew seedDemo` first and use the `demo_*` accounts.
 2. Create an Attendee and a Club Organizer from the login screen. Create a Venue Administrator from **Users and access**.
-3. Each login opens a different sidebar. **Home** or **Log out** returns to login.
+3. Each login opens a different sidebar. **Home** or **Log out** returns to the shared login screen. Expected: you can log in as another role without restarting.
 
 ### Organizer
 
