@@ -219,6 +219,8 @@ Only people who are registered for that event can be volunteers. The same person
 
 The room starts as available. Select a room and **Edit selected** to change its details. **Toggle availability** switches it between available and unavailable. Unavailable rooms cannot be requested for new bookings. An old booking does not turn the whole room off forever; the room can be used again after that booking’s time has passed.
 
+Changing a room to unavailable is allowed even when it has previously approved requests. It prevents new requests from being approved and prevents future event publishing or attendee registration that requires an active venue. Existing approved bookings are not automatically cancelled by this toggle.
+
 ### Reviewing requests
 
 1. Select **Venue requests**. The list loads when you open the page.
@@ -227,7 +229,7 @@ The room starts as available. Select a room and **Edit selected** to change its 
 
 The reasons are **Venue already booked** and **Requested capacity exceeds venue capacity**.
 
-An approved request becomes a booking and leaves the waiting list. A rejected request also leaves the waiting list. Approving fails if that room is already booked for an overlapping time. Every venue administrator can review every request.
+An approved request becomes a booking and leaves the waiting list. A rejected request also leaves the waiting list. Approving fails if that room is already booked for an overlapping time or is no longer active. Every venue administrator can review every request.
 
 The table shows a short reference, the room, the event title, the organizer’s username, the start time, and the expected attendance.
 

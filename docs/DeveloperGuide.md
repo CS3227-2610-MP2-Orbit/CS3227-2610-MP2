@@ -129,8 +129,9 @@ Services are the API. The UI does not decide whether a draft may be published or
 **Venue Administrator**
 
 * `VenueAdministratorService.approve` and `reject` require an active venue administrator. Every administrator may decide every request. Only `SUBMITTED` requests can be decided.
-* Approve refuses an overlapping confirmed booking, then creates a booking, an audit record, and a notification.
+* Approve requires the venue to still be `ACTIVE` and the request's expected attendance not to exceed the venue capacity. It refuses an overlapping confirmed booking, then creates a booking, an audit record, and a notification.
 * Reject requires one of two reasons: `Venue already booked` or `Requested capacity exceeds venue capacity`.
+* Venue availability can be changed after approval. Deactivating a venue blocks future approvals and active-venue checks for publishing and registration; it does not automatically cancel existing approved bookings.
 
 **Attendee**
 
@@ -177,7 +178,7 @@ Publish checks the clock and `EventBookingCheck`. Persisting a publish locks the
 
 `OrganizerVenueRequestService.submit` loads the owned event, requires an `ACTIVE` venue, refuses an open request, and refuses a new request while an approved booking still exists. The request copies the event’s UTC window and uses capacity as expected attendance.
 
-`VenueAdministratorService` decides inside a transaction: authorization, submitted state, conflict check on approve, save, booking creation, audit, then a best-effort notification. A notification failure does not roll back the decision.
+`VenueAdministratorService` decides inside a transaction: authorization, submitted state, active-venue check, capacity check, conflict check on approve, save, booking creation, audit, then a best-effort notification. A notification failure does not roll back the decision. Venue deactivation is an availability control; existing approved bookings are not implicitly cancelled.
 
 ### Attendee registration
 
