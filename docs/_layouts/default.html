@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="{{ site.lang | default: 'en' }}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ page.title | escape }} · {{ site.title | escape }}</title>
+    <meta name="description" content="{{ page.description | default: site.description | escape }}">
+    <link rel="canonical" href="{{ page.url | absolute_url }}">
+    <link rel="icon" type="image/svg+xml" href="{{ '/assets/images/orbit.svg' | relative_url }}">
+    <link rel="stylesheet" href="{{ '/assets/css/site.css' | relative_url }}">
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="container header-inner">
+        <a class="brand" href="{{ '/' | relative_url }}" aria-label="Orbit home">
+          <img src="{{ '/assets/images/orbit.svg' | relative_url }}" alt="" width="36" height="36">
+          <span>ORBIT<span class="brand-subtitle">Event Venue Manager</span></span>
+        </a>
+        <nav aria-label="Main navigation">
+          <a href="{{ '/' | relative_url }}"{% if page.url == '/' %} aria-current="page"{% endif %}>Overview</a>
+          <a href="{{ '/UserGuide.html' | relative_url }}"{% if page.url == '/UserGuide.html' %} aria-current="page"{% endif %}>User guide</a>
+          <a href="{{ '/DeveloperGuide.html' | relative_url }}"{% if page.url == '/DeveloperGuide.html' %} aria-current="page"{% endif %}>Developer guide</a>
+          <a class="nav-source" href="{{ site.repository_url }}">GitHub <span aria-hidden="true">↗</span></a>
+        </nav>
+      </div>
+    </header>
+    {{ content }}
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        <div><strong>ORBIT</strong><p>Campus events. Connected.</p><span class="muted">CS3227 · MP2 · 2026</span></div>
+        <nav aria-label="Project resources">
+          <a href="{{ '/AgenticSE.html' | relative_url }}">Agentic SE</a>
+          <a href="{{ '/Reflections.html' | relative_url }}">Reflections</a>
+          <a href="{{ site.repository_url }}/tree/{{ site.repository_ref }}/logs">Interaction logs</a>
+          <a href="{{ site.repository_url }}/issues">Report an issue</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

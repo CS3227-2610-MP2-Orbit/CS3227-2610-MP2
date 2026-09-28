@@ -1,3 +1,7 @@
+---
+title: Developer guide
+---
+
 # Event Venue Manager Developer Guide
 
 ## Acknowledgements
@@ -13,7 +17,12 @@ Libraries:
 5. [dotenv-java](https://github.com/cdimascio/dotenv-java)
 6. Gradle Wrapper
 
-The guide structure follows the team’s earlier AB3-style developer guide: architecture, component notes, then an appendix of user stories, use cases, and non-functional requirements. No MP1 application code was reused. Agentic SE notes live in [`AGENTS.md`](../AGENTS.md) and [Agentic SE](AgenticSE.md).
+The guide structure follows the team’s earlier AB3-style developer guide: architecture, component notes, then an appendix of user stories, use cases, and non-functional requirements. No MP1 application code was reused. Agentic SE notes live in [`AGENTS.md`](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/blob/HEAD/AGENTS.md) and [Agentic SE](AgenticSE.md).
+
+The product website uses [Jekyll](https://jekyllrb.com/) and
+[GitHub Pages](https://docs.github.com/en/pages), with original local HTML/CSS
+and the existing Markdown guides. Website maintenance and screenshot provenance
+are documented in [WEBSITE.md](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/blob/HEAD/docs/WEBSITE.md).
 
 | Role | Owner | Main code |
 | --- | --- | --- |

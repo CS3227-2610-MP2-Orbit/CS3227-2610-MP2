@@ -1,0 +1,16 @@
+---
+layout: default
+---
+<main id="main" class="container guide-shell" tabindex="-1">
+  <aside class="guide-sidebar" aria-label="Documentation">
+    <p class="eyebrow">Documentation</p>
+    <nav aria-label="Guide navigation">
+      <a href="{{ '/UserGuide.html' | relative_url }}"{% if page.url == '/UserGuide.html' %} aria-current="page"{% endif %}>User guide</a>
+      <a href="{{ '/DeveloperGuide.html' | relative_url }}"{% if page.url == '/DeveloperGuide.html' %} aria-current="page"{% endif %}>Developer guide</a>
+      <a href="{{ '/AgenticSE.html' | relative_url }}"{% if page.url == '/AgenticSE.html' %} aria-current="page"{% endif %}>Agentic SE workflow</a>
+      <a href="{{ '/Reflections.html' | relative_url }}"{% if page.url == '/Reflections.html' %} aria-current="page"{% endif %}>Reflections</a>
+    </nav>
+    <a class="source-link" href="{{ site.repository_url }}/blob/{{ site.repository_ref }}/{{ page.path | prepend: 'docs/' }}">View Markdown source <span aria-hidden="true">↗</span></a>
+  </aside>
+  <article class="prose">{{ content }}</article>
+</main>

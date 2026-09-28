@@ -1,3 +1,7 @@
+---
+title: User guide
+---
+
 # Event Venue Manager User Guide
 
 Event Venue Manager is a desktop app for campus events. Three kinds of people use it:
@@ -284,6 +288,10 @@ The details panel explains why the button is missing, for example â€œtoo earlyâ€
 
 Select **Attendance history**. Only events you have checked into are listed, newest check-in first. Events you skipped are not here. Select a row to see the event and the time you checked in. This page is view-only. **Refresh** reloads it.
 
+[![Attendance history with a selected event and its check-in time.](assets/images/attendance-history.png)](assets/images/attendance-history.png)
+
+*Real application screen with synthetic test data. Select the image to view it full-size.*
+
 ### Notifications
 
 Select **Notifications** to read registration confirmations, cancellations, and announcements. The newest message is first. A badge shows how many are unread.
@@ -294,6 +302,10 @@ Select **Notifications** to read registration confirmations, cancellations, and 
 * Read and unread status is remembered after you close the app.
 
 Messages can take a few seconds to arrive after you register or after an organizer sends an announcement. Then refresh. This is inside the app, not email. If an announcement is deleted, you may still see **Announcement removed.**
+
+[![Notifications inbox with unread messages, a read-status filter, and mark-as-read controls.](assets/images/attendee-notifications.png)](assets/images/attendee-notifications.png)
+
+*Real application screen with synthetic test data. Select the image to view it full-size.*
 
 ---
 
