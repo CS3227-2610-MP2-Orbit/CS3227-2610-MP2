@@ -6,8 +6,8 @@ Event Venue Manager is a Java 25 desktop application for campus events. Club Org
 
 1. Start PostgreSQL, then copy `.env.example` to `.env` and fill in your database user.
 2. Optional demo data for every role: `./gradlew seedDemo`, or `java -jar <release jar> --seed-demo`.
-3. Run `./gradlew run`, or download the jar for your OS from the
-   [Releases page](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/releases) and run
+3. Run `./gradlew run`, or download the jar from the
+   [Releases page](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/releases) (one jar for Windows, Linux and Apple Silicon macOS) and run
    `java -jar <jar>`.
 
 How to install the app and use each role is in the [User Guide](docs/UserGuide.md). Design, user stories, use cases, and non-functional requirements are in the [Developer Guide](docs/DeveloperGuide.md). Those two guides are the description of the product. This file only points to them.

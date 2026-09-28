@@ -33,7 +33,7 @@ You click through a window. You do not type commands. Everyone signs in on the s
 1. Install **JDK 25**. In a terminal, `java -version` should mention version 25.
 2. Install and start **PostgreSQL** (on a Mac, [Postgres.app](https://postgresapp.com/) is enough). Create a database named `event_manager` if you do not already have one.
 3. Get the app in one of two ways:
-   * **Download the jar (recommended for testers).** On the [Releases page](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/releases), download the jar for your computer: `EventVenueManager-<version>-windows-x64.jar`, `-linux-x64.jar`, or `-macos-arm64.jar` (Apple Silicon). Put it in its own folder.
+   * **Download the jar (recommended for testers).** On the [Releases page](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/releases), download `EventVenueManager-<version>.jar`. The same jar runs on Windows, Linux and Apple Silicon Macs. Put it in its own folder.
    * **Run from the source code.** Clone the repository and work in the project folder.
 4. In that folder, create a file named `.env`. Copy [`.env.example`](../.env.example) (release downloads include it as `env.example`; rename it to `.env`) and use your own database username:
 
@@ -49,7 +49,7 @@ You click through a window. You do not type commands. Everyone signs in on the s
 5. Start the app from that folder:
 
    ```sh
-   java -jar EventVenueManager-<version>-<your-os>.jar
+   java -jar EventVenueManager-<version>.jar
    ```
 
    From the source code, run `./gradlew run` instead (on Windows: `.\gradlew.bat run`).
@@ -58,7 +58,7 @@ You click through a window. You do not type commands. Everyone signs in on the s
 
 > **Caution:** Restart the app after you change `.env`, or select **Try again** on the database error screen. All three roles must use the same database, or an organizer’s request will not show up for the administrator.
 
-> **Caution:** There is no Intel Mac jar. On an Intel Mac, run from the source code.
+> **Caution:** The jar does not include JavaFX for Intel Macs. On an Intel Mac, run from the source code.
 
 > **Note:** The line under the login form shows whether the database is connected and where the app writes its diagnostic log.
 
@@ -67,7 +67,7 @@ You click through a window. You do not type commands. Everyone signs in on the s
 A new database has no events. To get sample data for every role, run this once from the folder that contains your `.env`:
 
 ```sh
-java -jar EventVenueManager-<version>-<your-os>.jar --seed-demo
+java -jar EventVenueManager-<version>.jar --seed-demo
 ```
 
 From the source code: `./gradlew seedDemo`. Running it again changes nothing.

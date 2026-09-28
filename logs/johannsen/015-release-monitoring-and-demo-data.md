@@ -46,6 +46,13 @@ Follow-ups during the task:
 
 > do i need to add a .env.example or something so the user can copy paste?
 
+Follow-up after PR #47 was opened:
+
+> for the main jar file, can we add in linux and windows running option. Do not create new jar its only 1 release jar with all runnable options.
+
+> To publish a release after merging: git tag v1.0.0 && git push origin v1.0.0.
+> is there anyway to do this To publish a release after merging: git tag v1.0.0 && git push origin v1.0.0. automatically? or is it better to do git tag and push ourselves
+
 ## Response summary
 
 Added a per-OS runnable `releaseJar`, a tag-triggered `release.yml` that builds and
@@ -150,8 +157,8 @@ The scratch database `mp2_release_smoke_20260928` was created with the local
     the login screen with the status line.
   - `app_stopped` was not verified because the process was killed, not closed.
 - `actionlint` on `release.yml`: exit 0 (after quoting a `sha256sum` glob).
-- Not run: the release workflow itself on GitHub (it needs a pushed tag); Windows and
-  Linux jars; logging in and using each role with the demo accounts through the UI.
+- Not run locally: Windows and Linux (checked by the PR's release workflow run instead);
+  publishing a release; logging in and using each role with the demo accounts through the UI.
 
 ## Problems, corrections, and skill revisions
 
@@ -171,6 +178,19 @@ The scratch database `mp2_release_smoke_20260928` was created with the local
   resolved by keeping Joseph's wording and adding this PR's `.env.example`, jar,
   demo-data and quick-start text, then removing a duplicate README paragraph.
   No code files conflicted, so the build was not re-run for the merge.
+- Single-jar follow-up: `releaseJar` now produces one `EventVenueManager-<version>.jar`
+  with JavaFX for `win`, `linux` and `mac-aarch64`. The first attempt put all
+  classifiers in one Gradle configuration and failed with a capability conflict
+  ("Cannot select module with conflict on capability 'org.openjfx:javafx-base:25'");
+  one configuration per platform fixed it. The jar was checked for `.dll`, `.so` and
+  `.dylib` natives and for Windows, GTK and macOS glass classes. Added `--check-javafx`
+  (start and stop the JavaFX toolkit). Locally on macOS arm64: `--version`,
+  `--check-javafx` and a GUI launch passed; the full build again reported 338 tests,
+  0 failures, 0 skipped. `release.yml` now builds once on Ubuntu, verifies the same jar
+  on Ubuntu (xvfb), Windows and macOS, runs build and verify on pull requests, and
+  publishes only for a `v*` tag or a manual **Run workflow** that creates the tag.
+  Fully automatic release on every merge was not added: the latest release is what
+  graders download, so releases stay a deliberate step.
 - No skill needed revision.
 
 ## Outcome and limitations

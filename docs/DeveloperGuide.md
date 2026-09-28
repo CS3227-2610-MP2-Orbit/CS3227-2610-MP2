@@ -222,15 +222,17 @@ PostgreSQL integration tests run when their database environment variables are s
 
 ### Release and deployment (CD)
 
-`.github/workflows/release.yml` runs when a `v*` tag is pushed (or manually for an existing tag):
+`.github/workflows/release.yml` builds and checks one jar for all supported systems:
 
-1. It runs `./gradlew test`. Database suites skip there; the CI workflow runs them against PostgreSQL.
-2. On Ubuntu, Windows and macOS runners, it builds `./gradlew releaseJar` and smoke-starts each jar with `java -jar … --version` on its own OS.
-3. It publishes a GitHub Release with the three jars, `SHA256SUMS.txt`, and `env.example` (a copy of `.env.example`, because dot-files are awkward to download).
+1. **Build** (Ubuntu): `./gradlew test releaseJar`. Database suites skip there; the CI workflow runs them against PostgreSQL.
+2. **Verify** on Ubuntu, Windows and macOS runners: the same jar runs `--version` and `--check-javafx`. `--check-javafx` starts and stops the JavaFX toolkit, which proves that the OS's native libraries load. Linux uses a virtual display (`xvfb-run`).
+3. **Publish** (only for a `v*` tag or a manual run): a GitHub Release with the jar, `SHA256SUMS.txt`, and `env.example` (a copy of `.env.example`, because dot-files are awkward to download).
 
-`releaseJar` builds `build/release/EventVenueManager-<version>-<os>-<arch>.jar`: the app, all runtime dependencies, and the JavaFX native libraries of the OS that builds it. JavaFX natives are platform-specific (and the Intel and Apple Silicon macOS libraries share file names), so there is one jar per OS rather than one universal jar. There is no Intel macOS jar. `mergeServiceFiles` merges the `META-INF/services` files of all dependencies before packaging. Without it, Flyway would keep only one copy and lose its PostgreSQL plugin inside the jar. The manifest sets `Main-Class` and `Enable-Native-Access: ALL-UNNAMED`.
+Pull requests that change `build.gradle`, `src/main` or the workflow run steps 1–2 only, so every change is checked on all three systems before a release.
 
-To release: merge to the default branch, then `git tag v1.0.0 && git push origin v1.0.0`.
+`releaseJar` builds `build/release/EventVenueManager-<version>.jar`. It holds the app, all runtime dependencies, and JavaFX for Windows (`win`), Linux (`linux`) and Apple Silicon macOS (`mac-aarch64`). The per-OS native libraries have different names (`.dll`, `.so`, `.dylib`), so they coexist in one jar. The Intel macOS libraries use the same names as the Apple Silicon ones, so Intel Macs are not supported by the jar. Each platform's JavaFX jars come from their own Gradle configuration, because Gradle rejects two platform variants of one module in a single configuration. `mergeServiceFiles` merges the `META-INF/services` files of all dependencies. Without it, Flyway would keep only one copy and lose its PostgreSQL plugin inside the jar. The manifest sets `Main-Class` and `Enable-Native-Access: ALL-UNNAMED`.
+
+To release, merge to the default branch, then either open **Actions → Release → Run workflow** and enter a version such as `v1.0.0` (the workflow creates the tag), or run `git tag v1.0.0 && git push origin v1.0.0`. Releases are deliberately manual, so an unfinished merge never becomes the latest release.
 
 ### Monitoring and diagnostics
 

@@ -51,10 +51,19 @@ tasks.register('seedDemo', JavaExec) {
     workingDir = rootDir
 }
 
-// Release packaging: one runnable jar per OS, because JavaFX native libraries are platform-specific.
-def osName = System.getProperty('os.name').toLowerCase()
-def releasePlatform = osName.contains('win') ? 'windows' : (osName.contains('mac') ? 'macos' : 'linux')
-def releaseArch = System.getProperty('os.arch') in ['aarch64', 'arm64'] ? 'arm64' : 'x64'
+// Release packaging: one runnable jar for Windows, Linux and macOS. JavaFX native libraries have
+// different file names per OS (.dll, .so, .dylib), so all three can live in one jar. Intel and Apple
+// Silicon macOS natives share names, so only Apple Silicon (mac-aarch64) is bundled.
+def javafxPlatforms = ['win', 'linux', 'mac-aarch64']
+// One configuration per platform: Gradle rejects two platform variants of a module in one configuration.
+def javafxJars = files()
+javafxPlatforms.each { platform ->
+    def configuration = configurations.create("javafx_${platform.replace('-', '_')}")
+    ['base', 'graphics', 'controls'].each { module ->
+        dependencies.add(configuration.name, "org.openjfx:javafx-${module}:${javafx.version}:${platform}@jar")
+    }
+    javafxJars = javafxJars + configuration
+}
 def runtimeJars = configurations.runtimeClasspath
 def mergedServices = layout.buildDirectory.dir('merged-services')
 
@@ -86,10 +95,9 @@ tasks.register('mergeServiceFiles') {
 
 tasks.register('releaseJar', Jar) {
     group = 'distribution'
-    description = 'Builds a runnable jar with all dependencies and the JavaFX libraries for this OS.'
+    description = 'Builds one runnable jar with all dependencies and JavaFX for Windows, Linux and macOS.'
     dependsOn 'mergeServiceFiles', 'classes'
     archiveBaseName = 'EventVenueManager'
-    archiveClassifier = "${releasePlatform}-${releaseArch}"
     destinationDirectory = layout.buildDirectory.dir('release')
     manifest {
         attributes('Main-Class': 'seedu.eventmanager.Main',
@@ -99,7 +107,7 @@ tasks.register('releaseJar', Jar) {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from(mergedServices)
     from(sourceSets.main.output)
-    from({ runtimeJars.filter { it.name.endsWith('.jar') }.collect { zipTree(it) } }) {
+    from({ (runtimeJars + javafxJars).filter { it.name.endsWith('.jar') }.collect { zipTree(it) } }) {
         exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA', 'META-INF/*.EC',
                 'module-info.class', 'META-INF/versions/*/module-info.class'
     }
