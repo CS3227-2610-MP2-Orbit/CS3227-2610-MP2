@@ -10,8 +10,6 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
 import seedu.eventmanager.storage.JdbcLocalSessionService;
-import seedu.eventmanager.ui.VenueAdministratorDashboardState;
-
 /** Dashboard shell for the Venue Administrator role. */
 public final class VenueAdministratorDashboardView {
     private final BorderPane root = new BorderPane();

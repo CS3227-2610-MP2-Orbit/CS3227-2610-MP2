@@ -1,6 +1,7 @@
 plugins {
     id 'application'
     id 'java'
+    id 'checkstyle'
     id 'org.openjfx.javafxplugin' version '0.1.0'
 }
 
@@ -38,8 +39,55 @@ javafx {
     modules = ['javafx.controls']
 }
 
+checkstyle {
+    toolVersion = '10.21.4'
+    configFile = file('config/checkstyle/checkstyle.xml')
+    // A warning nobody reads is not a check. Every rule is an error.
+    maxWarnings = 0
+    maxErrors = 0
+}
+
+tasks.withType(Checkstyle).configureEach {
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+// Test sources keep the same defect rules but allow this project's test conventions.
+tasks.named('checkstyleTest') {
+    configFile = file('config/checkstyle/checkstyle-test.xml')
+}
+
 tasks.named('test') {
     useJUnitPlatform()
+
+    // A database-gated test skips itself when its environment variable is missing, and a
+    // skipped test still leaves the build green. CI passes -PfailOnSkippedTests so that a
+    // test which never ran is reported as a failure instead of passing silently.
+    if (providers.gradleProperty('failOnSkippedTests').present) {
+        List<String> skippedTests = []
+        addTestListener(new TestListener() {
+            @Override void beforeSuite(TestDescriptor suite) { /* not needed */ }
+
+            @Override void afterSuite(TestDescriptor suite, TestResult result) { /* not needed */ }
+
+            @Override void beforeTest(TestDescriptor testDescriptor) { /* not needed */ }
+
+            @Override
+            void afterTest(TestDescriptor descriptor, TestResult result) {
+                if (result.resultType == TestResult.ResultType.SKIPPED) {
+                    skippedTests << "${descriptor.className}.${descriptor.name}".toString()
+                }
+            }
+        })
+        doLast {
+            if (!skippedTests.isEmpty()) {
+                throw new GradleException('These tests were skipped instead of run. Check the database '
+                        + 'environment variables for this step:\n  ' + skippedTests.join('\n  '))
+            }
+        }
+    }
 }
 
 // Opt-in: requires a graphical desktop. Uses synthetic service fixtures, not a live database.

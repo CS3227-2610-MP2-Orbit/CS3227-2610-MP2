@@ -15,8 +15,6 @@ import javafx.scene.image.PixelFormat;
 import javafx.stage.Stage;
 import seedu.eventmanager.attendee.*;
 import seedu.eventmanager.common.ApplicationException;
-import seedu.eventmanager.event.Event;
-
 /** Real desktop controls with synthetic history callbacks, not real-login/database E2E. */
 public final class AttendanceHistorySmoke {
     private static volatile Throwable failure;
