@@ -45,8 +45,7 @@ public final class AttendeeEventDetailsService {
                 Math.max(0, event.capacity() - snapshot.occupiedSeats()), snapshot.ownStatus(), snapshot.ownRegistrationVersion(),
                 RegistrationEligibilityPolicy.evaluate(registrationEvent, now, snapshot.booking(), snapshot.occupiedSeats()),
                 CheckInPolicy.evaluate(registrationEvent, snapshot.ownStatus().orElse(null),
-                        snapshot.booking() == RegistrationEligibilityPolicy.Booking.CONFIRMED_ACTIVE, now)
-                        == CheckInPolicy.Result.AVAILABLE);
+                        snapshot.booking() == RegistrationEligibilityPolicy.Booking.CONFIRMED_ACTIVE, now));
     }
 
     private static EntityNotFoundException unavailable() {

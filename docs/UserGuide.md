@@ -420,6 +420,31 @@ use **Attendance history** for the narrower read-only list of actual check-ins.
 3. Wait for confirmation and refreshed status **Checked in**. Navigation and
    actions are disabled while the command runs. You cannot cancel after check-in.
 
+Both event-details panes explain check-in availability even when the button is
+hidden:
+
+| Explanation | Meaning |
+| --- | --- |
+| Check-in is open | Your loaded registration is eligible to check in. |
+| You are not registered | You need your own confirmed registration. |
+| Your registration is cancelled | A cancelled registration cannot check in. |
+| You are already checked in | No further action is needed. |
+| Check-in opens at … SGT | It is too early; the message gives the event start time. |
+| Check-in is closed | The event has ended or is no longer published. |
+| Check-in unavailable | A matching confirmed booking at an active venue is required. |
+
+The explanation includes the check-in window in Singapore Time: start is
+**inclusive**, end is **exclusive**. Registration status takes precedence over
+timing, and timing takes precedence over venue availability. For example, a
+cancelled registration still says cancelled after the event ends.
+
+These are loaded snapshots, not live timers. Use **Refresh details** or
+**Refresh registrations** for current information. A freshly refreshed Browse
+view still excludes ended/unpublished events; use My Registrations for your
+past bookings. My Registrations does not create rows for events you never
+registered for. An already-open, stale button cannot bypass the command checks:
+the service rejection is shown if conditions changed after loading.
+
 The button is a preview; the service checks every rule again, including your
 live session and displayed registration version. If timing, booking or status has
 changed, read the rejection and refresh. A duplicate/stale request cannot record
