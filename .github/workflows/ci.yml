@@ -17,6 +17,13 @@ jobs:
       DATABASE_USER: postgres
       DATABASE_PASSWORD: postgres
       DATABASE_INTEGRATION_TESTS: 'true'
+      # Database-gated tests skip themselves when these are missing, and a skipped
+      # test still leaves the step green. Setting them for the whole job means every
+      # test step runs them; -PfailOnSkippedTests turns any remaining skip into a failure.
+      EVENT_MANAGER_TEST_DB_URL: jdbc:postgresql://localhost:5432/CS3227
+      EVENT_MANAGER_TEST_DB_USER: postgres
+      EVENT_MANAGER_TEST_DB_PASSWORD: postgres
+      GRADLE_OPTS: -Dorg.gradle.daemon=false
     services:
       postgres:
         image: postgres:16
@@ -65,65 +72,59 @@ jobs:
           psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 \
             -c "CREATE DATABASE \"CS3227\";"
 
-      # No formatter/checkstyle/PMD/SpotBugs plugin exists yet. Compilation is
-      # the currently applicable type/static check and must pass before tests.
-      - name: Compile and static/type check
-        run: ./gradlew compileJava
+      - name: Compile and type check
+        run: ./gradlew compileJava compileTestJava
 
+      # Checkstyle runs the config in config/checkstyle. Both source sets are
+      # errors, not warnings, so a violation fails the build.
       - name: Lint check
-        run: |
-          if grep -Eq "(checkstyle|pmd|spotbugs|spotless|errorprone)" build.gradle; then
-            ./gradlew checkstyleMain pmdMain spotbugsMain spotlessCheck
-          else
-            echo "No lint plugin is configured; compileJava is the applicable static check."
-          fi
+        run: ./gradlew checkstyleMain checkstyleTest
+
+      - name: Upload lint report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkstyle-report
+          path: build/reports/checkstyle/
 
       - name: Unit tests
-        run: ./gradlew test --tests 'seedu.eventmanager.common.*' --tests 'seedu.eventmanager.venue.*' --tests 'seedu.eventmanager.service.*' --tests 'seedu.eventmanager.MainTest'
+        run: ./gradlew test -PfailOnSkippedTests --tests 'seedu.eventmanager.common.*' --tests 'seedu.eventmanager.venue.*' --tests 'seedu.eventmanager.service.*' --tests 'seedu.eventmanager.notification.*' --tests 'seedu.eventmanager.MainTest'
 
       - name: Integration tests
         run: |
-          export PGPASSWORD=postgres
-          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 \
-            -c "DROP DATABASE IF EXISTS \"CS3227\";"
-          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 \
-            -c "CREATE DATABASE \"CS3227\";"
-          ./gradlew test --tests 'seedu.eventmanager.integration.*'
+          ./reset-ci-database.sh
+          ./gradlew test -PfailOnSkippedTests --tests 'seedu.eventmanager.integration.*'
+
+      # Organizer database tests truncate their tables, so they get a clean database.
+      # Without this step they only ran inside the final build, where they skipped.
+      - name: Organizer tests
+        run: |
+          ./reset-ci-database.sh
+          ./gradlew test -PfailOnSkippedTests --tests 'seedu.eventmanager.event.*' --tests 'seedu.eventmanager.club.*' --tests 'seedu.eventmanager.volunteer.*' --tests 'seedu.eventmanager.announcement.*' --tests 'seedu.eventmanager.storage.*'
 
       - name: Attendee catalogue tests
-        env:
-          EVENT_MANAGER_TEST_DB_URL: jdbc:postgresql://localhost:5432/CS3227
-          EVENT_MANAGER_TEST_DB_USER: postgres
-          EVENT_MANAGER_TEST_DB_PASSWORD: postgres
-        run: ./gradlew test --tests 'seedu.eventmanager.attendee.*'
+        run: |
+          ./reset-ci-database.sh
+          ./gradlew test -PfailOnSkippedTests --tests 'seedu.eventmanager.attendee.*' --tests 'seedu.eventmanager.ui.*'
 
       - name: E2E tests
         run: |
-          export PGPASSWORD=postgres
-          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 \
-            -c "DROP DATABASE IF EXISTS \"CS3227\";"
-          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 \
-            -c "CREATE DATABASE \"CS3227\";"
-          ./gradlew test --tests 'seedu.eventmanager.e2e.*'
+          ./reset-ci-database.sh
+          ./gradlew test -PfailOnSkippedTests --tests 'seedu.eventmanager.e2e.*'
 
       - name: Registration contract and workflow tests
-        env:
-          EVENT_MANAGER_TEST_DB_URL: jdbc:postgresql://localhost:5432/CS3227
-          EVENT_MANAGER_TEST_DB_USER: postgres
-          EVENT_MANAGER_TEST_DB_PASSWORD: postgres
         run: |
-          export PGPASSWORD=postgres
-          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 \
-            -c "DROP DATABASE IF EXISTS \"CS3227\";"
-          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 \
-            -c "CREATE DATABASE \"CS3227\";"
-          ./gradlew test --tests 'seedu.eventmanager.registration.*'
+          ./reset-ci-database.sh
+          ./gradlew test -PfailOnSkippedTests --tests 'seedu.eventmanager.registration.*'
 
       - name: Production build
         run: |
-          export PGPASSWORD=postgres
-          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 \
-            -c "DROP DATABASE IF EXISTS \"CS3227\";"
-          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 \
-            -c "CREATE DATABASE \"CS3227\";"
-          ./gradlew build
+          ./reset-ci-database.sh
+          ./gradlew build -PfailOnSkippedTests
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: build/reports/tests/

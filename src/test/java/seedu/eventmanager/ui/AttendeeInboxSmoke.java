@@ -15,8 +15,6 @@ import javafx.scene.image.PixelFormat;
 import javafx.stage.Stage;
 import seedu.eventmanager.attendee.*;
 import seedu.eventmanager.common.ApplicationException;
-import seedu.eventmanager.event.Event;
-
 /** Real workspace/controller interactions with synthetic callbacks, not database E2E. */
 public final class AttendeeInboxSmoke {
     private static volatile Throwable failure;
