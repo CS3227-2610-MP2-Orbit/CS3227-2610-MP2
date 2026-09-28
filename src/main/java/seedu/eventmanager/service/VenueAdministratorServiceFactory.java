@@ -28,7 +28,7 @@ public final class VenueAdministratorServiceFactory {
                 new JdbcAuditLogService(database),
                 new JdbcTransactionManager(database),
                 new seedu.eventmanager.common.JavaUtilStructuredLogger(VenueAdministratorService.class),
-                new seedu.eventmanager.common.NoopMetrics(), new JdbcVenueRepository(database));
+                seedu.eventmanager.common.Monitoring.metrics(), new JdbcVenueRepository(database));
     }
 
     public static VenueAdministratorService create(DatabaseConfiguration configuration,
@@ -68,6 +68,6 @@ public final class VenueAdministratorServiceFactory {
                 new JdbcTransactionManager(database),
                 logger == null ? new seedu.eventmanager.common.JavaUtilStructuredLogger(
                         VenueAdministratorService.class) : logger,
-                metrics == null ? new seedu.eventmanager.common.NoopMetrics() : metrics);
+                metrics == null ? seedu.eventmanager.common.Monitoring.metrics() : metrics);
     }
 }

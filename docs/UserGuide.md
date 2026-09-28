@@ -36,7 +36,10 @@ You click through a window. You do not type commands. Everyone signs in on the s
 
 1. Install **JDK 25**. In a terminal, `java -version` should mention version 25.
 2. Install and start **PostgreSQL** (on a Mac, [Postgres.app](https://postgresapp.com/) is enough). Create a database named `event_manager` if you do not already have one.
-3. In the project folder, create a file named `.env`. Use your own database username:
+3. Get the app in one of two ways:
+   * **Download the jar (recommended for testers).** On the [Releases page](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/releases), download `EventVenueManager-<version>.jar`. The same jar runs on Windows, Linux and Apple Silicon Macs. Put it in its own folder.
+   * **Run from the source code.** Clone the repository and work in the project folder.
+4. In that folder, create a file named `.env`. Copy [`.env.example`](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/blob/HEAD/.env.example) (release downloads include it as `env.example`; rename it to `.env`) and use your own database username:
 
    ```env
    DATABASE_URL=jdbc:postgresql://localhost:5432/event_manager
@@ -47,19 +50,46 @@ You click through a window. You do not type commands. Everyone signs in on the s
 
    Add `DATABASE_PASSWORD` and `EVENT_MANAGER_DB_PASSWORD` only if your database asks for a password.
 
-4. From the project folder, start the app:
+5. Start the app from that folder:
 
    ```sh
-   ./gradlew run
+   java -jar EventVenueManager-<version>.jar
    ```
 
-   On Windows: `.\gradlew.bat run`
+   From the source code, run `./gradlew run` instead (on Windows: `.\gradlew.bat run`).
 
-5. On the login screen you can **log in**, or choose **Create normal user account** to make an Attendee or Club Organizer account. The password must be at least 8 characters. A fresh database already includes a local Venue Administrator: username `admin`, password `admin123`. That account is for trying the app on your own computer. More administrator accounts are created later under **Users and access**.
+6. Log in. A fresh database already includes a local Venue Administrator: username `admin`, password `admin123`. That account is for trying the app on your own computer. More administrator accounts are created later under **Users and access**. To try every role straight away, load the [demo data](#trying-the-app-with-demo-data) first. You can also choose **Create normal user account** to make an Attendee or Club Organizer account. The password must be at least 8 characters.
 
-> **Caution:** Restart the app after you change `.env`. All three roles must use the same database, or an organizer’s request will not show up for the administrator.
+> **Caution:** Restart the app after you change `.env`, or select **Try again** on the database error screen. All three roles must use the same database, or an organizer’s request will not show up for the administrator.
 
-> **Note:** A brand-new database has no events. Attendees see an empty list until an organizer publishes one.
+> **Caution:** The jar does not include JavaFX for Intel Macs. On an Intel Mac, run from the source code.
+
+> **Note:** The line under the login form shows whether the database is connected and where the app writes its diagnostic log.
+
+### Trying the app with demo data
+
+A new database has no events. To get sample data for every role, run this once from the folder that contains your `.env`:
+
+```sh
+java -jar EventVenueManager-<version>.jar --seed-demo
+```
+
+From the source code: `./gradlew seedDemo`. Running it again changes nothing.
+
+Every demo account uses the password `demo1234`:
+
+| Username | Role | What you can try |
+| --- | --- | --- |
+| `demo_admin` | Venue Administrator | Approve or reject the waiting request for **Robotics Demo Day**. Four rooms exist, and one is under maintenance. |
+| `demo_organizer` | Club Organizer | Owns **NUS Hackers** and **Photography Society**. See registrations, the volunteer and the announcement for **Intro to Git Workshop**. **Robotics Demo Day** is waiting for approval. |
+| `demo_organizer2` | Club Organizer | Owns **Dance Club**. **Welcome Tea** is a draft that still needs a room. |
+| `demo_attendee` | Attendee | Signed up for **Intro to Git Workshop** and **Street Dance Showcase**. **Street Dance Showcase** is happening now, so you can check in. **Photography Basics** is in Attendance history. |
+| `demo_attendee2` | Attendee | Signed up for two events and volunteers as an usher. |
+| `demo_attendee3` | Attendee | Has a cancelled registration for **Hack Night**. |
+
+Event dates are set relative to the day you load the data. **Street Dance Showcase** starts about an hour before you run the command and lasts six hours.
+
+> **Caution:** Demo accounts share a public password. Use demo data only on a test database.
 
 ---
 
@@ -99,7 +129,7 @@ You click through a window. You do not type commands. Everyone signs in on the s
 
 1. Type your username and password, then select **Log in**.
 2. The app opens Club Organizer, Venue Administrator, or Attendee, depending on the account.
-3. **← Home** or **Log out** returns you to the login screen.
+3. **← Home** or **Log out** returns you to the shared login screen, whichever role you are in. You can then log in with another account, including one with a different role, without restarting the app.
 
 To make your own Attendee or Club Organizer account, select **Create normal user account**, pick the role, then enter a username and a password of at least 8 characters. You still need to log in afterwards.
 
@@ -149,7 +179,7 @@ Only drafts can be edited. If the event was saved again after you opened it, you
 
 Changing **Capacity** also updates the attendance number on a request that is still waiting. A request that has already been approved or rejected is left as it was.
 
-> **Caution:** After a room is approved, the start and end times are locked to that booking. Title, description, and capacity can still change. To change the times, [release the room](#releasing-an-approved-room) first.
+> **Caution:** After a room is approved, the start and end times are locked to that booking. Title and description can still change. You can lower the capacity or change it within the room’s size, but you cannot raise it above the approved room’s capacity. A save that would go over that limit is refused, and the event stays as it was. To change the times, [release the room](#releasing-an-approved-room) first.
 
 ### Requesting a room
 
@@ -237,7 +267,7 @@ Changing a room to unavailable is allowed even when it has previously approved r
 
 The reasons are **Venue already booked** and **Requested capacity exceeds venue capacity**.
 
-An approved request becomes a booking and leaves the waiting list. A rejected request also leaves the waiting list. Approving fails if that room is already booked for an overlapping time or is no longer active. Every venue administrator can review every request.
+An approved request becomes a booking and leaves the waiting list. A rejected request also leaves the waiting list. Approving fails if that room is already booked for an overlapping time, is no longer active, or has fewer seats than the request’s expected attendance. In the last case, reject it with **Requested capacity exceeds venue capacity**. Every venue administrator can review every request.
 
 The table shows a short reference, the room, the event title, the organizer’s username, the start time, and the expected attendance.
 
@@ -247,7 +277,7 @@ The table shows a short reference, the room, the event title, the organizer’s 
 2. **Create user** asks for a username, a password of at least 8 characters, and a role: Attendee, Club Organizer, or Venue Administrator.
 3. **Edit account** changes the username, the role, and whether the account is active.
 
-There is no change-password screen yet. Deactivating an account stops that person from using it.
+There is no change-password screen yet. Deactivating an account stops that person from logging in. If they are already logged in, their next action is refused and their session ends, so they must log in again, which an inactive account cannot do. For an administrator, this applies to approving and rejecting requests (see [Known issues](#known-issues)).
 
 ---
 
@@ -358,16 +388,25 @@ A: Not yet. An administrator can deactivate an account or create a new one.
 **Q: Why is Browse events empty?**  
 A: Only published events appear. A draft stays invisible until the organizer publishes it.
 
+**Q: The app says “Unable to connect to the event database”.**  
+A: Check that PostgreSQL is running and that `.env` is in the folder you started the app from (the screen shows that folder). Fix `.env`, then select **Try again**.
+
+**Q: Where can I find the app’s log if something goes wrong?**  
+A: In `~/.event-venue-manager/logs/app-0.log` (your home folder). The login screen shows the exact path. The log never contains your password.
+
 ---
 
 ## Known issues
 
 * An organizer cannot withdraw a request that is still waiting. They can release a room only after it has been approved, and only while the event is still a draft.
 * Clubs cannot be renamed or deleted.
+* An administrator who is deactivated or demoted while logged in can still view the dashboard and the request list, and use **Venues** and **Users and access**, until they log out. Approving and rejecting requests are blocked straight away.
 * There is no email. Messages stay inside **Notifications**.
 * The unread count updates when you open or refresh **Notifications**, not continuously.
 * Published events cannot be unpublished or deleted.
 * Check-in records that you said you attended. It does not prove you were physically in the room.
+* When you start the jar from a terminal, Java may print `WARNING: Unsupported JavaFX configuration`. The app still works; the warning appears because JavaFX is packed inside the jar.
+* The database check and setup run when the login screen opens, so the window can take a few seconds to appear if PostgreSQL is slow or unreachable.
 
 ---
 

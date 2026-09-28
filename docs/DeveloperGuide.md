@@ -38,7 +38,7 @@ guidance from the [fireworks-tech-graph skill](https://github.com/yizhiyanhua-ai
 ## Setting up, getting started
 
 1. Install JDK 25 and a local PostgreSQL server. Create a database named `event_manager`.
-2. Add a project-root `.env` as described in the [User Guide](UserGuide.md#getting-started). All three roles must point at the same database. A fresh database includes the local Venue Administrator `admin` / `admin123` from `V5__development_admin_seed.sql`. That seed does not replace an existing `admin` account, and it is not a production account.
+2. Copy [`.env.example`](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/blob/HEAD/.env.example) to a project-root `.env` and fill in your database user, as described in the [User Guide](UserGuide.md#getting-started). All three roles must point at the same database. A fresh database includes the local Venue Administrator `admin` / `admin123` from `V5__development_admin_seed.sql`. That seed does not replace an existing `admin` account, and it is not a production account.
 3. From the project root:
 
    ```sh
@@ -46,7 +46,15 @@ guidance from the [fireworks-tech-graph skill](https://github.com/yizhiyanhua-ai
    ./gradlew run
    ```
 
-`EventManagerApplication` loads the database, shows one login screen, and opens the workspace for the account’s role.
+4. Optional: load demo data so every role has something to work with:
+
+   ```sh
+   ./gradlew seedDemo
+   ```
+
+   `seedDemo` runs `DemoDataSeeder` against the `.env` database. It adds six `demo_*` accounts (password `demo1234`), three clubs, four rooms, published, ongoing, past and draft events, one waiting venue request, registrations, a check-in, a volunteer and an announcement. The same seeder runs from a release jar with `java -jar <jar> --seed-demo`. It never runs automatically. If `demo_organizer` already exists, it changes nothing. The [User Guide](UserGuide.md#trying-the-app-with-demo-data) lists what each account can try.
+
+`EventManagerApplication` checks the database, applies migrations, shows one login screen, and opens the workspace for the account’s role.
 
 ---
 
@@ -127,7 +135,8 @@ Services are the API. The UI does not decide whether a draft may be published or
 
 * `ClubService` creates a club for the signed-in organizer. Names are unique ignoring case. There is no rename or delete.
 * `EventService` creates, edits, publishes, and soft-deletes events. Only drafts can be edited or deleted. Publishing requires a future start and a confirmed booking at an active venue for the same times.
-* Editing capacity updates the expected attendance on an open venue request. Decided requests are left unchanged.
+* Editing capacity updates the expected attendance on an open venue request. Decided requests are left unchanged. Once the latest request is approved, capacity may be lowered but not raised above the approved venue’s capacity; such an edit is rejected and nothing is saved.
+* `ClubService` and `EventService` check the live account through `ActiveUserChecker` on every call. A deactivated organizer is refused with `ACCOUNT_INACTIVE`, and their sessions are revoked.
 * `OrganizerVenueRequestService` submits a `SUBMITTED` request, or releases an approved booking on a draft.
 * `AnnouncementService` posts to registered attendees and can delete an announcement. Already queued notifications are not withdrawn.
 * `VolunteerService` assigns a registered attendee, with an optional role of at most 60 characters.
@@ -135,7 +144,7 @@ Services are the API. The UI does not decide whether a draft may be published or
 
 **Venue Administrator**
 
-* `VenueAdministratorService.approve` and `reject` require an active venue administrator. Every administrator may decide every request. Only `SUBMITTED` requests can be decided.
+* `VenueAdministratorService.approve` and `reject` require an active venue administrator. `JdbcAuthorizationService.requireRole` re-reads the account when the workspace opens and on each approve or reject: an inactive account gets `ACCOUNT_INACTIVE` and its sessions are revoked, and a changed role gets `FORBIDDEN`. Dashboard reloads, **Venues** and **Users and access** do not re-check yet (see the User Guide’s known issues). Every administrator may decide every request. Only `SUBMITTED` requests can be decided.
 * Approve requires the venue to still be `ACTIVE` and the request's expected attendance not to exceed the venue capacity. It refuses an overlapping confirmed booking, then creates a booking, an audit record, and a notification.
 * Reject requires one of two reasons: `Venue already booked` or `Requested capacity exceeds venue capacity`.
 * Venue availability can be changed after approval. Deactivating a venue blocks future approvals and active-venue checks for publishing and registration; it does not automatically cancel existing approved bookings.
@@ -143,7 +152,7 @@ Services are the API. The UI does not decide whether a draft may be published or
 **Attendee**
 
 * `EventCatalogueService` lists published events that have not ended, with search, club, and Singapore-date filters.
-* `RegistrationService` registers, cancels, and checks in the signed-in attendee only.
+* `RegistrationService` registers, cancels, and checks in the signed-in attendee only. Every attendee service resolves the session token on each call, and a session of an inactive account no longer resolves.
 * Cancellation closes when the event starts. A checked-in registration cannot be changed.
 * Check-in is open from the start instant inclusive to the end instant exclusive. It needs a confirmed registration, a published event, and a matching confirmed booking at an active venue. It writes an audit record and does not enqueue a notification.
 * `MyRegistrationsService`, `AttendanceHistoryService`, and `InboxService` are the read models for the other attendee screens.
@@ -223,6 +232,39 @@ PostgreSQL integration tests run when their database environment variables are s
 | `DATABASE_URL` / `EVENT_MANAGER_DB_URL` | JDBC URL |
 | `DATABASE_USER` / `EVENT_MANAGER_DB_USER` | Database user |
 | `DATABASE_PASSWORD` / `EVENT_MANAGER_DB_PASSWORD` | Optional password |
+| `EVENT_MANAGER_LOG_DIR` | Optional diagnostic log folder (process environment only, not `.env`) |
+| `EVENT_MANAGER_TEST_DB_URL` / `_USER` / `_PASSWORD` | Disposable PostgreSQL database for the database test suites (process environment). Without them those suites skip; CI sets them and fails on skipped tests |
+
+### Demo data
+
+`seedu.eventmanager.demo.DemoDataSeeder` creates its data through the real services (`ClubService`, `EventService`, `OrganizerVenueRequestService`, `VenueAdministratorService`, `RegistrationService`, `VolunteerService`, `AnnouncementService`). Seeded rows therefore pass the same validation, conflict, publish and registration rules as the app, and they get the normal business audit records. The seeder uses fixed clocks only to place events in the past, present and future relative to the seeding time. It is opt-in (`./gradlew seedDemo` or `--seed-demo`). It is idempotent because it checks for `demo_organizer` first. `DemoDataSeederIntegrationTest` seeds an isolated schema and checks what each role will see.
+
+### Release and deployment (CD)
+
+`.github/workflows/release.yml` builds and checks one jar for all supported systems:
+
+1. **Build** (Ubuntu): `./gradlew test releaseJar`. Database suites skip there; the CI workflow runs them against PostgreSQL.
+2. **Verify** on Ubuntu, Windows and macOS runners: the same jar runs `--version` and `--check-javafx`. `--check-javafx` starts and stops the JavaFX toolkit, which proves that the OS's native libraries load. Linux uses a virtual display (`xvfb-run`).
+3. **Publish** (only for a `v*` tag or a manual run): a GitHub Release with the jar, `SHA256SUMS.txt`, and `env.example` (a copy of `.env.example`, because dot-files are awkward to download).
+
+Pull requests that change `build.gradle`, `src/main` or the workflow run steps 1–2 only, so every change is checked on all three systems before a release.
+
+`releaseJar` builds `build/release/EventVenueManager-<version>.jar`. It holds the app, all runtime dependencies, and JavaFX for Windows (`win`), Linux (`linux`) and Apple Silicon macOS (`mac-aarch64`). The per-OS native libraries have different names (`.dll`, `.so`, `.dylib`), so they coexist in one jar. The Intel macOS libraries use the same names as the Apple Silicon ones, so Intel Macs are not supported by the jar. Each platform's JavaFX jars come from their own Gradle configuration, because Gradle rejects two platform variants of one module in a single configuration. `mergeServiceFiles` merges the `META-INF/services` files of all dependencies. Without it, Flyway would keep only one copy and lose its PostgreSQL plugin inside the jar. The manifest sets `Main-Class` and `Enable-Native-Access: ALL-UNNAMED`.
+
+To release, merge to the default branch, then either open **Actions → Release → Run workflow** and enter a version such as `v1.0.0` (the workflow creates the tag), or run `git tag v1.0.0 && git push origin v1.0.0`. Releases are deliberately manual, so an unfinished merge never becomes the latest release.
+
+### Monitoring and diagnostics
+
+This is local diagnostics for a desktop app, not a hosted monitoring or alerting service.
+
+| Part | Where | What it does |
+| --- | --- | --- |
+| Diagnostic log | `DiagnosticLog` | Sends all `java.util.logging` output to a rotating file (`app-0.log`, 5 × 1 MB) in `~/.event-venue-manager/logs`, or in `EVENT_MANAGER_LOG_DIR`. Uncaught exceptions on any thread are logged as `uncaught_exception`. |
+| Structured events | `StructuredLogger` | One-line `event=… key=value` records: `app_started`, `database_health`, `database_unavailable`, `database_not_configured`, `database_migration_failed`, `login_succeeded` (role only), `login_failed` (exception type only), `workspace_failed`, `app_stopped`, and the Venue Administrator decision events. |
+| Metrics | `InMemoryMetrics` via `Monitoring.metrics()` | Thread-safe counters and gauges, for example `app.login_succeeded.<role>`, `app.login_failed`, `app.database_unavailable`, `database.latency_ms`, and the Venue Administrator `venue_requests.*` counters. They replace `NoopMetrics` as the default in `VenueAdministratorServiceFactory`. The snapshot is written to the log in `app_stopped`. |
+| Health check | `DatabaseHealth` | Before migrations, connects with a 5-second timeout and runs `SELECT 1`. The login screen shows the result and the log path. On failure, the error screen shows a safe cause (derived from the SQL state), the current folder and a **Try again** button. |
+
+The app’s own log events never include passwords, session tokens, connection strings or usernames. Exceptions from libraries are logged with their original message and stack trace, and those can include a JDBC URL (never the password). Business audit records (who approved, published, registered or checked in) stay in the database audit tables and are separate from the diagnostic log.
 
 ---
 
@@ -349,14 +391,15 @@ PostgreSQL integration tests run when their database environment variables are s
 
 ### Non-functional requirements
 
-1. The desktop UI runs on JDK 25 with JavaFX. The same project runs on macOS, Windows, and Linux where JDK 25 and PostgreSQL are installed.
+1. The desktop UI runs on JDK 25 with JavaFX. One release jar runs on Windows, Linux and Apple Silicon macOS where JDK 25 and PostgreSQL are installed. Intel macOS runs from the source code.
 2. Events, bookings, registrations, and the inbox are stored in PostgreSQL, not in a local JSON file.
-3. Authorization is enforced in services. Hiding a button is not the only check. An attendee acts only as the signed-in account.
+3. Authorization is enforced in services. Hiding a button is not the only check. An attendee acts only as the signed-in account. A deactivated account loses access on its next checked action, not only at its next login; the administrator screens that do not re-check yet are listed in the User Guide’s known issues.
 4. A failed decision or registration does not leave a partial booking or a second check-in. Related writes share a transaction.
-5. Error text shown on a role screen names the problem in plain language. If the database cannot be reached at startup, the app shows the exception type and message, and it does not show the password or the full connection string.
-6. Diagnostic logs must not contain passwords, session tokens, or unnecessary personal data.
+5. Error text shown on a role screen names the problem in plain language. If the database is not configured or cannot be reached at startup, the app shows a plain-language cause, the current folder, the diagnostic log path and a **Try again** button. It does not show the password or the full connection string.
+6. Diagnostic logs go to a rotating local file and must not contain passwords, session tokens, or unnecessary personal data. Business audit records stay in the database, separate from diagnostic logs.
 7. The three role screens share one visual shell so a user can move between them without learning a new layout.
-8. Automated tests cover service rules and PostgreSQL integrations. A person still has to click through JavaFX before a screen is called done. No performance target for thousands of rows is claimed.
+8. Automated tests cover service rules and PostgreSQL integrations, and CI fails if a database test is skipped. A person still has to click through JavaFX before a screen is called done. No performance target for thousands of rows is claimed.
+9. A release is published only after the same jar has started JavaFX on Linux, Windows and macOS in the release workflow.
 
 ---
 
@@ -366,9 +409,9 @@ These steps are a starting point. Exploratory testing should go beyond them. Use
 
 ### Launch
 
-1. Start PostgreSQL and `./gradlew run`.
+1. Start PostgreSQL and `./gradlew run`. For a quick start, run `./gradlew seedDemo` first and use the `demo_*` accounts.
 2. Create an Attendee and a Club Organizer from the login screen. Create a Venue Administrator from **Users and access**.
-3. Each login opens a different sidebar. **Home** or **Log out** returns to login.
+3. Each login opens a different sidebar. **Home** or **Log out** returns to the shared login screen. Expected: you can log in as another role without restarting.
 
 ### Organizer
 
