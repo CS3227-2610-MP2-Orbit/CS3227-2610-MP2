@@ -6,9 +6,9 @@ title: User guide
 
 Event Venue Manager is a desktop app for campus events. Three kinds of people use it:
 
-* A **club organizer** plans a club’s events, asks for a room, and tells registered students what is happening.
-* A **venue administrator** looks after rooms and says yes or no to booking requests.
-* An **attendee** browses published events, signs up, checks in, and reads messages.
+* A **Club Organizer** plans a club’s events, asks for a room, and tells registered students what is happening.
+* A **Venue Administrator** looks after rooms and says yes or no to booking requests.
+* An **Attendee** browses published events, signs up, checks in, and reads messages.
 
 You click through a window. You do not type commands. Everyone signs in on the same screen, and the app opens the workspace that matches the account.
 
@@ -35,7 +35,12 @@ You click through a window. You do not type commands. Everyone signs in on the s
 ## Getting started
 
 1. Install **JDK 25**. In a terminal, `java -version` should mention version 25.
-2. Install and start **PostgreSQL** (on a Mac, [Postgres.app](https://postgresapp.com/) is enough). Create a database named `event_manager` if you do not already have one.
+2. Install and start **PostgreSQL** (the app is tested with versions 16 and 17):
+   * **macOS:** [Postgres.app](https://postgresapp.com/) is enough.
+   * **Windows:** use the [EDB installer](https://www.postgresql.org/download/windows/). Remember the password you set for the `postgres` user.
+   * **Linux:** install your distribution’s `postgresql` package (for example `sudo apt install postgresql` on Ubuntu), then start the service.
+
+   Then create a database named `event_manager`, for example with `createdb event_manager` (or `sudo -u postgres createdb event_manager` on Linux, or pgAdmin on Windows). The database user in `.env` should own that database, because the first start creates the tables and the `btree_gist` extension.
 3. Get the app in one of two ways:
    * **Download the jar (recommended for testers).** On the [Releases page](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/releases), download `EventVenueManager-<version>.jar`. The same jar runs on Windows, Linux and Apple Silicon Macs. Put it in its own folder.
    * **Run from the source code.** Clone the repository and work in the project folder.
@@ -48,7 +53,7 @@ You click through a window. You do not type commands. Everyone signs in on the s
    EVENT_MANAGER_DB_USER=your_postgres_username
    ```
 
-   Add `DATABASE_PASSWORD` and `EVENT_MANAGER_DB_PASSWORD` only if your database asks for a password.
+   Add `DATABASE_PASSWORD` and `EVENT_MANAGER_DB_PASSWORD` only if your database asks for a password. Only one of the two sets is required: the app uses `DATABASE_*` and falls back to `EVENT_MANAGER_DB_*`. Filling in both, as above, is also fine.
 
 5. Start the app from that folder:
 
@@ -87,7 +92,7 @@ Every demo account uses the password `demo1234`:
 | `demo_attendee2` | Attendee | Signed up for two events and volunteers as an usher. |
 | `demo_attendee3` | Attendee | Has a cancelled registration for **Hack Night**. |
 
-Event dates are set relative to the day you load the data. **Street Dance Showcase** starts about an hour before you run the command and lasts six hours.
+Event dates are set relative to the day you load the data. **Street Dance Showcase** starts one to two hours before you run the command (at the start of an hour) and lasts six hours.
 
 > **Caution:** Demo accounts share a public password. Use demo data only on a test database.
 
@@ -129,7 +134,7 @@ Event dates are set relative to the day you load the data. **Street Dance Showca
 
 1. Type your username and password, then select **Log in**.
 2. The app opens Club Organizer, Venue Administrator, or Attendee, depending on the account.
-3. **← Home** or **Log out** returns you to the shared login screen, whichever role you are in. You can then log in with another account, including one with a different role, without restarting the app.
+3. **← Home** (Club Organizer and Attendee) or **Log out** (Venue Administrator) returns you to the shared login screen. You can then log in with another account, including one with a different role, without restarting the app.
 
 To make your own Attendee or Club Organizer account, select **Create normal user account**, pick the role, then enter a username and a password of at least 8 characters. You still need to log in afterwards.
 
@@ -164,7 +169,7 @@ A draft is a plan. Attendees cannot see it until you publish it.
 
 1. Create a club first if you do not have one.
 2. Select **Events**, then **+ New event**.
-3. Choose a **Club**, enter a **Title**, an optional **Description**, a start and end in Singapore time (for example `18:00`), and a **Capacity** greater than zero.
+3. Choose a **Club**, enter a **Title** (up to 200 characters), an optional **Description** (up to 5,000 characters), a start and end in Singapore time (for example `18:00`), and a **Capacity** greater than zero.
 4. Select **Save event**.
 
 The event appears in **Your events**. A new form starts with `18:00`–`20:00` and capacity `80`. You can change those before saving.
@@ -172,7 +177,7 @@ The event appears in **Your events**. A new form starts with `18:00`–`20:00` a
 ### Editing a draft
 
 1. Select **Events**, then the event.
-2. Change the fields and select **Save event**.
+2. Change the fields and select **Save event**. The club cannot be changed after the event is created.
 3. **Reset** clears a new form. **Revert changes** puts an existing draft back to the last saved version.
 
 Only drafts can be edited. If the event was saved again after you opened it, your save is refused and you should select the event again.
@@ -224,7 +229,7 @@ The event disappears from your list. A waiting request is withdrawn, and an appr
 1. Select **Registrations**.
 2. Select an event.
 
-You see who is signed up, including people who have checked in, with the event’s capacity. An event with nobody signed up shows an empty list. You only see events you own.
+You see who is signed up, including people who have checked in, with the event’s capacity. An event with nobody signed up shows an empty list. You only see events you own. Only active attendee accounts are listed: if an administrator deactivates an attendee, they disappear from this list and from the **Volunteers** picker, but their seat still counts toward capacity.
 
 ### Announcements
 
@@ -253,15 +258,15 @@ Only people who are registered for that event can be volunteers. The same person
 ### Rooms
 
 1. Select **Venues**, then **Create venue**.
-2. Enter a name, a location, and a capacity greater than zero.
+2. Enter a name, a location, and a capacity greater than zero. The same name and location together can only be used once.
 
-The room starts as available. Select a room and **Edit selected** to change its details. **Toggle availability** switches it between available and unavailable. Unavailable rooms cannot be requested for new bookings. An old booking does not turn the whole room off forever; the room can be used again after that booking’s time has passed.
+The room starts as available. Select a room and **Edit selected** to change its details. **Toggle availability** switches it between available and unavailable. A room can also be under **maintenance** (the demo data has one); that status cannot be set from this screen, and **Toggle availability** makes such a room available. Unavailable rooms cannot be requested for new bookings. An old booking does not turn the whole room off forever; the room can be used again after that booking’s time has passed.
 
 Changing a room to unavailable is allowed even when it has previously approved requests. It prevents new requests from being approved and prevents future event publishing or attendee registration that requires an active venue. Existing approved bookings are not automatically cancelled by this toggle.
 
 ### Reviewing requests
 
-1. Select **Venue requests**. The list loads when you open the page.
+1. Select **Venue requests**. The list loads when you log in and refreshes after each decision or dashboard visit; open **Dashboard** and select **Refresh** to pick up requests submitted since.
 2. Select a waiting request.
 3. Select **Approve**, or **Reject** and choose a reason.
 
@@ -269,13 +274,13 @@ The reasons are **Venue already booked** and **Requested capacity exceeds venue 
 
 An approved request becomes a booking and leaves the waiting list. A rejected request also leaves the waiting list. Approving fails if that room is already booked for an overlapping time, is no longer active, or has fewer seats than the request’s expected attendance. In the last case, reject it with **Requested capacity exceeds venue capacity**. Every venue administrator can review every request.
 
-The table shows a short reference, the room, the event title, the organizer’s username, the start time, and the expected attendance.
+The table shows a short reference, the room, the event title, the organizer’s username, the start time, and the expected attendance. Below it, **Approved bookings** lists current bookings with their room, event, organizer, times, attendance and status.
 
 ### Users and access
 
 1. Select **Users and access**.
-2. **Create user** asks for a username, a password of at least 8 characters, and a role: Attendee, Club Organizer, or Venue Administrator.
-3. **Edit account** changes the username, the role, and whether the account is active.
+2. **Create user** asks for a username, a password of at least 8 characters, and a role: Attendee, Club Organizer, or Venue Administrator. The password is typed in a normal, visible text box.
+3. **Edit account** changes the username, the role, and whether the account is active, for Attendee and Club Organizer accounts. It cannot edit, demote or deactivate an existing Venue Administrator account, and it cannot turn an account into a Venue Administrator; use **Create user** for a new administrator.
 
 There is no change-password screen yet. Deactivating an account stops that person from logging in. If they are already logged in, their next action is refused and their session ends, so they must log in again, which an inactive account cannot do. For an administrator, this applies to approving and rejecting requests (see [Known issues](#known-issues)).
 
@@ -313,11 +318,11 @@ You cannot register after the event has started, without a confirmed room, or wh
 
 *Check-in still requires a published event and a matching confirmed booking at an active venue. Select the diagram for a full-size PNG.*
 
-### My registrations
+### My Registrations
 
 Select **My Registrations**. You see only your own bookings.
 
-**Show** filters **All**, **Upcoming**, **Ongoing**, **Past**, or **Cancelled**. **Sort by** orders them by start time. Select a booking to see its details beside the list. Drag the divider to make either side wider.
+**Show** filters **All**, **Upcoming**, **Ongoing**, **Past**, or **Cancelled**. **Sort by** orders them by start time, **Earliest first** or **Latest first**. Select a booking to see its details beside the list. Drag the divider to make either side wider.
 
 **Cancel selected registration** cancels a future confirmed booking and keeps your filter. To sign up again, go back to **Browse events**. **Refresh registrations** picks up changes made elsewhere.
 
@@ -334,7 +339,7 @@ Check-in for an event that is happening now is on this screen as well. Events yo
 
 Check-in opens at the start time and closes at the end time. There is no early window, no late window, and no QR code. You must already be signed up, the event must still be published, and the room booking must still be in place. After you check in, you cannot cancel.
 
-The details panel explains why the button is missing, for example “too early”, “already checked in”, or “cancelled”. Those words describe what was loaded. Select **Refresh details** or **Refresh registrations** if time has moved on. Checking in does not send you a new notification.
+The details panel explains why the button is missing, for example that check-in opens at a later time, that you are already checked in, or that your registration is cancelled, and it shows the check-in window in Singapore time. That explanation describes what was loaded. Select **Refresh details** or **Refresh registrations** if time has moved on. Checking in does not send you a new notification.
 
 [![A registered attendee sees Check-in unavailable because the event has no matching confirmed booking at an active venue. The SGT check-in window is shown beneath the explanation.](assets/images/attendee-check-in-availability.png)](assets/images/attendee-check-in-availability.png)
 
@@ -405,6 +410,11 @@ A: In `~/.event-venue-manager/logs/app-0.log` (your home folder). The login scre
 * The unread count updates when you open or refresh **Notifications**, not continuously.
 * Published events cannot be unpublished or deleted.
 * Check-in records that you said you attended. It does not prove you were physically in the room.
+* **Dashboard**’s count of available rooms leaves out any room that has ever had an approved booking, even one that has finished. Requests can still be approved for such rooms.
+* **Venue requests** does not reload by itself when you return to it; use **Dashboard** → **Refresh**.
+* Venue Administrator accounts cannot be edited or deactivated in **Users and access**.
+* If the database stops responding after you log in, each action fails with an error; there is no automatic reconnect. Restart the app once PostgreSQL is back.
+* All times are Singapore time (SGT); there is no per-user time zone.
 * When you start the jar from a terminal, Java may print `WARNING: Unsupported JavaFX configuration`. The app still works; the warning appears because JavaFX is packed inside the jar.
 * The database check and setup run when the login screen opens, so the window can take a few seconds to appear if PostgreSQL is slow or unreachable.
 

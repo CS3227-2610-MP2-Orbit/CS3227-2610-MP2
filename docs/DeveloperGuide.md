@@ -24,7 +24,7 @@ The product website uses [Jekyll](https://jekyllrb.com/) and
 and the existing Markdown guides. Website maintenance and screenshot provenance
 are documented in [WEBSITE.md](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/blob/HEAD/docs/WEBSITE.md).
 Documentation diagrams use [Mermaid](https://mermaid.js.org/) (MIT; pinned to
-11.12.0 on Pages). The User Guide's original workflow illustrations use layout
+11.12.0 on Pages). The User Guide’s original workflow illustrations use layout
 guidance from the [fireworks-tech-graph skill](https://github.com/yizhiyanhua-ai/fireworks-tech-graph).
 
 | Role | Owner | Main code |
@@ -37,7 +37,7 @@ guidance from the [fireworks-tech-graph skill](https://github.com/yizhiyanhua-ai
 
 ## Setting up, getting started
 
-1. Install JDK 25 and a local PostgreSQL server. Create a database named `event_manager`.
+1. Install JDK 25 and a local PostgreSQL server (tested with PostgreSQL 16 in CI and 17 locally): Postgres.app on macOS, the [EDB installer](https://www.postgresql.org/download/windows/) on Windows, or your distribution’s `postgresql` package on Linux. Create a database named `event_manager` (for example `createdb event_manager`). The configured user should own it, because the first start creates the tables and the `btree_gist` extension. The [User Guide](UserGuide.md#getting-started) has the same steps for testers.
 2. Copy [`.env.example`](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/blob/HEAD/.env.example) to a project-root `.env` and fill in your database user, as described in the [User Guide](UserGuide.md#getting-started). All three roles must point at the same database. A fresh database includes the local Venue Administrator `admin` / `admin123` from `V5__development_admin_seed.sql`. That seed does not replace an existing `admin` account, and it is not a production account.
 3. From the project root:
 
@@ -144,8 +144,8 @@ Services are the API. The UI does not decide whether a draft may be published or
 
 **Venue Administrator**
 
-* `VenueAdministratorService.approve` and `reject` require an active venue administrator. `JdbcAuthorizationService.requireRole` re-reads the account when the workspace opens and on each approve or reject: an inactive account gets `ACCOUNT_INACTIVE` and its sessions are revoked, and a changed role gets `FORBIDDEN`. Dashboard reloads, **Venues** and **Users and access** do not re-check yet (see the User Guide’s known issues). Every administrator may decide every request. Only `SUBMITTED` requests can be decided.
-* Approve requires the venue to still be `ACTIVE` and the request's expected attendance not to exceed the venue capacity. It refuses an overlapping confirmed booking, then creates a booking, an audit record, and a notification.
+* `VenueAdministratorService.approve` and `reject` require an active venue administrator. `JdbcAuthorizationService.requireRole` re-reads the account when the workspace opens and on each approve or reject: an inactive account gets `ACCOUNT_INACTIVE` and its sessions are revoked, and a changed role gets `FORBIDDEN`. Dashboard reloads, **Venues** and **Users and access** do not re-check yet; (see the User Guide’s known issues). Every administrator may decide every request. Only `SUBMITTED` requests can be decided.
+* Approve requires the venue to still be `ACTIVE` and the request’s expected attendance not to exceed the venue capacity. It refuses an overlapping confirmed booking, then creates a booking, an audit record, and a notification.
 * Reject requires one of two reasons: `Venue already booked` or `Requested capacity exceeds venue capacity`.
 * Venue availability can be changed after approval. Deactivating a venue blocks future approvals and active-venue checks for publishing and registration; it does not automatically cancel existing approved bookings.
 
@@ -161,9 +161,9 @@ Services are the API. The UI does not decide whether a draft may be published or
 
 Important types:
 
-* `Event`, `EventDetails`, `EventStatus` (`DRAFT`, `PUBLISHED`, `DELETED`), `OrganizerIdentity`
+* `Event`, `EventDetails`, `EventStatus` (`DRAFT`, `PUBLISHED`, `DELETED`; `COMPLETED` is defined but no workflow sets it), `OrganizerIdentity`
 * `Club`
-* `Venue`, `VenueRequest`, `VenueRequestStatus` (`SUBMITTED`, `APPROVED`, `REJECTED`)
+* `Venue` with `VenueStatus` (`ACTIVE`, `INACTIVE`, `MAINTENANCE`; the UI toggles only between active and inactive), `VenueRequest`, `VenueRequestStatus` (workflows set `SUBMITTED`, `APPROVED`, `REJECTED` and `WITHDRAWN`; `DRAFT`, `INVALID` and `CANCELLED` exist in the schema but no workflow sets them)
 * `Registration` (`CONFIRMED`, `CANCELLED`, `CHECKED_IN`)
 * `Actor`, `Role` (`CLUB_ORGANIZER`, `VENUE_ADMINISTRATOR`, `ATTENDEE`)
 
@@ -172,7 +172,8 @@ Organizer times are entered in Asia/Singapore and stored as UTC instants.
 ### Storage component
 
 * Venue-administrator tables are Flyway migrations under `src/main/resources/db/migration`. `DatabaseBootstrap` uses `baselineOnMigrate` so organizer tables can already exist.
-* Organizer, registration, and inbox tables are applied by their own startup migrations.
+* Organizer tables (`db/organizer`) are plain `CREATE TABLE IF NOT EXISTS` scripts run by `DatabaseMigration`, with no schema-history table.
+* Registration (`db/registration`) and the attendee inbox (`db/attendee_inbox`) each run their own Flyway configuration with separate history tables (`registration_schema_history`, `attendee_inbox_schema_history`), so they can evolve independently of the venue schema.
 * `DatabaseBootstrap` reads `DATABASE_*` and falls back to `EVENT_MANAGER_DB_*`.
 * Writes that must succeed or fail together, such as draft deletion with its venue cleanup, go through `TransactionManager`.
 
@@ -214,6 +215,10 @@ Announcements and registration outcomes are queued in an outbox and delivered in
 * Password change or password reset.
 * Email delivery, waitlist, and QR check-in.
 * A per-venue permission split. Every venue administrator has the same access.
+* Editing or deactivating an existing Venue Administrator account from **Users and access** (`JdbcUserAccessRepository.updateUser` refuses any save whose role is `VENUE_ADMINISTRATOR`).
+* A reconnect screen after login: there is no connection pool or retry, so if PostgreSQL stops responding mid-session each action fails on its own (some Attendee read queries use a 15-second query timeout; other calls wait for the driver).
+* Per-user time zones. Singapore time (`Asia/Singapore`) is used for display and date filters, and is declared separately in several classes (`SingaporeDateTimes`, `EventCatalogueService`, `InboxService`, `EventService`, `DemoDataSeeder`) rather than in one shared constant.
+* `VenueAvailabilityView` and `VenueUtilizationView` (blocked availability windows and a 30-day utilization report) are built and backed by repositories, but no navigation opens them, so they are not user-facing features.
 
 ---
 
@@ -225,7 +230,13 @@ Update [UserGuide.md](UserGuide.md) and this guide when behaviour changes. Agent
 ./gradlew test
 ```
 
-PostgreSQL integration tests run when their database environment variables are set. A full Gradle run inside a restricted sandbox can exit without executing; that result is not a pass. JavaFX behaviour is not covered by an automated end-to-end desktop test. Manual checks are in the [testing appendix](#appendix-instructions-for-manual-testing).
+PostgreSQL integration tests run when their database environment variables are set. A full Gradle run inside a restricted sandbox can exit without executing; that result is not a pass. Manual checks are in the [testing appendix](#appendix-instructions-for-manual-testing).
+
+There is no automated end-to-end desktop test across all three roles. Attendee screens have opt-in JavaFX smoke tasks that open the real views with synthetic services (they need a graphical desktop): `attendeeUiSmoke`, `attendeeRegistrationUiSmoke`, `attendeeCheckInUiSmoke`, `attendeeCheckInAvailabilityUiSmoke`, `attendeeHistoryUiSmoke` and `attendeeInboxUiSmoke`.
+
+**Code style:** `./gradlew checkstyleMain checkstyleTest` applies `config/checkstyle/checkstyle.xml` (and `checkstyle-test.xml` for tests) with zero warnings and zero errors allowed.
+
+**Continuous integration:** `.github/workflows/ci.yml` runs on every push to `main` and every pull request, against a `postgres:16` service. It compiles, runs Checkstyle, then runs the unit, integration, Organizer, Attendee, end-to-end and registration test groups (resetting the database between groups with `reset-ci-database.sh`), and finally `./gradlew build`. Every test step passes `-PfailOnSkippedTests`, so a database test that skips fails the build.
 
 | Variable | Purpose |
 | --- | --- |
@@ -233,6 +244,7 @@ PostgreSQL integration tests run when their database environment variables are s
 | `DATABASE_USER` / `EVENT_MANAGER_DB_USER` | Database user |
 | `DATABASE_PASSWORD` / `EVENT_MANAGER_DB_PASSWORD` | Optional password |
 | `EVENT_MANAGER_LOG_DIR` | Optional diagnostic log folder (process environment only, not `.env`) |
+| `DATABASE_INTEGRATION_TESTS` | Set to `true` to run the tests that use the `DATABASE_*` connection (process environment) |
 | `EVENT_MANAGER_TEST_DB_URL` / `_USER` / `_PASSWORD` | Disposable PostgreSQL database for the database test suites (process environment). Without them those suites skip; CI sets them and fails on skipped tests |
 
 ### Demo data
@@ -244,12 +256,14 @@ PostgreSQL integration tests run when their database environment variables are s
 `.github/workflows/release.yml` builds and checks one jar for all supported systems:
 
 1. **Build** (Ubuntu): `./gradlew test releaseJar`. Database suites skip there; the CI workflow runs them against PostgreSQL.
-2. **Verify** on Ubuntu, Windows and macOS runners: the same jar runs `--version` and `--check-javafx`. `--check-javafx` starts and stops the JavaFX toolkit, which proves that the OS's native libraries load. Linux uses a virtual display (`xvfb-run`).
+2. **Verify** on Ubuntu, Windows and macOS runners: the same jar runs `--version` and `--check-javafx`. `--check-javafx` starts and stops the JavaFX toolkit, which proves that the OS’s native libraries load. Linux uses a virtual display (`xvfb-run`).
 3. **Publish** (only for a `v*` tag or a manual run): a GitHub Release with the jar, `SHA256SUMS.txt`, and `env.example` (a copy of `.env.example`, because dot-files are awkward to download).
 
 Pull requests that change `build.gradle`, `src/main` or the workflow run steps 1–2 only, so every change is checked on all three systems before a release.
 
-`releaseJar` builds `build/release/EventVenueManager-<version>.jar`. It holds the app, all runtime dependencies, and JavaFX for Windows (`win`), Linux (`linux`) and Apple Silicon macOS (`mac-aarch64`). The per-OS native libraries have different names (`.dll`, `.so`, `.dylib`), so they coexist in one jar. The Intel macOS libraries use the same names as the Apple Silicon ones, so Intel Macs are not supported by the jar. Each platform's JavaFX jars come from their own Gradle configuration, because Gradle rejects two platform variants of one module in a single configuration. `mergeServiceFiles` merges the `META-INF/services` files of all dependencies. Without it, Flyway would keep only one copy and lose its PostgreSQL plugin inside the jar. The manifest sets `Main-Class` and `Enable-Native-Access: ALL-UNNAMED`.
+`releaseJar` builds `build/release/EventVenueManager-<version>.jar`. It holds the app, all runtime dependencies, and JavaFX for Windows (`win`), Linux (`linux`) and Apple Silicon macOS (`mac-aarch64`). The per-OS native libraries have different names (`.dll`, `.so`, `.dylib`), so they coexist in one jar. The Intel macOS libraries use the same names as the Apple Silicon ones, so Intel Macs are not supported by the jar. Each platform’s JavaFX jars come from their own Gradle configuration, because Gradle rejects two platform variants of one module in a single configuration. `mergeServiceFiles` merges the `META-INF/services` files of all dependencies. Without it, Flyway would keep only one copy and lose its PostgreSQL plugin inside the jar. The manifest sets `Main-Class` and `Enable-Native-Access: ALL-UNNAMED`.
+
+The release version comes from `version` in `build.gradle`: it names the jar and is written to the manifest, and `--version` reads it from there (running from source prints `development`). The publish step refuses a tag that does not match the jar, so bump `version` before releasing.
 
 To release, merge to the default branch, then either open **Actions → Release → Run workflow** and enter a version such as `v1.0.0` (the workflow creates the tag), or run `git tag v1.0.0 && git push origin v1.0.0`. Releases are deliberately manual, so an unfinished merge never becomes the latest release.
 
@@ -386,8 +400,8 @@ The app’s own log events never include passwords, session tokens, connection s
 **Extensions**
 
 * 1a. The message is blank or longer than 1000 characters. System rejects it.
-* 3a. The person is not registered, or is already a volunteer. System rejects the assignment.
 * 2a. The organizer later deletes the announcement. People who already received it see **Announcement removed.**
+* 3a. The person is not registered, or is already a volunteer. System rejects the assignment.
 
 ### Non-functional requirements
 
@@ -442,5 +456,8 @@ These steps are a starting point. Exploratory testing should go beyond them. Use
 * Password change in a separate audited flow.
 * Email delivery.
 * Automated JavaFX checks for resize, labels, and primary buttons.
+* Wire the venue availability and utilization screens into the administrator sidebar, or remove them.
+* Re-check the live account on every administrator screen, not only on approve and reject.
+* Count dashboard room availability by booking time instead of by any confirmed booking.
 
 **Implemented now:** shared login; organizer clubs, drafts, requests, release, publish, draft delete, registrations, announcements, and volunteers; administrator rooms, decisions, and accounts; attendee browse, register, cancel, check-in, history, and inbox.

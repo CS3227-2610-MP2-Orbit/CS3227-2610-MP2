@@ -9,7 +9,12 @@ import seedu.eventmanager.ui.EventManagerApplication;
 
 /** Starts the Event Venue Manager application. */
 public final class Main {
-    public static final String VERSION = "0.1.0";
+    /** The release version from the jar manifest (set by build.gradle), or "development" from source. */
+    public static final String VERSION = versionOf(Main.class.getPackage().getImplementationVersion());
+
+    static String versionOf(String manifestVersion) {
+        return manifestVersion == null || manifestVersion.isBlank() ? "development" : manifestVersion.strip();
+    }
 
     private Main() {
     }
