@@ -39,7 +39,10 @@ import seedu.eventmanager.storage.DatabaseConfiguration;
 import seedu.eventmanager.storage.DatabaseMigration;
 import seedu.eventmanager.storage.DriverManagerDataSource;
 import seedu.eventmanager.storage.JdbcDatabase;
+import seedu.eventmanager.storage.JdbcDraftEventDeletion;
+import seedu.eventmanager.storage.JdbcEventBookingCheck;
 import seedu.eventmanager.storage.JdbcEventCatalogueRepository;
+import seedu.eventmanager.storage.JdbcVenueRelease;
 import seedu.eventmanager.storage.JdbcAttendeeEventDetailsRepository;
 import seedu.eventmanager.storage.JdbcRegistrationEventInfoRepository;
 import seedu.eventmanager.storage.JdbcEventRegistrations;
@@ -122,12 +125,15 @@ public final class EventManagerApplication extends Application {
                     new JdbcEventRepository(dataSource),
                     UUID::randomUUID,
                     Clock.systemUTC(),
-                    venueRequestRepository);
+                    venueRequestRepository,
+                    new JdbcEventBookingCheck(dataSource),
+                    new JdbcDraftEventDeletion(dataSource));
             OrganizerVenueRequestService venueRequestService = new OrganizerVenueRequestService(
                     eventService,
                     venueRepository,
                     venueRequestRepository,
-                    UUID::randomUUID);
+                    UUID::randomUUID,
+                    new JdbcVenueRelease(dataSource));
             EventRegistrations registrations = new JdbcEventRegistrations(jdbcDatabase);
             VolunteerService volunteerService = new VolunteerService(
                     eventService,

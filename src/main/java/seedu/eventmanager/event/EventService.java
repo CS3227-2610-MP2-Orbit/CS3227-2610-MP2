@@ -2,7 +2,10 @@ package seedu.eventmanager.event;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -16,9 +19,14 @@ import seedu.eventmanager.venue.VenueRequest;
 public final class EventService {
     private static final int MAX_TITLE_LENGTH = 200;
     private static final int MAX_DESCRIPTION_LENGTH = 5_000;
+    private static final DateTimeFormatter DISPLAY_TIME = DateTimeFormatter
+            .ofPattern("d MMM uuuu, h:mm a 'SGT'", Locale.ENGLISH)
+            .withZone(ZoneId.of("Asia/Singapore"));
 
     private final EventRepository repository;
     private final VenueRequestRepository venueRequests;
+    private final EventBookingCheck bookingCheck;
+    private final DraftEventDeletion deletion;
     private final IdGenerator idGenerator;
     private final Clock clock;
 
@@ -37,10 +45,33 @@ public final class EventService {
             IdGenerator idGenerator,
             Clock clock,
             VenueRequestRepository venueRequests) {
+        this(repository, idGenerator, clock, venueRequests, null);
+    }
+
+    /** Without a {@code bookingCheck}, publishing fails closed instead of skipping the booking rule. */
+    public EventService(
+            EventRepository repository,
+            IdGenerator idGenerator,
+            Clock clock,
+            VenueRequestRepository venueRequests,
+            EventBookingCheck bookingCheck) {
+        this(repository, idGenerator, clock, venueRequests, bookingCheck, null);
+    }
+
+    /** Without a {@code deletion} port, deleting fails closed. */
+    public EventService(
+            EventRepository repository,
+            IdGenerator idGenerator,
+            Clock clock,
+            VenueRequestRepository venueRequests,
+            EventBookingCheck bookingCheck,
+            DraftEventDeletion deletion) {
         this.repository = Objects.requireNonNull(repository, "repository");
         this.idGenerator = Objects.requireNonNull(idGenerator, "idGenerator");
         this.clock = Objects.requireNonNull(clock, "clock");
         this.venueRequests = venueRequests;
+        this.bookingCheck = bookingCheck;
+        this.deletion = deletion;
     }
 
     public Event createEvent(OrganizerIdentity actor, String clubId, EventDetails details) {
@@ -92,6 +123,7 @@ public final class EventService {
             throw new ValidationException("Only draft events can be edited in this workflow");
         }
         EventDetails validDetails = validate(details);
+        requireTimesKeepBooking(current, validDetails);
 
         Event edited = new Event(
                 current.id(),
@@ -118,6 +150,92 @@ public final class EventService {
         return syncOpenRequestAttendance(edited);
     }
 
+    /**
+     * Publishes an owned draft so Attendees can browse and register. Requires a future start and a
+     * CONFIRMED booking at an ACTIVE venue matching the event times, mirroring registration eligibility.
+     */
+    public Event publishEvent(OrganizerIdentity actor, UUID eventId, long expectedVersion) {
+        requireActor(actor);
+        Objects.requireNonNull(eventId, "eventId");
+        if (expectedVersion < 0) {
+            throw new ValidationException("Expected version must not be negative");
+        }
+
+        Event current = findExisting(eventId);
+        requireOwnership(actor, current.clubId());
+        if (current.version() != expectedVersion) {
+            throw new EventVersionConflictException("Event was modified by another operation");
+        }
+        if (current.status() != EventStatus.DRAFT) {
+            throw new ValidationException("Only draft events can be published");
+        }
+        Instant now = clock.instant();
+        if (!now.isBefore(current.startsAt())) {
+            throw new ValidationException("Events can only be published before they start");
+        }
+        if (bookingCheck == null) {
+            throw new IllegalStateException("Venue booking check is not configured");
+        }
+        if (!bookingCheck.hasConfirmedActiveBooking(eventId, current.startsAt(), current.endsAt())) {
+            throw new ValidationException(publishBookingProblem(current));
+        }
+
+        Event published = new Event(
+                current.id(),
+                current.clubId(),
+                current.organizerId(),
+                current.title(),
+                current.description(),
+                current.startsAt(),
+                current.endsAt(),
+                current.capacity(),
+                EventStatus.PUBLISHED,
+                current.version() + 1);
+        repository.update(published, expectedVersion, new EventAuditRecord(
+                now, actor.userId(), EventAuditRecord.Action.PUBLISH_EVENT, eventId, published.version()));
+        return published;
+    }
+
+    /**
+     * Soft-deletes an owned draft. Its submitted venue request is withdrawn and any approved booking
+     * released in the same transaction; published events cannot be deleted.
+     */
+    public Event deleteEvent(OrganizerIdentity actor, UUID eventId, long expectedVersion) {
+        requireActor(actor);
+        Objects.requireNonNull(eventId, "eventId");
+        if (expectedVersion < 0) {
+            throw new ValidationException("Expected version must not be negative");
+        }
+
+        Event current = findExisting(eventId);
+        requireOwnership(actor, current.clubId());
+        if (current.version() != expectedVersion) {
+            throw new EventVersionConflictException("Event was modified by another operation");
+        }
+        if (current.status() != EventStatus.DRAFT) {
+            throw new ValidationException("Only draft events can be deleted");
+        }
+        if (deletion == null) {
+            throw new IllegalStateException("Event deletion is not configured");
+        }
+
+        Event deleted = new Event(
+                current.id(),
+                current.clubId(),
+                current.organizerId(),
+                current.title(),
+                current.description(),
+                current.startsAt(),
+                current.endsAt(),
+                current.capacity(),
+                EventStatus.DELETED,
+                current.version() + 1);
+        deletion.deleteDraft(deleted, expectedVersion, new EventAuditRecord(
+                clock.instant(), actor.userId(), EventAuditRecord.Action.DELETE_EVENT, eventId, deleted.version()),
+                OrganizerIds.toUuid(actor.userId()));
+        return deleted;
+    }
+
     public Event getEvent(OrganizerIdentity actor, UUID eventId) {
         requireActor(actor);
         Objects.requireNonNull(eventId, "eventId");
@@ -128,7 +246,9 @@ public final class EventService {
 
     public List<Event> listEvents(OrganizerIdentity actor) {
         requireActor(actor);
-        return List.copyOf(repository.findByClubIds(actor.ownedClubIds()));
+        return repository.findByClubIds(actor.ownedClubIds()).stream()
+                .filter(event -> event.status() != EventStatus.DELETED)
+                .toList();
     }
 
     private CapacityUpdateResult syncOpenRequestAttendance(Event edited) {
@@ -166,8 +286,45 @@ public final class EventService {
         return CapacityUpdateResult.noOpenRequest(edited);
     }
 
+    /** Once a venue is approved, times may only stay the same or return to the booked window. */
+    private void requireTimesKeepBooking(Event current, EventDetails details) {
+        boolean timesUnchanged = details.startsAt().equals(current.startsAt())
+                && details.endsAt().equals(current.endsAt());
+        if (timesUnchanged || bookingCheck == null) {
+            return;
+        }
+        bookingCheck.findActiveBooking(current.id())
+                .filter(booking -> !booking.startsAt().equals(details.startsAt())
+                        || !booking.endsAt().equals(details.endsAt()))
+                .ifPresent(booking -> {
+                    throw new ValidationException("The venue is booked for " + window(booking)
+                            + ". To change the times, first release the venue under Request venue.");
+                });
+    }
+
+    private String publishBookingProblem(Event event) {
+        Optional<EventBookingCheck.ActiveBooking> booking = bookingCheck.findActiveBooking(event.id());
+        if (booking.isEmpty()) {
+            return "Publishing needs a confirmed venue booking at an active venue matching the event times";
+        }
+        EventBookingCheck.ActiveBooking current = booking.get();
+        if (!current.startsAt().equals(event.startsAt()) || !current.endsAt().equals(event.endsAt())) {
+            return "The venue is booked for " + window(current)
+                    + ". Change the event times back to match before publishing.";
+        }
+        if (!current.venueActive()) {
+            return "The booked venue is not active, so the event cannot be published";
+        }
+        return "The venue booking is not confirmed, so the event cannot be published";
+    }
+
+    private static String window(EventBookingCheck.ActiveBooking booking) {
+        return DISPLAY_TIME.format(booking.startsAt()) + " – " + DISPLAY_TIME.format(booking.endsAt());
+    }
+
     private Event findExisting(UUID eventId) {
         return repository.findById(eventId)
+                .filter(event -> event.status() != EventStatus.DELETED)
                 .orElseThrow(() -> new EntityNotFoundException("Event not found: " + eventId));
     }
 
