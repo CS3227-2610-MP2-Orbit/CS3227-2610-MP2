@@ -73,10 +73,12 @@ The app is designed for users who:
    .\gradlew.bat run
    ```
 
-5. A home screen appears. Choose a workspace:
+5. A shared login screen appears. Log in with your role's account (or create a
+   normal Attendee/Organizer account); the app routes you to that workspace:
 
    * **Club Organizer** — log in with a Club Organizer account, then create clubs, create/edit events, and request venues. Each account sees only its own clubs and their events.
    * **Venue Administrator** — local login, then dashboard, venues, and request review.
+   * **Attendee** — read-only browse/search of upcoming published events after login.
 
 6. Continue with [Features](#features).
 
@@ -86,7 +88,8 @@ The app is designed for users who:
 
 | Role | Action | Where in the UI |
 | --- | --- | --- |
-| Either | Open a role workspace | Home screen |
+| All | Open a role workspace | Shared login |
+| Attendee | Browse/search published events | **Attendee** → **Browse events** |
 | Organizer | Create a club | **Clubs** → enter **Club name** → **Create club** |
 | Organizer | Create draft event | **Events** → **+ New event** → fill form → **Save event** |
 | Organizer | Edit draft event | **Events** → select event → edit → **Save event** |
@@ -111,7 +114,7 @@ The app is designed for users who:
 
 Event Venue Manager uses one shared desktop shell:
 
-1. Home screen routes to Club Organizer or Venue Administrator.
+1. Shared login routes to Club Organizer, Venue Administrator, or Attendee based on account role.
 2. Each role has a dark sidebar and card-style content area.
 3. Organizer event data and Admin venue/request data share the same PostgreSQL database when configured as above.
 
@@ -259,7 +262,7 @@ Assigns attendees who are registered for one of your events as volunteers, with 
 
 **Steps:**
 
-1. Home → **Venue Administrator**.
+1. Log in with a **Venue Administrator** account at the shared login screen.
 2. Sign in with a local Venue Administrator account.
 
 > **Note:** If you have no account yet, create one under **Users and access** (after an existing admin session), or use the account your team already seeded (commonly username `admin`).
@@ -313,6 +316,50 @@ are planned for a later secure and audited implementation.
 
 ---
 
+## Attendee: browse and search events
+
+1. On the shared login screen, create an **ATTENDEE** account if needed and
+   log in. Your role opens the read-only catalogue. The catalogue contains only
+   public event fields; selected details also show your own registration status.
+2. Enter text to search event titles/descriptions (case-insensitive literal
+   substring), and optionally enter an exact, case-sensitive **Club ID**.
+3. Optionally choose **From date** and **To date** using the calendar controls.
+   These are inclusive event-start calendar dates in Singapore Time; either
+   bound may be left blank. From must not be later than To.
+4. Select **Search / Refresh** (or press Enter in a text field). Only published
+   events whose start is still in the future are listed, ordered by start time
+   and then event ID. **Clear filters** resets all fields and reloads the list.
+5. Select an event for its latest title, description, club ID, SGT start/end
+   times, venue/location, booking/venue status, remaining seats and your own
+   registration status. Full events remain visible, with an explanation of
+   registration availability. **Refresh details** reloads the selected event.
+6. **← Home** clears personal details and returns to the login screen. If your
+   session expires, the next detail read asks you to log in again.
+
+Remaining seats count confirmed and checked-in registrations, including inactive
+accounts whose seats have not been cancelled. Cancelled registrations do not
+occupy seats. This can differ from the Organizer's active-account roster count.
+Availability is a snapshot, not a reservation. A missing/mismatched/unconfirmed
+booking or inactive venue prevents registration even if seats remain.
+
+Register/cancel controls, personal notifications, check-in and attendance history
+screens are not available yet. An event that has started or is no longer published
+cannot be reopened through the catalogue.
+
+Browsing uses the same database settings as the other workspaces. The Attendee
+workspace initializes existing schema prerequisites in the background; opening
+Organizer first is no longer required. It does not seed or publish events.
+On a connection/schema error, fix setup and retry. Failures are shown without raw
+database exception messages.
+
+The Organizer currently creates drafts and has no publish action. Drafts are
+intentionally invisible here, so a freshly initialized database has no catalogue
+results. There is no hidden publish action or automatic demo-data insertion.
+Developers can run the separately labelled synthetic UI smoke test described in
+the Developer Guide; those fixtures are not real published events.
+
+---
+
 ## FAQ
 
 **Q: Organizer Request venue shows no venues.**  
@@ -333,16 +380,15 @@ A: Log in as a Club Organizer and use **Clubs** → **Create club**. `EVENT_MANA
 A: Events created under the former `.env` demo clubs (for example `demo-club`) are still in the database, but no account owns those clubs, so they are not shown. Create a club and new events under your account.
 
 **Q: Do Club Organizer and Venue Administrator share a login?**  
-A: Not yet. Organizer uses `.env` identity; Admin uses local login.
+A: Yes, the shared login routes by account role. Organizer club ownership is now
+associated with the account that created the club.
 
 ---
 
 ## Known Issues
 
-* Shared authentication across roles is not implemented.
-* Organizer string ids are mapped to UUIDs for venue requests (temporary until shared users auth).
 * No supersede/withdraw of venue requests from the Organizer UI.
-* No Attendee workspace in the home screen yet.
+* Attendee registration UI, notifications, check-in, and history are not implemented yet.
 * Notification outbox stores Admin decisions but does not send email yet.
 
 ---

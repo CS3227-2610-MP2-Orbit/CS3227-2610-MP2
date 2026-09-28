@@ -128,6 +128,9 @@ describe how to perform a task; they do not override these boundaries.
   test is not proof of a working desktop application or database integration.
 - Update affected documentation and acknowledgements. Describe only implemented
   features as available. Do not invent personal reflections or student approval.
+- Keep standalone planning documents out of Git. Discuss plans in the conversation
+  or keep them in Git-ignored local files; do not commit them unless the user
+  explicitly reverses this preference. Preserve existing interaction evidence.
 - Commit, push, open PRs, merge, or publish only within the user's authorized
   scope. The assignment calls for submission on `master`; coordinate any default
   branch change separately from feature development.

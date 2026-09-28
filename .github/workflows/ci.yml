@@ -80,6 +80,13 @@ jobs:
             -c "CREATE DATABASE \"CS3227\";"
           ./gradlew test --tests 'seedu.eventmanager.integration.*'
 
+      - name: Attendee catalogue tests
+        env:
+          EVENT_MANAGER_TEST_DB_URL: jdbc:postgresql://localhost:5432/CS3227
+          EVENT_MANAGER_TEST_DB_USER: postgres
+          EVENT_MANAGER_TEST_DB_PASSWORD: postgres
+        run: ./gradlew test --tests 'seedu.eventmanager.attendee.*'
+
       - name: E2E tests
         run: |
           export PGPASSWORD=postgres

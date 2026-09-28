@@ -8,7 +8,6 @@ import java.util.Objects;
 import java.util.function.Function;
 import seedu.eventmanager.common.Actor;
 import seedu.eventmanager.common.ApplicationException;
-import seedu.eventmanager.common.Role;
 import seedu.eventmanager.service.AuditLogService;
 import seedu.eventmanager.service.NotificationService;
 import seedu.eventmanager.service.TransactionManager;
@@ -16,7 +15,7 @@ import seedu.eventmanager.service.TransactionManager;
 /** Authenticated attendee registration commands. Actor identity comes from a live session. */
 public final class RegistrationService {
     private final RegistrationStore store;
-    private final Function<String, Actor> sessions;
+    private final AttendeeSessionGuard sessions;
     private final TransactionManager transactions;
     private final AuditLogService audit;
     private final NotificationService notifications;
@@ -25,7 +24,7 @@ public final class RegistrationService {
     public RegistrationService(RegistrationStore store, Function<String, Actor> sessions,
             TransactionManager transactions, AuditLogService audit, NotificationService notifications, Clock clock) {
         this.store = Objects.requireNonNull(store);
-        this.sessions = Objects.requireNonNull(sessions);
+        this.sessions = new AttendeeSessionGuard(sessions);
         this.transactions = Objects.requireNonNull(transactions);
         this.audit = Objects.requireNonNull(audit);
         this.notifications = Objects.requireNonNull(notifications);
@@ -43,7 +42,7 @@ public final class RegistrationService {
 
     public List<Registration> myRegistrations(String sessionToken) {
         return transactions.execute(() -> {
-            Actor actor = authenticate(sessionToken);
+            Actor actor = sessions.require(sessionToken);
             requireActive(actor);
             return List.copyOf(store.findByAttendee(actor.userId()));
         });
@@ -51,7 +50,7 @@ public final class RegistrationService {
 
     private Registration change(String token, UUID eventId, long expectedVersion, boolean cancel) {
         return transactions.execute(() -> {
-            Actor actor = authenticate(token);
+            Actor actor = sessions.require(token);
             if (eventId == null) throw problem("EVENT_NOT_FOUND", "Event was not found.");
             if (expectedVersion < -1) throw problem("INVALID_VERSION", "Registration version is invalid.");
             // Consistent write lock order: event, account, booking/venue, registration.
@@ -77,18 +76,18 @@ public final class RegistrationService {
                     throw problem("CANCELLATION_CLOSED", "Cancellation closes when the event starts.");
                 }
             } else {
-                if (!"PUBLISHED".equals(event.status()) || !now.isBefore(event.startsAt())) {
+                if (!RegistrationEligibilityPolicy.eventOpen(event, now)) {
                     throw problem("EVENT_NOT_REGISTERABLE", "Only future published events can be registered.");
                 }
                 if (!store.lockConfirmedActiveBooking(event)) {
                     throw problem("VENUE_NOT_CONFIRMED", "A matching confirmed booking at an active venue is required.");
                 }
-                if (store.occupiedPlaces(eventId) >= event.capacity()) {
+                if (!RegistrationEligibilityPolicy.hasCapacity(event.capacity(), store.occupiedPlaces(eventId))) {
                     throw problem("EVENT_FULL", "This event is full.");
                 }
                 // Lock acquisition/counting can wait; do not use a pre-wait time.
                 now = clock.instant();
-                if (!now.isBefore(event.startsAt())) {
+                if (!RegistrationEligibilityPolicy.eventOpen(event, now)) {
                     throw problem("EVENT_NOT_REGISTERABLE", "Registration closes when the event starts.");
                 }
             }
@@ -103,19 +102,6 @@ public final class RegistrationService {
                     "registrationId", updated.id().toString(), "version", Long.toString(updated.version())));
             return updated;
         });
-    }
-
-    private Actor authenticate(String token) {
-        if (token == null || token.isBlank()) throw problem("UNAUTHENTICATED", "Please log in again.");
-        final Actor actor;
-        try {
-            actor = sessions.apply(token);
-        } catch (IllegalArgumentException invalidSession) {
-            throw problem("UNAUTHENTICATED", "Please log in again.");
-        }
-        if (actor == null || actor.userId() == null) throw problem("UNAUTHENTICATED", "Please log in again.");
-        if (actor.role() != Role.ATTENDEE) throw problem("FORBIDDEN", "An attendee account is required.");
-        return actor;
     }
 
     private void requireActive(Actor actor) {

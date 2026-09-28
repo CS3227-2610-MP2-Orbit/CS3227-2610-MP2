@@ -17,6 +17,11 @@ Libraries and resources used include:
 
 Agentic SE process notes and skills live under [`AGENTS.md`](../AGENTS.md) and [Agentic SE](AgenticSE.md). Interaction-log format adapts Johannsen’s MP1 development-record practice; **no MP1 application code** was reused.
 
+The Attendee catalogue was developed with Codex using the repository's TDD,
+review and desktop UI skills. The bundled PostgreSQL best-practices skill informed
+the query/index review; no additional database library or external SQL sample was
+copied into the implementation.
+
 ---
 
 ## Setting up, getting started
@@ -167,15 +172,91 @@ Shared utilities and cross-cutting types live under `seedu.eventmanager.common` 
 * Conflict detection remains on Admin approve (not on Organizer submit).
 * No supersede/withdraw in v1.
 
+### Attendee catalogue and personalized event details
+
+`EventCatalogueService` exposes a public read-only projection of the canonical
+Organizer events. Its `EventCatalogueRepository` boundary has a JDBC adapter in
+`storage`; it does not bypass organizer ownership checks for writes or introduce
+an attendee event table. SQL restricts reads to published events; the service
+also enforces future-start visibility for both listing and direct-ID details.
+`CatalogueEvent` omits organizer identity and internal version/state fields.
+
+`CatalogueQuery` combines literal, case-insensitive title/description search,
+exact club ID and inclusive Singapore-calendar start dates. An injected clock
+defines "upcoming". `AttendeeBrowseController` uses cancellable JavaFX Tasks on virtual
+threads and ignores superseded results. Database/configuration work is off the
+UI thread; Home/app shutdown cancels pending work. Failures use safe messages and
+structured failure-type logging, not raw JDBC messages or business audit writes.
+
+`AttendeeEventDetailsService` authenticates a live attendee session before and
+after a read, derives the owner ID internally and returns an immutable private
+projection separate from `CatalogueEvent`. The JDBC adapter reads canonical
+event, current booking, venue, occupied seats and only the caller's registration
+in one statement snapshot, with no write locks. Unique booking/registration keys
+and a separate aggregate prevent join multiplication. A service clock rechecks
+visibility after the read; query timeout is 15 seconds.
+
+`RegistrationEligibilityPolicy`, `AttendeeSessionGuard` and package-private
+`RegistrationReadSql` share rules with commands without making previews execute
+registration or acquire command locks. Occupancy includes CONFIRMED/CHECKED_IN
+records even for inactive users; Joseph's roster is not a capacity counter.
+Remaining seats are clamped at zero for display. Eligibility is advisory and
+separate from own status; existing command locks, version checks, post-lock time
+validation and transactional audit/outbox remain authoritative.
+
+The Attendee route lazily runs existing `RegistrationDatabaseMigration` bootstrap
+in background tasks, independently of Organizer navigation. Successful service
+initialization is reused and failure can be retried. No new migration, fixture
+insertion or publication operation is added. `EventService` still cannot publish
+events, so new drafts do not appear. Register/cancel UI remains the next slice.
+See the [Attendee User Guide](UserGuide.md#attendee-browse-and-search-events)
+for the implemented workflow and current limitations.
+
+Focused verification:
+
+```sh
+./gradlew test --tests 'seedu.eventmanager.attendee.*'
+./gradlew test --tests 'seedu.eventmanager.registration.*'
+./gradlew attendeeUiSmoke
+```
+
+The PostgreSQL catalogue/detail/registration tests require `EVENT_MANAGER_TEST_DB_URL`,
+`EVENT_MANAGER_TEST_DB_USER` and optionally `EVENT_MANAGER_TEST_DB_PASSWORD`.
+Use a disposable test database, never the application database. Each new catalogue
+test creates and drops its own randomized schema; other existing integration
+tests may truncate their test tables. CI explicitly supplies the database settings
+for the Attendee test step. Without them, these database tests are skipped, not
+verified. Details integration tests live in the registration test package to reuse
+its isolated-schema fixtures; the CI registration step includes them. Catalogue
+and detail/policy service tests also run without PostgreSQL.
+
+`attendeeUiSmoke` is opt-in and requires a graphical desktop. It opens the actual
+JavaFX browse view with synthetic repositories, checks venue/seats/own status,
+refresh, full state, expired session, delayed stale responses, clearing on Home,
+search/empty/validation/error/retry behavior and saves snapshots under
+`build/attendee-smoke/`. This is real UI interaction with fixture data, not
+database-connected or cross-role E2E coverage. It is not run in headless CI.
+
+Historical verification before this main sync: on the inspected local SGT environment, the two
+existing `PostgreSqlVenueAdministratorIntegrationTest` cases fail because record
+equality distinguishes `+08:00` from equivalent UTC offsets returned by JDBC.
+At that revision, the full suite passed with `JAVA_TOOL_OPTIONS=-Duser.timezone=UTC`; this is a
+diagnostic environment setting, not a fix for those tests or a global app change.
+The catalogue's Instant/SGT conversion tests pass in the normal local environment.
+The initial catalogue fetches upcoming published events then filters text/club/date
+in memory. Large-data pagination and a publication-specific index need a measured,
+coordinated follow-up; no existing migration was modified or performance claim made.
+
 ### Team ownership
 
-Registration backend integration is documented in [RegistrationHandoff.md](RegistrationHandoff.md).
+The shared registration contract is documented in the
+[registration README](../src/main/java/seedu/eventmanager/registration/README.md).
 The shared EventRegistrations/RegisteredAttendee contract comes unchanged from
 Joseph's feature-view-registration branch; Johannsen supplies its JDBC adapter.
 Use RegistrationDatabaseMigration for explicit startup, then
 RegistrationServiceFactory for authenticated commands. The factory shares one
-JdbcDatabase across state, audit and notification-outbox writes. Joseph still
-owns wiring the reader into Organizer consumers; no registration UI is added by
+JdbcDatabase across state, audit and notification-outbox writes. Organizer startup
+now wires the reader into volunteers, registration overview and announcements; no registration UI is added by
 this backend slice. Confirmed booking plus active venue and PUBLISHED future
 event are required for registration.
 
@@ -183,7 +264,7 @@ event are required for registration.
 | --- | --- |
 | Club Organizer (Joseph) | Events, volunteers/announcements (as scheduled), Organizer→venue submit |
 | Venue Administrator (Jordan) | Venues, availability, request decide, bookings, Admin UI |
-| Attendee (Johannsen) | Discovery, registration, check-in (future in this checkout) |
+| Attendee (Johannsen) | Catalogue/personalized details and registration backend; registration UI/check-in remain planned |
 
 ---
 
@@ -269,11 +350,9 @@ See [Agentic SE](AgenticSE.md). Cursor project hooks (optional process guardrail
 
 ## Appendix: Planned Enhancements
 
-* Unified authentication across Organizer and Venue Administrator.
-* Human-readable event/venue names on the Admin request table.
 * Organizer supersede/withdraw of open requests.
 * Club rename/delete and multi-organizer clubs.
-* Attendee discovery, registration, and check-in.
+* Attendee registration UI, notifications, check-in, and history.
 * Notification delivery worker (outbox already stores some Admin decisions).
 * Broader Postgres integration tests for the Organizer submit path.
 
@@ -285,7 +364,8 @@ See [Agentic SE](AgenticSE.md). Cursor project hooks (optional process guardrail
 
 1. Ensure Postgres is running and `.env` is set.
 2. `./gradlew run`
-3. Confirm the home screen offers Club Organizer and Venue Administrator.
+3. Confirm the shared login routes an ATTENDEE account to the catalogue and retains
+   Organizer/Admin role routing. Attendee Home returns to the login screen.
 
 ### Organizer create/edit event
 
@@ -314,6 +394,6 @@ See [Agentic SE](AgenticSE.md). Cursor project hooks (optional process guardrail
 
 ## Appendix: Current implementation status
 
-**Implemented (selected):** draft event CRUD for Organizer; Organizer `SUBMITTED` venue requests; Admin login, venues, claim/create access, request approve/reject; Flyway + JDBC persistence; unit and in-process pipeline tests.
+**Implemented (selected):** shared role-based login; read-only Attendee catalogue and registration backend; Organizer account-owned clubs, draft events, venue requests, volunteers, registration overview and announcements; Admin venues, user management and request approve/reject; Flyway + JDBC persistence; unit and PostgreSQL integration tests.
 
-**Not yet implemented (selected):** Attendee workspace; club rename/delete; Organizer supersede/withdraw; email notification delivery; production deployment tooling.
+**Not yet implemented (selected):** Attendee registration UI, notifications, check-in, and history; club rename/delete; Organizer supersede/withdraw; email notification delivery; production deployment tooling.

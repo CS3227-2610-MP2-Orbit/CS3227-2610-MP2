@@ -45,12 +45,10 @@ public final class JdbcRegistrationStore implements RegistrationStore {
     @Override
     public boolean lockConfirmedActiveBooking(RegistrationEvent event) {
         return execute(c -> {
-            try (var p = c.prepareStatement("""
-                    SELECT b.booking_id FROM venue_bookings b JOIN venues v ON v.venue_id=b.venue_id
-                    WHERE b.event_id=? AND b.status='CONFIRMED' AND v.status='ACTIVE'
-                      AND b.starts_at=? AND b.ends_at=?
-                    FOR SHARE OF b, v
-                    """)) {
+            try (var p = c.prepareStatement(
+                    "SELECT b.booking_id FROM venue_bookings b JOIN venues v ON v.venue_id=b.venue_id "
+                    + "WHERE b.event_id=? AND " + RegistrationReadSql.matchingConfirmedBooking("?", "?")
+                    + " AND " + RegistrationReadSql.ACTIVE_VENUE + " FOR SHARE OF b, v")) {
                 p.setObject(1, event.id());
                 p.setTimestamp(2, Timestamp.from(event.startsAt())); p.setTimestamp(3, Timestamp.from(event.endsAt()));
                 p.setQueryTimeout(15);
@@ -73,7 +71,7 @@ public final class JdbcRegistrationStore implements RegistrationStore {
     public int occupiedPlaces(UUID eventId) {
         return execute(c -> {
             // Deactivation does not implicitly cancel a stored seat reservation.
-            try (var p = c.prepareStatement("SELECT COUNT(*) FROM event_registrations WHERE event_id=? AND status IN ('CONFIRMED','CHECKED_IN')")) {
+            try (var p = c.prepareStatement(RegistrationReadSql.occupiedSeats("?"))) {
                 p.setObject(1, eventId); p.setQueryTimeout(15);
                 try (var r = p.executeQuery()) { r.next(); return r.getInt(1); }
             }

@@ -25,5 +25,13 @@ is not a public unauthenticated endpoint. Joseph owns replacing his temporary
 consumers `VolunteerService`, `event.RegistrationOverviewService` and
 `announcement.AnnouncementService`.
 
-See [Registration handoff](../../../../../../docs/RegistrationHandoff.md) for bootstrap,
-construction, backend commands, policy, test evidence and remaining integration.
+Use `RegistrationDatabaseMigration.migrate(configuration)` for explicit schema
+bootstrap and `RegistrationServiceFactory.create(configuration, clock)` for
+authenticated register/cancel/myRegistrations commands. Registration requires a
+future PUBLISHED event, a matching CONFIRMED booking at an ACTIVE venue and a free
+seat. Cancellation closes at event start; checked-in registrations cannot cancel.
+State changes, audit and outbox writes share one transaction.
+
+See the [Developer Guide](../../../../../../docs/DeveloperGuide.md#team-ownership)
+for integration and [log 005](../../../../../../logs/johannsen/005-registration-backend-and-shared-reader.md)
+for backend implementation evidence. Registration UI is a separate remaining slice.
