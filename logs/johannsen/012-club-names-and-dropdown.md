@@ -239,6 +239,16 @@ excluded. No changes to Organizer workflows, applied migrations or #38.
 Student approval fields remain unfilled; the user's PR request is authorization
 to publish, not evidence of personal verification of every log statement.
 
+Published implementation commit `1baec54` with
+`git commit -m 'feat(attendee): show club names and dropdown filter (#37)'`
+and `git push -u origin attendee-club-filter` (both exit 0).
+Created https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/pull/39 using
+`gh pr create --repo CS3227-2610-MP2-Orbit/CS3227-2610-MP2 --base attendee-attendance-history --head attendee-club-filter --title 'feat(attendee): club names and dropdown filter' --body <summary, scope, verification, dependency and Closes #37> --milestone 'Core Workflow MVP'`
+(exit 0; body content is recorded on the PR). Attached it to this chat.
+The PR documents its dependency on #36. The fresh JUnit XML total is 254 tests,
+zero failures/errors/skips. Publishing did not merge any PR or manually close
+issue #37. Remote CI is separate from the passing local checks above.
+
 ## Student review
 
 - [ ] I confirmed that the original prompts are accurate.
