@@ -2,6 +2,8 @@ package seedu.eventmanager.storage;
 
 import java.util.Objects;
 import seedu.eventmanager.common.*;
+import seedu.eventmanager.common.Actor;
+import seedu.eventmanager.common.Role;
 import seedu.eventmanager.service.AuthorizationService;
 import seedu.eventmanager.venue.VenueRequest;
 

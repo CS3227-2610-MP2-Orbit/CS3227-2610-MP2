@@ -1,8 +1,12 @@
+---
+title: Agentic SE workflow
+---
+
 # Agentic SE workflow
 
 The team uses one engineering agent with seven reusable SWE skills. They apply to
 Organizer, Venue Administrator, and Attendee work; the examples below are not
-additional product requirements. Project-wide rules live in [`AGENTS.md`](../AGENTS.md).
+additional product requirements. Project-wide rules live in [`AGENTS.md`](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/blob/HEAD/AGENTS.md).
 
 ## Account-management scope
 
@@ -14,13 +18,13 @@ function; this is planned for a later secure and audited workflow.
 
 | Skill | Use it for | Expected output |
 | --- | --- | --- |
-| [requirements-and-acceptance](../.agents/skills/requirements-and-acceptance/SKILL.md) | Clarifying a feature before implementation | Sourced rules, testable criteria, assumptions, and unresolved decisions |
-| [test-driven-implementation](../.agents/skills/test-driven-implementation/SKILL.md) | Implementing settled behavior or fixing a bug | An observed failing test, minimal fix, passing checks, and verification limits |
-| [code-review-and-verification](../.agents/skills/code-review-and-verification/SKILL.md) | Reviewing a diff or a targeted implementation | Evidence-backed findings, checks run, and remaining uncertainty |
-| [desktop-ui-polish](../.agents/skills/desktop-ui-polish/SKILL.md) | Polishing JavaFX role screens for layout and shared shell | Before/after layout checklist, Venue-aligned tokens, explicit non-goals |
-| [security-and-rbac](../.agents/skills/security-and-rbac/SKILL.md) | Reviewing authentication, roles, and resource authorization | Backend authorization evidence, forbidden-case tests, and safe error handling |
-| [database-migration-and-integrity](../.agents/skills/database-migration-and-integrity/SKILL.md) | Designing PostgreSQL migrations and data-integrity rules | Normalized schema, constraints, transaction behavior, and migration checks |
-| [observability-and-error-handling](../.agents/skills/observability-and-error-handling/SKILL.md) | Reviewing logs, errors, audit events, notifications, and metrics | Safe structured logging, consistent errors, side-effect checks, and monitoring limits |
+| [requirements-and-acceptance](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/blob/HEAD/.agents/skills/requirements-and-acceptance/SKILL.md) | Clarifying a feature before implementation | Sourced rules, testable criteria, assumptions, and unresolved decisions |
+| [test-driven-implementation](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/blob/HEAD/.agents/skills/test-driven-implementation/SKILL.md) | Implementing settled behavior or fixing a bug | An observed failing test, minimal fix, passing checks, and verification limits |
+| [code-review-and-verification](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/blob/HEAD/.agents/skills/code-review-and-verification/SKILL.md) | Reviewing a diff or a targeted implementation | Evidence-backed findings, checks run, and remaining uncertainty |
+| [desktop-ui-polish](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/blob/HEAD/.agents/skills/desktop-ui-polish/SKILL.md) | Polishing JavaFX role screens for layout and shared shell | Before/after layout checklist, Venue-aligned tokens, explicit non-goals |
+| [security-and-rbac](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/blob/HEAD/.agents/skills/security-and-rbac/SKILL.md) | Reviewing authentication, roles, and resource authorization | Backend authorization evidence, forbidden-case tests, and safe error handling |
+| [database-migration-and-integrity](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/blob/HEAD/.agents/skills/database-migration-and-integrity/SKILL.md) | Designing PostgreSQL migrations and data-integrity rules | Normalized schema, constraints, transaction behavior, and migration checks |
+| [observability-and-error-handling](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/blob/HEAD/.agents/skills/observability-and-error-handling/SKILL.md) | Reviewing logs, errors, audit events, notifications, and metrics | Safe structured logging, consistent errors, side-effect checks, and monitoring limits |
 
 ## Using the skills
 
@@ -68,7 +72,7 @@ Changing the default branch remains a team coordination task.
 
 ## Guardrails and skills
 
-Guardrails in [`AGENTS.md`](../AGENTS.md#guardrails) are mandatory input,
+Guardrails in [`AGENTS.md`](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/blob/HEAD/AGENTS.md#guardrails) are mandatory input,
 output, tool-call, and loop boundaries that apply to every agent action. Skills
 are task-specific workflows for requirements, implementation, or review. A skill
 may make a workflow more repeatable, but it cannot relax a guardrail or turn an
@@ -104,7 +108,7 @@ when doing a future independent evaluation.
 | C1: ownership defect | Review cancellation that removes a caller-supplied registration ID without checking its owner | Identifies the specific non-owner path and state loss, provides a reproduction, and distinguishes the finding from untested production behavior |
 | U1: squished dual chrome | Review Club Organizer events layout that stacks an outer Home header with an inner dark sidebar and truncates form labels; do not implement; do not invent club CRUD | Names dual-chrome/width/truncation issues; references shared shell tokens; provides a before/after or layout checklist; marks club CRUD as non-goal/out of scope; does not modify `src/` |
 
-The initial [validation record](skill-validation/2026-09-22.md) contains inputs,
+The initial [validation record](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/blob/HEAD/docs/skill-validation/2026-09-22.md) contains inputs,
 observations, and limits. These are same-agent smoke checks, not an independent
 benchmark or proof of reliability across real tasks. Automatic skill discovery in
 a fresh session has not been tested. Real MP2 application use remains necessary.
@@ -144,7 +148,7 @@ password-reset function. Password changes are planned for a later iteration
 through a dedicated, audited workflow.
 
 Use `logs/<contributor>/NNN-description.md`, starting with the
-[interaction template](../logs/templates/interaction.md). Each contributor has
+[interaction template](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/blob/HEAD/logs/templates/interaction.md). Each contributor has
 their own sequence to avoid collisions. Keep engineering verification records
 separate from the application's future business audit records.
 

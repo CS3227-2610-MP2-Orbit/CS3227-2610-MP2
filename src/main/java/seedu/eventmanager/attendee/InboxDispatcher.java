@@ -20,7 +20,9 @@ public final class InboxDispatcher implements AutoCloseable {
         executor.scheduleWithFixedDelay(() -> {
             try {
                 // Bound each batch so shutdown and other consumers can make progress.
-                for (int i = 0; i < 25 && !Thread.currentThread().isInterrupted() && worker.processOnce(); i++) { }
+                for (int i = 0; i < 25 && !Thread.currentThread().isInterrupted() && worker.processOnce(); i++) {
+                    // processOnce() does the work; the loop only bounds the batch.
+                }
             } catch (RuntimeException failure) {
                 new JavaUtilStructuredLogger(InboxDispatcher.class).warn("attendee_inbox_dispatch_failed",
                         Map.of("failureType", failure.getClass().getSimpleName()));

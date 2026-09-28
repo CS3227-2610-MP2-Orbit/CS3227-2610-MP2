@@ -1,0 +1,32 @@
+title: Orbit · Event Venue Manager
+description: One desktop workspace for campus events, venue approvals and attendance.
+url: https://cs3227-2610-mp2-orbit.github.io
+baseurl: /CS3227-2610-MP2
+repository_url: https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2
+# GitHub HEAD follows the repository's default branch, including a future rename.
+repository_ref: HEAD
+lang: en
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+plugins:
+  - jekyll-relative-links
+relative_links:
+  enabled: true
+  collections: false
+defaults:
+  - scope:
+      path: ""
+      type: pages
+    values:
+      layout: guide
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - WEBSITE.md
+  - hook-design.md
+  - skill-validation
+
+# Set true only after a tested application release is published on GitHub.
+release_available: false

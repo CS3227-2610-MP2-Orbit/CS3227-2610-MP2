@@ -1,0 +1,70 @@
+<?xml version="1.0"?>
+<!DOCTYPE module PUBLIC
+    "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+    "https://checkstyle.org/dtds/configuration_1_3.dtd">
+
+<!--
+  Event Venue Manager static checks.
+
+  The rules target defects and dead code rather than personal formatting taste,
+  so a violation is worth fixing rather than worth suppressing. Line length is
+  set to the widest line the project already uses so the limit stops new
+  outliers without a repository-wide reformat.
+-->
+<module name="Checker">
+    <property name="severity" value="error"/>
+    <property name="fileExtensions" value="java"/>
+
+    <module name="FileTabCharacter"/>
+    <module name="NewlineAtEndOfFile"/>
+
+    <module name="LineLength">
+        <property name="max" value="160"/>
+        <property name="ignorePattern" value="^\s*(//|\*|import )"/>
+    </module>
+
+    <module name="TreeWalker">
+        <!-- Imports: unused or wildcard imports hide what a class really depends on. -->
+        <module name="UnusedImports"/>
+        <module name="RedundantImport"/>
+        <module name="AvoidStarImport"/>
+        <module name="IllegalImport"/>
+
+        <!-- Likely defects. -->
+        <module name="CovariantEquals"/>
+        <module name="EqualsHashCode"/>
+        <module name="StringLiteralEquality"/>
+        <module name="FallThrough"/>
+        <module name="MissingSwitchDefault"/>
+        <module name="DefaultComesLast"/>
+        <module name="SimplifyBooleanExpression"/>
+        <module name="SimplifyBooleanReturn"/>
+        <module name="EmptyStatement"/>
+        <module name="NoFinalizer"/>
+        <!-- Catching Error alongside RuntimeException is legitimate at a transaction
+             boundary that rolls back and rethrows, so only Throwable is banned here. -->
+        <module name="IllegalCatch">
+            <property name="illegalClassNames" value="java.lang.Throwable"/>
+        </module>
+
+        <!-- Readability rules that do not require reformatting existing code. -->
+        <module name="ModifierOrder"/>
+        <module name="RedundantModifier"/>
+        <module name="ArrayTypeStyle"/>
+        <module name="UpperEll"/>
+        <module name="OneTopLevelClass"/>
+        <module name="MultipleVariableDeclarations"/>
+        <module name="EmptyBlock">
+            <property name="option" value="text"/>
+        </module>
+
+        <!-- Naming. -->
+        <module name="PackageName"/>
+        <module name="TypeName"/>
+        <module name="MethodName"/>
+        <module name="LocalVariableName"/>
+        <module name="MemberName"/>
+        <module name="ParameterName"/>
+        <module name="ConstantName"/>
+    </module>
+</module>

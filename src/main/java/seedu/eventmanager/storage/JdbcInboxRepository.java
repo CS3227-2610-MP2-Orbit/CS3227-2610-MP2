@@ -33,7 +33,9 @@ public final class JdbcInboxRepository implements InboxRepository {
                 p.setString(3, event.event()); p.setQueryTimeout(15);
                 try (var row = p.executeQuery()) {
                     if (!row.next()) throw invalid();
-                    UUID registration = null, announcement = null, eventId;
+                    UUID registration = null;
+                    UUID announcement = null;
+                    UUID eventId;
                     Long version = null;
                     if ("EVENT_ANNOUNCEMENT".equals(event.event())) {
                         announcement = uuid(row.getString("announcement_id"));
