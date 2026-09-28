@@ -100,6 +100,11 @@ jobs:
             echo "Version must look like v1.0.0, got: $TAG" >&2
             exit 1
           fi
+          if [[ ! -f "dist/EventVenueManager-${TAG#v}.jar" ]]; then
+            echo "Tag $TAG does not match the jar version (set version in build.gradle first):" >&2
+            ls dist >&2
+            exit 1
+          fi
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
             gh release upload "$TAG" dist/* --clobber --repo "$GITHUB_REPOSITORY"
           else
