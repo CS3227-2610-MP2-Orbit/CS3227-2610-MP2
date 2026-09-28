@@ -51,7 +51,7 @@ You click through a window. You do not type commands. Everyone signs in on the s
 
    On Windows: `.\gradlew.bat run`
 
-5. On the login screen you can **log in**, or choose **Create normal user account** to make an Attendee or Club Organizer account. The password must be at least 8 characters. A Venue Administrator account is created later by someone who is already an administrator.
+5. On the login screen you can **log in**, or choose **Create normal user account** to make an Attendee or Club Organizer account. The password must be at least 8 characters. A fresh database already includes a local Venue Administrator: username `admin`, password `admin123`. That account is for trying the app on your own computer. More administrator accounts are created later under **Users and access**.
 
 > **Caution:** Restart the app after you change `.env`. All three roles must use the same database, or an organizer’s request will not show up for the administrator.
 
@@ -61,24 +61,31 @@ You click through a window. You do not type commands. Everyone signs in on the s
 
 ## Feature summary
 
-| Who | What you can do | Where |
-| --- | --- | --- |
-| Anyone | Sign in, or create an Attendee or Organizer account | Login screen |
-| Organizer | Create a club | **Clubs** |
-| Organizer | Create, edit, publish, or delete a draft event | **Events** |
-| Organizer | Ask for a room, or give an approved room back | **Request venue** |
-| Organizer | See who signed up | **Registrations** |
-| Organizer | Send or delete an announcement | **Announcements** |
-| Organizer | Add or remove a volunteer | **Volunteers** |
-| Administrator | See pending requests and rooms | **Dashboard** |
-| Administrator | Approve or reject a request | **Venue requests** |
-| Administrator | Add or change a room | **Venues** |
-| Administrator | Add or change accounts | **Users and access** |
-| Attendee | Search published events and sign up | **Browse events** |
-| Attendee | See or cancel your own bookings | **My Registrations** |
-| Attendee | Check in while an event is happening | **Browse events** or **My Registrations** |
-| Attendee | See events you already attended | **Attendance history** |
-| Attendee | Read updates | **Notifications** |
+**Anyone**, on the login screen: sign in, or create an Attendee or Club Organizer account.
+
+**Club Organizer**
+
+* **Clubs** — create a club
+* **Events** — create, edit, publish, or delete a draft event
+* **Request venue** — ask for a room, or give an approved room back
+* **Registrations** — see who signed up
+* **Announcements** — send or delete an announcement
+* **Volunteers** — add or remove a volunteer
+
+**Venue Administrator**
+
+* **Dashboard** — see pending requests and rooms
+* **Venue requests** — approve or reject a request
+* **Venues** — add or change a room
+* **Users and access** — add or change accounts
+
+**Attendee**
+
+* **Browse events** — search published events and sign up
+* **My Registrations** — see or cancel your own bookings
+* **Browse events** or **My Registrations** — check in while an event is happening
+* **Attendance history** — see events you already attended
+* **Notifications** — read updates
 
 ---
 
@@ -126,7 +133,7 @@ The event appears in **Your events**. A new form starts with `18:00`–`20:00` a
 2. Change the fields and select **Save event**.
 3. **Reset** clears a new form. **Revert changes** puts an existing draft back to the last saved version.
 
-Only drafts can be edited. If someone else saved the same event first, your save is refused and you should reload it.
+Only drafts can be edited. If the event was saved again after you opened it, your save is refused and you should select the event again.
 
 Changing **Capacity** also updates the attendance number on a request that is still waiting. A request that has already been approved or rejected is left as it was.
 
@@ -183,7 +190,7 @@ You see who is signed up, including people who have checked in, with the event�
 2. Write a message (up to 1000 characters) and select **Send announcement**.
 3. To remove one, select it and select **Delete selected**, then **OK**.
 
-Registered attendees receive the message in **Notifications** after a short wait. Deleting the announcement does not pull back a message that was already sent. Those attendees later see a short note that the announcement was removed.
+Registered attendees receive the message in **Notifications** after a short wait. If nobody is registered yet, the announcement is still saved and nobody is notified. Deleting the announcement does not pull back a message that was already sent. Those attendees later see **Announcement removed.**
 
 ### Volunteers
 
@@ -199,7 +206,7 @@ Only people who are registered for that event can be volunteers. The same person
 
 ### Dashboard
 
-**Dashboard** shows how many requests are waiting and which rooms are available. **Refresh** reloads those numbers. The sidebar also has **Venue requests**, **Venues**, **Users and access**, and **Log out**.
+**Dashboard** shows how many requests are waiting and how many rooms are available. **Refresh** reloads those numbers. The sidebar also has **Venue requests**, **Venues**, **Users and access**, and **Log out**.
 
 ### Rooms
 
@@ -223,7 +230,7 @@ The table shows a short reference, the room, the event title, the organizer’s 
 ### Users and access
 
 1. Select **Users and access**.
-2. **Create user** asks for a username, a password, and a role: Attendee, Club Organizer, or Venue Administrator.
+2. **Create user** asks for a username, a password of at least 8 characters, and a role: Attendee, Club Organizer, or Venue Administrator.
 3. **Edit account** changes the username, the role, and whether the account is active.
 
 There is no change-password screen yet. Deactivating an account stops that person from using it.
