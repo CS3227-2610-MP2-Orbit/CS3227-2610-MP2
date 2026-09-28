@@ -58,13 +58,13 @@ class DemoDataSeederIntegrationTest {
         assertTrue(seeder().seed());
 
         assertEquals(DemoDataSeeder.USERNAMES.stream().sorted().toList(),
-                strings("SELECT username FROM users WHERE username LIKE 'demo\\_%' ORDER BY username"));
+                sorted("SELECT username FROM users WHERE username LIKE 'demo\\_%'"));
         assertEquals(List.of("Dance Club", "NUS Hackers", "Photography Society"),
-                strings("SELECT name FROM organizer_club ORDER BY name"));
+                sorted("SELECT name FROM organizer_club"));
         assertEquals(List.of("DRAFT:Robotics Demo Day", "DRAFT:Welcome Tea", "PUBLISHED:Hack Night",
                         "PUBLISHED:Intro to Git Workshop", "PUBLISHED:Photo Walk: Kent Ridge",
                         "PUBLISHED:Photography Basics", "PUBLISHED:Street Dance Showcase"),
-                strings("SELECT status || ':' || title FROM organizer_event ORDER BY status, title"));
+                sorted("SELECT status || ':' || title FROM organizer_event"));
         // Venue Administrator: one pending request to review.
         assertEquals(List.of("Robotics Demo Day"), strings("SELECT e.title FROM venue_requests r "
                 + "JOIN organizer_event e ON e.id = r.event_id WHERE r.status = 'SUBMITTED'"));
@@ -75,8 +75,8 @@ class DemoDataSeederIntegrationTest {
         assertEquals(List.of("CANCELLED:demo_attendee3", "CHECKED_IN:demo_attendee",
                         "CONFIRMED:demo_attendee", "CONFIRMED:demo_attendee", "CONFIRMED:demo_attendee2",
                         "CONFIRMED:demo_attendee2"),
-                strings("SELECT r.status || ':' || u.username FROM event_registrations r "
-                        + "JOIN users u ON u.user_id = r.attendee_id ORDER BY 1"));
+                sorted("SELECT r.status || ':' || u.username FROM event_registrations r "
+                        + "JOIN users u ON u.user_id = r.attendee_id"));
         assertEquals(List.of("1"), strings("SELECT count(*) FROM event_announcement"));
         assertEquals(List.of("Usher"), strings("SELECT role FROM event_volunteer"));
     }
@@ -93,6 +93,11 @@ class DemoDataSeederIntegrationTest {
 
     private DemoDataSeeder seeder() {
         return new DemoDataSeeder(configuration, Clock.fixed(NOW, ZoneOffset.UTC));
+    }
+
+    /** Sorted in Java, so the expected order does not depend on the database's collation. */
+    private List<String> sorted(String query) throws Exception {
+        return strings(query).stream().sorted().toList();
     }
 
     private List<String> strings(String query) throws Exception {
