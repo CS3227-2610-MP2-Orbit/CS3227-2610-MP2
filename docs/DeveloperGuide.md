@@ -1,3 +1,7 @@
+---
+title: Developer guide
+---
+
 # Event Venue Manager Developer Guide
 
 ## Acknowledgements
@@ -13,7 +17,12 @@ Libraries:
 5. [dotenv-java](https://github.com/cdimascio/dotenv-java)
 6. Gradle Wrapper
 
-The guide structure follows the team’s earlier AB3-style developer guide: architecture, component notes, then an appendix of user stories, use cases, and non-functional requirements. No MP1 application code was reused. Agentic SE notes live in [`AGENTS.md`](../AGENTS.md) and [Agentic SE](AgenticSE.md).
+The guide structure follows the team’s earlier AB3-style developer guide: architecture, component notes, then an appendix of user stories, use cases, and non-functional requirements. No MP1 application code was reused. Agentic SE notes live in [`AGENTS.md`](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/blob/HEAD/AGENTS.md) and [Agentic SE](AgenticSE.md).
+
+The product website uses [Jekyll](https://jekyllrb.com/) and
+[GitHub Pages](https://docs.github.com/en/pages), with original local HTML/CSS
+and the existing Markdown guides. Website maintenance and screenshot provenance
+are documented in [WEBSITE.md](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/blob/HEAD/docs/WEBSITE.md).
 
 | Role | Owner | Main code |
 | --- | --- | --- |
@@ -128,8 +137,9 @@ Services are the API. The UI does not decide whether a draft may be published or
 **Venue Administrator**
 
 * `VenueAdministratorService.approve` and `reject` require an active venue administrator. Every administrator may decide every request. Only `SUBMITTED` requests can be decided.
-* Approve refuses an overlapping confirmed booking, then creates a booking, an audit record, and a notification.
+* Approve requires the venue to still be `ACTIVE` and the request's expected attendance not to exceed the venue capacity. It refuses an overlapping confirmed booking, then creates a booking, an audit record, and a notification.
 * Reject requires one of two reasons: `Venue already booked` or `Requested capacity exceeds venue capacity`.
+* Venue availability can be changed after approval. Deactivating a venue blocks future approvals and active-venue checks for publishing and registration; it does not automatically cancel existing approved bookings.
 
 **Attendee**
 
@@ -170,13 +180,13 @@ Organizer times are entered in Asia/Singapore and stored as UTC instants.
 
 `ClubService.identityFor` builds the organizer’s `OrganizerIdentity` from clubs that account owns. `EventService.listEvents` returns events for those clubs and hides `DELETED` rows. Create and edit validate a non-blank title, a start before the end, and a positive capacity. A stale version is rejected. After approval, a draft’s times must stay on the booked window unless the organizer releases the venue first.
 
-Publish checks the clock and `EventBookingCheck`. Delete is a soft delete to `DELETED`. The same transaction withdraws a submitted request and releases an approved booking. A published event cannot be deleted.
+Publish checks the clock and `EventBookingCheck`. Persisting a publish locks the draft row, then share-locks and re-checks the confirmed booking in that same transaction, so a concurrent venue release cannot leave a published event without a booking. Delete is a soft delete to `DELETED`. The same transaction withdraws a submitted request and releases an approved booking. A published event cannot be deleted.
 
 ### Venue requests
 
 `OrganizerVenueRequestService.submit` loads the owned event, requires an `ACTIVE` venue, refuses an open request, and refuses a new request while an approved booking still exists. The request copies the event’s UTC window and uses capacity as expected attendance.
 
-`VenueAdministratorService` decides inside a transaction: authorization, submitted state, conflict check on approve, save, booking creation, audit, then a best-effort notification. A notification failure does not roll back the decision.
+`VenueAdministratorService` decides inside a transaction: authorization, submitted state, active-venue check, capacity check, conflict check on approve, save, booking creation, audit, then a best-effort notification. A notification failure does not roll back the decision. Venue deactivation is an availability control; existing approved bookings are not implicitly cancelled.
 
 ### Attendee registration
 

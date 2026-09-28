@@ -2,10 +2,7 @@ package seedu.eventmanager.service;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import seedu.eventmanager.common.Actor;
-import seedu.eventmanager.common.Role;
 import seedu.eventmanager.storage.DatabaseConfiguration;
 
 class VenueAdministratorServiceFactoryTest {

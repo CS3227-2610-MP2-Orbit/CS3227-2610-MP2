@@ -13,6 +13,8 @@ import seedu.eventmanager.common.AccessDeniedException;
 import seedu.eventmanager.common.EntityNotFoundException;
 import seedu.eventmanager.common.ValidationException;
 import seedu.eventmanager.service.VenueRequestRepository;
+import seedu.eventmanager.service.ActiveUserChecker;
+import seedu.eventmanager.service.VenueRepository;
 import seedu.eventmanager.venue.VenueRequest;
 
 /** Organizer application workflow for creating, viewing, and editing events. */
@@ -29,6 +31,8 @@ public final class EventService {
     private final DraftEventDeletion deletion;
     private final IdGenerator idGenerator;
     private final Clock clock;
+    private final ActiveUserChecker activeUsers;
+    private final VenueRepository venues;
 
     /** Supplies deterministic event identifiers at the application boundary. */
     @FunctionalInterface
@@ -66,12 +70,26 @@ public final class EventService {
             VenueRequestRepository venueRequests,
             EventBookingCheck bookingCheck,
             DraftEventDeletion deletion) {
+        this(repository, idGenerator, clock, venueRequests, bookingCheck, deletion, null, null);
+    }
+
+    public EventService(
+            EventRepository repository,
+            IdGenerator idGenerator,
+            Clock clock,
+            VenueRequestRepository venueRequests,
+            EventBookingCheck bookingCheck,
+            DraftEventDeletion deletion,
+            ActiveUserChecker activeUsers,
+            VenueRepository venues) {
         this.repository = Objects.requireNonNull(repository, "repository");
         this.idGenerator = Objects.requireNonNull(idGenerator, "idGenerator");
         this.clock = Objects.requireNonNull(clock, "clock");
         this.venueRequests = venueRequests;
         this.bookingCheck = bookingCheck;
         this.deletion = deletion;
+        this.activeUsers = activeUsers;
+        this.venues = venues;
     }
 
     public Event createEvent(OrganizerIdentity actor, String clubId, EventDetails details) {
@@ -124,6 +142,7 @@ public final class EventService {
         }
         EventDetails validDetails = validate(details);
         requireTimesKeepBooking(current, validDetails);
+        requireCapacityKeepsApprovedVenue(current, validDetails);
 
         Event edited = new Event(
                 current.id(),
@@ -328,8 +347,25 @@ public final class EventService {
                 .orElseThrow(() -> new EntityNotFoundException("Event not found: " + eventId));
     }
 
-    private static void requireActor(OrganizerIdentity actor) {
+    private void requireActor(OrganizerIdentity actor) {
         Objects.requireNonNull(actor, "actor");
+        if (activeUsers != null) {
+            activeUsers.requireActive(OrganizerIds.toUuid(actor.userId()));
+        }
+    }
+
+    private void requireCapacityKeepsApprovedVenue(Event current, EventDetails details) {
+        if (venues == null || venueRequests == null || details.capacity() <= current.capacity()) {
+            return;
+        }
+        venueRequests.findLatestByEventId(current.id())
+                .filter(request -> request.status() == seedu.eventmanager.venue.VenueRequestStatus.APPROVED)
+                .ifPresent(request -> {
+                    var venue = venues.findById(request.venueId());
+                    if (venue != null && details.capacity() > venue.capacity()) {
+                        throw new ValidationException("Event capacity cannot exceed the approved venue capacity");
+                    }
+                });
     }
 
     private static String requireClubId(String clubId) {

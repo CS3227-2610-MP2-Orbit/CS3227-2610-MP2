@@ -13,6 +13,7 @@ import seedu.eventmanager.common.Role;
 import seedu.eventmanager.common.ValidationException;
 import seedu.eventmanager.event.EventService;
 import seedu.eventmanager.event.OrganizerIdentity;
+import seedu.eventmanager.service.ActiveUserChecker;
 
 /** Club Organizer workflow: create clubs and resolve which clubs a signed-in organizer owns. */
 public final class ClubService {
@@ -21,11 +22,18 @@ public final class ClubService {
     private final ClubRepository clubs;
     private final EventService.IdGenerator idGenerator;
     private final Clock clock;
+    private final ActiveUserChecker activeUsers;
 
     public ClubService(ClubRepository clubs, EventService.IdGenerator idGenerator, Clock clock) {
+        this(clubs, idGenerator, clock, null);
+    }
+
+    public ClubService(ClubRepository clubs, EventService.IdGenerator idGenerator, Clock clock,
+            ActiveUserChecker activeUsers) {
         this.clubs = Objects.requireNonNull(clubs, "clubs");
         this.idGenerator = Objects.requireNonNull(idGenerator, "idGenerator");
         this.clock = Objects.requireNonNull(clock, "clock");
+        this.activeUsers = activeUsers;
     }
 
     public Club createClub(Actor actor, String name) {
@@ -60,10 +68,13 @@ public final class ClubService {
         return new ValidationException("A club named \"" + name + "\" already exists");
     }
 
-    private static void requireOrganizer(Actor actor) {
+    private void requireOrganizer(Actor actor) {
         Objects.requireNonNull(actor, "actor");
         if (actor.role() != Role.CLUB_ORGANIZER) {
             throw new AccessDeniedException("Only Club Organizer accounts can manage clubs");
+        }
+        if (activeUsers != null) {
+            activeUsers.requireActive(actor.userId());
         }
     }
 

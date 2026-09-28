@@ -1,3 +1,7 @@
+---
+title: Reflections
+---
+
 # Reflections
 
 ## Reflection 1 — Building one shared way of working

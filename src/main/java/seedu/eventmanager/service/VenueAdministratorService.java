@@ -9,6 +9,7 @@ import seedu.eventmanager.common.StructuredLogger;
 import seedu.eventmanager.venue.VenueRequest;
 import seedu.eventmanager.venue.VenueRequestStatus;
 import seedu.eventmanager.venue.VenueRequestValidator;
+import seedu.eventmanager.venue.VenueStatus;
 import java.util.Map;
 import java.util.UUID;
 
@@ -23,17 +24,26 @@ public final class VenueAdministratorService {
     private final TransactionManager transactions;
     private final StructuredLogger logger;
     private final Metrics metrics;
+    private final VenueRepository venues;
 
     public VenueAdministratorService(VenueRequestRepository requests, VenueBookingRepository bookings,
             AuthorizationService authorization, NotificationService notifications,
             AuditLogService audit, TransactionManager transactions) {
         this(requests, bookings, authorization, notifications, audit, transactions,
-                new JavaUtilStructuredLogger(VenueAdministratorService.class), new seedu.eventmanager.common.NoopMetrics());
+                new JavaUtilStructuredLogger(VenueAdministratorService.class),
+                new seedu.eventmanager.common.NoopMetrics(), null);
     }
 
     public VenueAdministratorService(VenueRequestRepository requests, VenueBookingRepository bookings,
             AuthorizationService authorization, NotificationService notifications,
             AuditLogService audit, TransactionManager transactions, StructuredLogger logger, Metrics metrics) {
+        this(requests, bookings, authorization, notifications, audit, transactions, logger, metrics, null);
+    }
+
+    public VenueAdministratorService(VenueRequestRepository requests, VenueBookingRepository bookings,
+            AuthorizationService authorization, NotificationService notifications,
+            AuditLogService audit, TransactionManager transactions, StructuredLogger logger, Metrics metrics,
+            VenueRepository venues) {
         this.requests = requests;
         this.bookings = bookings;
         this.authorization = authorization;
@@ -42,6 +52,7 @@ public final class VenueAdministratorService {
         this.transactions = transactions;
         this.logger = logger;
         this.metrics = metrics;
+        this.venues = venues;
     }
 
     public VenueRequest approve(Actor administrator, UUID requestId) {
@@ -105,6 +116,17 @@ public final class VenueAdministratorService {
             throw new ApplicationException("INVALID_STATE", "Only submitted requests can be decided.");
         }
         VenueRequestValidator.validate(current);
+        if (approve && venues != null) {
+            seedu.eventmanager.venue.Venue venue = venues.findById(current.venueId());
+            if (venue == null || venue.status() != VenueStatus.ACTIVE) {
+                throw new ApplicationException("VENUE_INACTIVE", "The venue is no longer active.");
+            }
+            if (current.expectedAttendance() > venue.capacity()) {
+                metrics.increment("venue_requests.capacity_failures");
+                throw new ApplicationException("CAPACITY_EXCEEDED",
+                        "Expected attendance exceeds the venue capacity.");
+            }
+        }
         if (approve && bookings.hasConflict(current.venueId(), current.startsAt(), current.endsAt())) {
             metrics.increment("venue_requests.conflicts");
             logger.warn("venue_request_conflict_detected", Map.of("correlationId", correlationId,

@@ -3,7 +3,6 @@ package seedu.eventmanager.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.OffsetDateTime;
 import java.util.Map;
@@ -16,6 +15,8 @@ import seedu.eventmanager.common.ApplicationException;
 import seedu.eventmanager.common.Role;
 import seedu.eventmanager.venue.VenueRequest;
 import seedu.eventmanager.venue.VenueRequestStatus;
+import seedu.eventmanager.venue.Venue;
+import seedu.eventmanager.venue.VenueStatus;
 
 class VenueAdministratorServiceTest {
     private final UUID requestId = UUID.randomUUID();
@@ -28,6 +29,7 @@ class VenueAdministratorServiceTest {
     private FakeBookingRepository bookings;
     private FakeNotificationService notifications;
     private FakeAuditLogService audit;
+    private FakeVenueRepository venues;
     private VenueAdministratorService service;
 
     @BeforeEach
@@ -36,8 +38,12 @@ class VenueAdministratorServiceTest {
         bookings = new FakeBookingRepository();
         notifications = new FakeNotificationService();
         audit = new FakeAuditLogService();
+        venues = new FakeVenueRepository(new Venue(venueId, "Room", "Block A", 100,
+                "", VenueStatus.ACTIVE));
         service = new VenueAdministratorService(requests, bookings, new TestAuthorizationService(), notifications,
-                audit, new ImmediateTransactionManager());
+                audit, new ImmediateTransactionManager(),
+                new seedu.eventmanager.common.JavaUtilStructuredLogger(VenueAdministratorService.class),
+                new seedu.eventmanager.common.NoopMetrics(), venues);
     }
 
     @Test
@@ -72,6 +78,30 @@ class VenueAdministratorServiceTest {
         bookings.conflict = true;
 
         assertCode("BOOKING_CONFLICT", () -> service.approve(administrator, requestId));
+
+        assertEquals(VenueRequestStatus.SUBMITTED, requests.current.status());
+        assertEquals(0, bookings.createCount);
+        assertFalse(notifications.sent);
+        assertFalse(audit.recorded);
+    }
+
+    @Test
+    void approvalRejectsAttendanceAboveVenueCapacity() {
+        venues.current = new Venue(venueId, "Room", "Block A", 40, "", VenueStatus.ACTIVE);
+
+        assertCode("CAPACITY_EXCEEDED", () -> service.approve(administrator, requestId));
+
+        assertEquals(VenueRequestStatus.SUBMITTED, requests.current.status());
+        assertEquals(0, bookings.createCount);
+        assertFalse(notifications.sent);
+        assertFalse(audit.recorded);
+    }
+
+    @Test
+    void approvalRejectsVenueThatWasDeactivatedAfterSubmission() {
+        venues.current = new Venue(venueId, "Room", "Block A", 100, "", VenueStatus.INACTIVE);
+
+        assertCode("VENUE_INACTIVE", () -> service.approve(administrator, requestId));
 
         assertEquals(VenueRequestStatus.SUBMITTED, requests.current.status());
         assertEquals(0, bookings.createCount);
@@ -166,6 +196,14 @@ class VenueAdministratorServiceTest {
             return conflict;
         }
         @Override public void createFromApprovedRequest(VenueRequest request, UUID approverId) { createCount++; }
+    }
+
+    private static final class FakeVenueRepository implements VenueRepository {
+        private Venue current;
+        private FakeVenueRepository(Venue current) { this.current = current; }
+        @Override public java.util.List<Venue> findAll() { return java.util.List.of(current); }
+        @Override public Venue findById(UUID venueId) { return current.venueId().equals(venueId) ? current : null; }
+        @Override public void save(Venue venue) { current = venue; }
     }
 
     private static final class FakeNotificationService implements NotificationService {

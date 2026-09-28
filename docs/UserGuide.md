@@ -1,3 +1,7 @@
+---
+title: User guide
+---
+
 # Event Venue Manager User Guide
 
 Event Venue Manager is a desktop app for campus events. Three kinds of people use it:
@@ -198,7 +202,7 @@ Publishing is what makes the event visible to attendees.
 3. It must have an approved booking at an active room for the same start and end.
 4. Select the event, select **Publish**, then **OK**.
 
-After that, attendees can find it under **Browse events**. You can no longer edit or delete it.
+After that, attendees can find it under **Browse events**. You can no longer edit or delete it. If the approved booking is released at the same moment, publish is refused and the event stays a draft.
 
 ### Deleting a draft
 
@@ -245,6 +249,8 @@ Only people who are registered for that event can be volunteers. The same person
 
 The room starts as available. Select a room and **Edit selected** to change its details. **Toggle availability** switches it between available and unavailable. Unavailable rooms cannot be requested for new bookings. An old booking does not turn the whole room off forever; the room can be used again after that booking’s time has passed.
 
+Changing a room to unavailable is allowed even when it has previously approved requests. It prevents new requests from being approved and prevents future event publishing or attendee registration that requires an active venue. Existing approved bookings are not automatically cancelled by this toggle.
+
 ### Reviewing requests
 
 1. Select **Venue requests**. The list loads when you open the page.
@@ -253,7 +259,7 @@ The room starts as available. Select a room and **Edit selected** to change its 
 
 The reasons are **Venue already booked** and **Requested capacity exceeds venue capacity**.
 
-An approved request becomes a booking and leaves the waiting list. A rejected request also leaves the waiting list. Approving fails if that room is already booked for an overlapping time. Every venue administrator can review every request.
+An approved request becomes a booking and leaves the waiting list. A rejected request also leaves the waiting list. Approving fails if that room is already booked for an overlapping time or is no longer active. Every venue administrator can review every request.
 
 The table shows a short reference, the room, the event title, the organizer’s username, the start time, and the expected attendance.
 
@@ -314,6 +320,10 @@ The details panel explains why the button is missing, for example “too early�
 
 Select **Attendance history**. Only events you have checked into are listed, newest check-in first. Events you skipped are not here. Select a row to see the event and the time you checked in. This page is view-only. **Refresh** reloads it.
 
+[![Attendance history with a selected event and its check-in time.](assets/images/attendance-history.png)](assets/images/attendance-history.png)
+
+*Real application screen with synthetic test data. Select the image to view it full-size.*
+
 ### Notifications
 
 Select **Notifications** to read registration confirmations, cancellations, and announcements. The newest message is first. A badge shows how many are unread.
@@ -324,6 +334,10 @@ Select **Notifications** to read registration confirmations, cancellations, and 
 * Read and unread status is remembered after you close the app.
 
 Messages can take a few seconds to arrive after you register or after an organizer sends an announcement. Then refresh. This is inside the app, not email. If an announcement is deleted, you may still see **Announcement removed.**
+
+[![Notifications inbox with unread messages, a read-status filter, and mark-as-read controls.](assets/images/attendee-notifications.png)](assets/images/attendee-notifications.png)
+
+*Real application screen with synthetic test data. Select the image to view it full-size.*
 
 ---
 

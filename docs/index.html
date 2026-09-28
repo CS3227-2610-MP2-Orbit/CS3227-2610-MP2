@@ -1,0 +1,65 @@
+---
+layout: default
+title: Campus events, all in one place
+description: Plan an event, find a venue and join your campus community with Orbit's Event Venue Manager.
+---
+<main id="main" tabindex="-1">
+  <section class="hero container" aria-labelledby="hero-title">
+    <div class="hero-copy">
+      <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> Built for campus life</p>
+      <h1 id="hero-title">Campus events,<br>all in <em>one place.</em></h1>
+      <p class="hero-description">From the first venue request to the final check-in. Bring organizers, venue administrators and attendees together in one desktop application.</p>
+      <div class="actions">
+        <a class="button primary" href="{{ '/UserGuide.html#getting-started' | relative_url }}">Get started <span aria-hidden="true">↗</span></a>
+        <a class="button secondary" href="#features">Explore the features <span aria-hidden="true">↓</span></a>
+      </div>
+      <p class="hero-note">Java 25 + JavaFX desktop app · PostgreSQL required</p>
+    </div>
+    <aside class="journey" aria-label="An event's journey">
+      <p class="eyebrow">From idea to attendance</p>
+      <ol>
+        <li><span class="step-number">01</span><div><strong>Plan it.</strong><p>Create an event and request a venue.</p></div></li>
+        <li><span class="step-number">02</span><div><strong>Make room.</strong><p>Review the request, approve the booking.</p></div></li>
+        <li><span class="step-number">03</span><div><strong>Bring people together.</strong><p>Publish, register and check in.</p></div></li>
+      </ol>
+      <span class="journey-footer">Three roles. One shared system.</span>
+    </aside>
+  </section>
+
+  <section class="product-preview container" aria-labelledby="preview-title">
+    <div class="section-heading compact"><h2 id="preview-title">Your next campus event starts here.</h2><span class="eyebrow">Inside the desktop app</span></div>
+    <figure class="screenshot">
+      <div class="window-label"><span aria-hidden="true">● ● ●</span> Event Venue Manager / Attendee workspace</div>
+      <a href="{{ '/assets/images/attendee-browse.png' | relative_url }}" aria-label="Open full-size screenshot of the Attendee workspace">
+        <img src="{{ '/assets/images/attendee-browse.png' | relative_url }}" alt="Attendee Browse events screen with club and date filters, a list of events, and a side-by-side details panel showing venue, seats and check-in availability." width="1280" height="800" fetchpriority="high">
+      </a>
+      <figcaption>Actual JavaFX interface captured by the team's UI smoke harness. Events and accounts are synthetic test data, not live campus listings.</figcaption>
+    </figure>
+  </section>
+
+  <section id="features" class="section container" aria-labelledby="features-title">
+    <div class="section-heading"><div><p class="eyebrow">A workspace for everyone</p><h2 id="features-title">Different roles.<br>One connected event.</h2></div><p>Each person gets the tools for their part of the event, with shared data connecting the whole team.</p></div>
+    <div class="role-grid">
+      <article class="role-card"><span class="role-number">01 / ORGANIZE</span><h3>Club Organizer</h3><p>Turn a club's idea into an event students can join.</p><ul><li>Create clubs and draft events</li><li>Request venues and publish events</li><li>View registrations and assign volunteers</li><li>Send event announcements</li></ul><a href="{{ '/UserGuide.html#club-organizer' | relative_url }}">Organizer guide <span aria-hidden="true">↗</span></a></article>
+      <article class="role-card"><span class="role-number">02 / COORDINATE</span><h3>Venue Administrator</h3><p>Keep campus rooms and booking requests in order.</p><ul><li>Create and manage venues</li><li>Review, approve or reject requests</li><li>Review overlapping booking conflicts</li><li>Manage user accounts and roles</li></ul><a href="{{ '/UserGuide.html#venue-administrator' | relative_url }}">Administrator guide <span aria-hidden="true">↗</span></a></article>
+      <article class="role-card attendee-card"><span class="role-number">03 / TAKE PART</span><h3>Attendee</h3><p>Find something worth showing up for.</p><ul><li>Search events and filter by club or date</li><li>Register, cancel and view your bookings</li><li>Read updates in your notification inbox</li><li>Check in and revisit attendance history</li></ul><a href="{{ '/UserGuide.html#attendee' | relative_url }}">Attendee guide <span aria-hidden="true">↗</span></a></article>
+    </div>
+    <p class="feature-note">Check-in uses a normal button during the event. Notifications are delivered inside the app, not by email. <a href="{{ '/UserGuide.html#known-issues' | relative_url }}">See current limitations.</a></p>
+  </section>
+
+  <section id="getting-started" class="setup-section" aria-labelledby="setup-title">
+    <div class="container setup-grid">
+      <div><p class="eyebrow">Try it yourself</p><h2 id="setup-title">A little setup.<br>A whole campus of possibilities.</h2><p>This is a desktop application, not a web app. Start with the setup guide, then explore the three roles using the same database.</p><a class="button primary" href="{{ '/UserGuide.html#getting-started' | relative_url }}">Open setup instructions <span aria-hidden="true">↗</span></a></div>
+      <div class="setup-steps"><ol><li><span>01</span><div><h3>Prepare your environment</h3><p>Install JDK 25 and PostgreSQL.</p></div></li><li><span>02</span><div><h3>Connect the shared database</h3><p>Follow the guide to create a database and configure your local environment.</p></div></li><li><span>03</span><div><h3>Launch and explore</h3><p>Run the app from source and sign in to your role's workspace.</p></div></li></ol>
+        <div class="release-note">{% if site.release_available %}<strong>Application releases</strong><p>See the release notes for downloads, supported platforms and setup requirements.</p>{% else %}<strong>Packaged release pending</strong><p>For now, follow the source setup instructions. Packaged downloads will be listed on GitHub when available.</p>{% endif %}<a href="{{ site.repository_url }}/releases">View GitHub releases <span aria-hidden="true">↗</span></a></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section container engineering" aria-labelledby="engineering-title">
+    <div><p class="eyebrow">Built with intent · CS3227 MP2</p><h2 id="engineering-title">The process behind<br>the product.</h2><p>Our project explores simple agentic software-engineering workflows: reusable skills, explicit guardrails and human-reviewed evidence. The agent supports development; it does not make the app's authorization decisions.</p></div>
+    <div class="resource-list"><a href="{{ '/DeveloperGuide.html' | relative_url }}"><span><strong>Developer guide</strong><small>Architecture, implementation and testing</small></span><span aria-hidden="true">↗</span></a><a href="{{ '/AgenticSE.html' | relative_url }}"><span><strong>Agentic SE workflow</strong><small>How we use skills and guardrails</small></span><span aria-hidden="true">↗</span></a><a href="{{ '/Reflections.html' | relative_url }}"><span><strong>Team reflections</strong><small>Experiments, corrections and lessons</small></span><span aria-hidden="true">↗</span></a></div>
+  </section>
+
+  <section class="team-section container" aria-labelledby="team-title"><div><p class="eyebrow">Meet the team</p><h2 id="team-title">We are Orbit.</h2></div><dl class="team-list"><div><dt>Joseph</dt><dd>Club Organizer</dd></div><div><dt>Jordan</dt><dd>Venue Administrator</dd></div><div><dt>Johannsen</dt><dd>Attendee</dd></div></dl></section>
+</main>

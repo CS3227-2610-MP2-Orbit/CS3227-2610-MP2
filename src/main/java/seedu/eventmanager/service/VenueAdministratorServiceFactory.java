@@ -10,6 +10,7 @@ import seedu.eventmanager.storage.JdbcNotificationService;
 import seedu.eventmanager.storage.JdbcTransactionManager;
 import seedu.eventmanager.storage.JdbcVenueBookingRepository;
 import seedu.eventmanager.storage.JdbcVenueRequestRepository;
+import seedu.eventmanager.storage.JdbcVenueRepository;
 
 /** Composition root for the PostgreSQL-backed Venue Administrator workflow. */
 public final class VenueAdministratorServiceFactory {
@@ -25,7 +26,9 @@ public final class VenueAdministratorServiceFactory {
                 authorization,
                 new JdbcNotificationService(database),
                 new JdbcAuditLogService(database),
-                new JdbcTransactionManager(database));
+                new JdbcTransactionManager(database),
+                new seedu.eventmanager.common.JavaUtilStructuredLogger(VenueAdministratorService.class),
+                new seedu.eventmanager.common.NoopMetrics(), new JdbcVenueRepository(database));
     }
 
     public static VenueAdministratorService create(DatabaseConfiguration configuration,

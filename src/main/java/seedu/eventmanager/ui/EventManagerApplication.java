@@ -55,6 +55,7 @@ import seedu.eventmanager.storage.JdbcTransactionManager;
 import seedu.eventmanager.storage.RegistrationDatabaseMigration;
 import seedu.eventmanager.storage.JdbcVenueRepository;
 import seedu.eventmanager.storage.JdbcVenueRequestRepository;
+import seedu.eventmanager.service.JdbcActiveUserChecker;
 import seedu.eventmanager.storage.JdbcLocalSessionService;
 import seedu.eventmanager.storage.PasswordHasher;
 import java.util.Map;
@@ -161,9 +162,10 @@ public final class EventManagerApplication extends Application {
             new DatabaseMigration(dataSource).migrate();
             RegistrationDatabaseMigration.migrate(configuration);
 
-            ClubService clubService = new ClubService(
-                    new JdbcClubRepository(dataSource), UUID::randomUUID, Clock.systemUTC());
             JdbcDatabase jdbcDatabase = new JdbcDatabase(configuration);
+            ClubService clubService = new ClubService(
+                    new JdbcClubRepository(dataSource), UUID::randomUUID, Clock.systemUTC(),
+                    new JdbcActiveUserChecker(jdbcDatabase));
             JdbcVenueRepository venueRepository = new JdbcVenueRepository(jdbcDatabase);
             JdbcVenueRequestRepository venueRequestRepository = new JdbcVenueRequestRepository(jdbcDatabase);
             EventService eventService = new EventService(
@@ -172,7 +174,8 @@ public final class EventManagerApplication extends Application {
                     Clock.systemUTC(),
                     venueRequestRepository,
                     new JdbcEventBookingCheck(dataSource),
-                    new JdbcDraftEventDeletion(dataSource));
+                    new JdbcDraftEventDeletion(dataSource),
+                    new JdbcActiveUserChecker(jdbcDatabase), venueRepository);
             OrganizerVenueRequestService venueRequestService = new OrganizerVenueRequestService(
                     eventService,
                     venueRepository,
@@ -218,7 +221,12 @@ public final class EventManagerApplication extends Application {
     private void showVenueAdministrator(BorderPane root, JdbcLocalSessionService.Session session) {
         root.setPadding(Insets.EMPTY);
         root.setTop(null);
-        root.setCenter(new VenueAdministratorFxApplication().createRoot(session));
+        JdbcLocalSessionService sessions = new JdbcLocalSessionService(
+                new JdbcDatabase(DatabaseBootstrap.configuration()), new PasswordHasher());
+        root.setCenter(new VenueAdministratorFxApplication().createRoot(session, () -> {
+            sessions.revoke(session.token());
+            showHome(root);
+        }));
     }
 
     private void showAttendee(BorderPane root, JdbcLocalSessionService.Session session) {
