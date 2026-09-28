@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="700" viewBox="0 0 880 700" role="img" aria-labelledby="title description">
+  <title id="title">Registration, cancellation and check-in</title>
+  <desc id="description">An eligible attendee registers before the start to become confirmed. A confirmed attendee may cancel before the start, and re-register if eligible with a seat available. During the event, a still-eligible confirmed attendee may check in. A checked-in event appears in attendance history. Cancelled registrations remain in My Registrations.</desc>
+  <style>text{font-family:Helvetica,Arial,sans-serif;fill:#111827}.label{font-size:21px;font-weight:600}.detail{font-size:15px;fill:#4b5563}.step{fill:#eff6ff;stroke:#bfdbfe;stroke-width:1.5}.arrow{fill:none;stroke:#2563eb;stroke-width:2;marker-end:url(#arrow)}.caption{font-size:15px;fill:#2563eb}</style>
+  <defs><marker id="arrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><path d="M0 0L10 3.5L0 7Z" fill="#2563eb"/></marker></defs>
+  <rect width="880" height="700" rx="12" fill="white"/>
+  <text x="40" y="44" font-size="24" font-weight="600">Your registration journey</text>
+  <text x="40" y="72" class="detail">Buttons request an action; the app checks the rules again.</text>
+  <rect class="step" x="40" y="112" width="310" height="88" rx="8"/>
+  <text x="195" y="145" class="label" text-anchor="middle">Register</text><text x="195" y="175" class="detail" text-anchor="middle">Before start · eligible · seat available</text>
+  <path class="arrow" d="M195 200V288"/>
+  <rect class="step" x="40" y="288" width="310" height="88" rx="8"/>
+  <text x="195" y="325" class="label" text-anchor="middle">Confirmed</text><text x="195" y="354" class="detail" text-anchor="middle">Your place is registered.</text>
+  <path class="arrow" d="M350 332H530"/>
+  <rect x="365" y="300" width="150" height="26" fill="white"/><text x="440" y="318" class="caption" text-anchor="middle">Cancel before start</text>
+  <rect class="step" x="530" y="288" width="310" height="88" rx="8"/>
+  <text x="685" y="325" class="label" text-anchor="middle">Cancelled</text><text x="685" y="354" class="detail" text-anchor="middle">Still visible in My Registrations.</text>
+  <path class="arrow" d="M685 288V156H350"/>
+  <rect x="411" y="124" width="240" height="26" fill="white"/><text x="531" y="142" class="caption" text-anchor="middle">Re-register if eligible + seat free</text>
+  <path class="arrow" d="M195 376V488"/>
+  <rect x="72" y="407" width="246" height="54" fill="white"/><text x="195" y="428" class="caption" text-anchor="middle">Check in during the event</text><text x="195" y="450" class="detail" text-anchor="middle">From start time up to, but not at, end</text>
+  <rect class="step" x="40" y="488" width="310" height="88" rx="8"/>
+  <text x="195" y="525" class="label" text-anchor="middle">Checked in</text><text x="195" y="554" class="detail" text-anchor="middle">You can no longer cancel.</text>
+  <path class="arrow" d="M350 532H530"/>
+  <rect class="step" x="530" y="488" width="310" height="88" rx="8"/>
+  <text x="685" y="525" class="label" text-anchor="middle">Attendance history</text><text x="685" y="554" class="detail" text-anchor="middle">Event details + your check-in time</text>
+  <text x="40" y="631" class="detail">Registration and check-in also require a published event, a matching confirmed booking,</text>
+  <text x="40" y="655" class="detail">an active venue, and your active Attendee account and session. No waitlist or QR codes.</text>
+</svg>

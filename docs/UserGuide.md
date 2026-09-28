@@ -111,6 +111,14 @@ To make your own Attendee or Club Organizer account, select **Create normal user
 
 You only see the clubs you created, and the events that belong to those clubs.
 
+The flow below shows how the three roles work together on a successful event.
+Approval alone does not put an event in the attendee catalogue: the organizer
+must still **Publish** it. The steps below explain the requirements and rejections.
+
+[![Successful event workflow: organizer creates a draft and requests a room; venue administrator approves; organizer publishes; attendee registers, checks in and views history.](assets/images/event-workflow.svg)](assets/images/event-workflow.png)
+
+*Select the diagram for a full-size PNG.*
+
 ### Creating a club
 
 1. Select **Clubs**.
@@ -256,6 +264,10 @@ There is no change-password screen yet. Deactivating an account stops that perso
 
 The list shows published events that have not ended, soonest first. Full events stay visible, with an explanation of why you cannot sign up. An event that has already started shows **Registration closed**. Drafts never appear.
 
+[![Browse events with search, club and date filters on top, a list on the left and selected event details on the right.](assets/images/attendee-browse.png)](assets/images/attendee-browse.png)
+
+*Real application screen with synthetic test data and a controlled clock. Select the image to view it full-size.*
+
 > **Note:** Seats count people who are signed up or checked in, including inactive accounts that were not cancelled. Your seat is not held while you are only looking. The app checks again when you press the button.
 
 ### Signing up, cancelling, and signing up again
@@ -267,6 +279,10 @@ The list shows published events that have not ended, soonest first. Full events 
 
 You cannot register after the event has started, without a confirmed room, or when the event is full. If your record changed while you were looking at it, refresh and try again.
 
+[![Registration lifecycle: Register leads to Confirmed. Cancel before start leads to Cancelled, with re-registration allowed if eligible and a seat remains. A confirmed attendee can check in during the event and then view attendance history.](assets/images/registration-workflow.svg)](assets/images/registration-workflow.png)
+
+*Check-in still requires a published event and a matching confirmed booking at an active venue. Select the diagram for a full-size PNG.*
+
 ### My registrations
 
 Select **My Registrations**. You see only your own bookings.
@@ -277,6 +293,10 @@ Select **My Registrations**. You see only your own bookings.
 
 Check-in for an event that is happening now is on this screen as well. Events you never joined do not appear here.
 
+[![My Registrations showing the All filter, Earliest first sort, and past, cancelled and ongoing synthetic bookings.](assets/images/attendee-registration-filters.png)](assets/images/attendee-registration-filters.png)
+
+*Real My Registrations screen rendered in isolation with synthetic test data; the workspace sidebar is not shown in this capture. Select a booking to open its details beside the list. Select the image to view it full-size.*
+
 ### Checking in
 
 1. Open the event in **Browse events**, or open its booking in **My Registrations**.
@@ -285,6 +305,10 @@ Check-in for an event that is happening now is on this screen as well. Events yo
 Check-in opens at the start time and closes at the end time. There is no early window, no late window, and no QR code. You must already be signed up, the event must still be published, and the room booking must still be in place. After you check in, you cannot cancel.
 
 The details panel explains why the button is missing, for example “too early”, “already checked in”, or “cancelled”. Those words describe what was loaded. Select **Refresh details** or **Refresh registrations** if time has moved on. Checking in does not send you a new notification.
+
+[![A registered attendee sees Check-in unavailable because the event has no matching confirmed booking at an active venue. The SGT check-in window is shown beneath the explanation.](assets/images/attendee-check-in-availability.png)](assets/images/attendee-check-in-availability.png)
+
+*Real application screen with synthetic test data and a controlled clock. This example intentionally has no confirmed booking, so check-in is unavailable even during the event. Select the image to view it full-size.*
 
 ### Attendance history
 
