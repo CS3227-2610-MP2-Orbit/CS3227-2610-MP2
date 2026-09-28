@@ -76,6 +76,7 @@ public final class EventManagerApplication extends Application {
         stage.setMinWidth(1_000);
         stage.setMinHeight(640);
         stage.show();
+        stage.setMaximized(true);
     }
 
     private void showHome(BorderPane root) {
@@ -170,8 +171,8 @@ public final class EventManagerApplication extends Application {
 
     private void showVenueAdministrator(BorderPane root, JdbcLocalSessionService.Session session) {
         root.setPadding(Insets.EMPTY);
-        showWorkspace(root, "Venue Administrator",
-                new VenueAdministratorFxApplication().createRoot(session));
+        root.setTop(null);
+        root.setCenter(new VenueAdministratorFxApplication().createRoot(session));
     }
 
     private void showAttendee(BorderPane root, JdbcLocalSessionService.Session session) {
