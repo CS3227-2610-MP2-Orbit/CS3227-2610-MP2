@@ -78,7 +78,7 @@ The app is designed for users who:
 
    * **Club Organizer** — log in with a Club Organizer account, then create clubs, create/edit events, and request venues. Each account sees only its own clubs and their events.
    * **Venue Administrator** — local login, then dashboard, venues, and request review.
-   * **Attendee** — browse/search upcoming published events, register/cancel and view My Registrations.
+   * **Attendee** — browse/search upcoming published events, register/cancel, view My Registrations and read Notifications.
 
 6. Continue with [Features](#features).
 
@@ -92,6 +92,7 @@ The app is designed for users who:
 | Attendee | Browse/search published events | **Attendee** → **Browse events** |
 | Attendee | Register, cancel or re-register | **Browse events** → select event → action |
 | Attendee | View own bookings or cancel | **My Registrations** → select booking |
+| Attendee | Read registration updates and announcements | **Notifications** → refresh or mark read |
 | Organizer | Create a club | **Clubs** → enter **Club name** → **Create club** |
 | Organizer | Create draft event | **Events** → **+ New event** → fill form → **Save event** |
 | Organizer | Edit draft event | **Events** → select event → edit → **Save event** |
@@ -225,7 +226,7 @@ Saves a message for one of your events and queues a notification for each regist
 
 **Expected result:** The announcement appears at the top of **Posted announcements**, and feedback reports how many notifications were queued (for example *Notification queued for 12 registered attendees*).
 
-> **Caution:** Announcements cannot be edited after sending. Notifications are only **queued** in the shared notification outbox; attendees cannot see them yet, because in-app notification delivery is not available in this build. Recipients are the event's current registrants. With no eligible active registrants, feedback shows *No registered attendees to notify yet.*
+> **Caution:** Announcements cannot be edited after sending. The queued count is not a delivery receipt: background delivery places queued messages in each recipient's Attendee **Notifications** inbox. The worker starts after an Attendee workspace initializes and runs while that app remains open. Recipients are the event's current registrants. With no eligible active registrants, feedback shows *No registered attendees to notify yet.*
 
 ### Deleting announcements
 
@@ -239,7 +240,7 @@ Permanently removes one of your event's announcements.
 
 **Expected result:** The announcement disappears from **Posted announcements** and feedback shows *Announcement deleted.*
 
-> **Caution:** Deletion cannot be undone. Notifications already queued for attendees when the announcement was sent are **not** withdrawn.
+> **Caution:** Deletion cannot be undone. Notifications already queued for attendees when the announcement was sent are **not** withdrawn; their inbox entries show *Announcement removed.* instead of the deleted message.
 
 ### Assigning volunteers
 
@@ -344,7 +345,7 @@ occupy seats. This can differ from the Organizer's active-account roster count.
 Availability is a snapshot, not a reservation. A missing/mismatched/unconfirmed
 booking or inactive venue prevents registration even if seats remain.
 
-Personal notifications, check-in and attendance history screens are not available
+Check-in and attendance history screens are not available
 yet. An event that has started or is no longer published
 cannot be reopened through the catalogue.
 
@@ -395,6 +396,34 @@ you originally registered. A missing booking is shown explicitly. Cancelled
 registrations remain visible; this list does not implement check-in or an
 attendance-history workflow.
 
+### Notifications
+
+Select **Notifications** in the Attendee sidebar to see your registration
+confirmations, cancellations and event announcements, newest first. The sidebar
+badge and screen show the unread count from the last successful refresh.
+
+- **Refresh notifications** reloads the inbox. Opening Notifications also refreshes
+  it; the UI does not continuously poll for newly delivered messages.
+- **Show** filters **All**, **Unread** or **Read**, keeping newest-first order.
+  The filter stays selected after refresh and read-status changes. The badge
+  always counts unread messages across your whole inbox, not just visible rows.
+- Select an unread message and **Mark selected as read**, or select **Mark all as
+  read** to mark your whole inbox, including messages hidden by the filter.
+  A marked message leaves the Unread list after refresh. Read status is saved
+  in PostgreSQL and survives closing/reopening the app.
+- Registration entries show the event's current title and start time in SGT.
+  They describe the original confirmation/cancellation, not your current booking
+  status; use My Registrations for that.
+- Announcements show the current event title and message. A deleted announcement
+  remains as a neutral **Announcement removed.** entry.
+
+Delivery is asynchronous: allow a few seconds after registering/cancelling or an
+Organizer sending an announcement, then refresh. The worker starts when an
+Attendee workspace initializes and stays running until that app closes. Pending
+messages remain queued while the app is closed. This is in-app delivery, not email.
+An invalid/expired session asks you to return Home and log in again. A failed
+refresh displays **Notifications (?)**, not an unverified zero unread count.
+
 Browsing uses the same database settings as the other workspaces. The Attendee
 workspace initializes existing schema prerequisites in the background; opening
 Organizer first is no longer required. It does not seed or publish events.
@@ -437,7 +466,8 @@ associated with the account that created the club.
 ## Known Issues
 
 * No supersede/withdraw of venue requests from the Organizer UI.
-* Attendee notifications, check-in, and attendance history are not implemented yet.
+* Attendee check-in and attendance history are not implemented yet.
+* The inbox badge is refreshed on opening/refreshing Notifications and after read-status changes, not continuously.
 * Notification outbox stores Admin decisions but does not send email yet.
 
 ---

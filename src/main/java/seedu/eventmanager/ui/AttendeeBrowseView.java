@@ -52,16 +52,21 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
     private final MyRegistrationsView registrations;
     private final Button browseNav = new Button("Browse events");
     private final Button registrationsNav = new Button("My Registrations");
+    private final Button notificationsNav = new Button("Notifications");
+    private final InboxView inbox;
 
     public AttendeeBrowseView(Supplier<EventCatalogueService> services,
-            Function<UUID, AttendeeEventDetails> detailReader, AttendeeRegistrationActions actions, Runnable onHome) {
+            Function<UUID, AttendeeEventDetails> detailReader, AttendeeRegistrationActions actions,
+            InboxActions inboxActions, Runnable onHome) {
         Objects.requireNonNull(services);
         controller = new AttendeeBrowseController(query -> services.get().search(query), detailReader, actions, this);
         browseContent = content();
         registrations = new MyRegistrationsView(controller::loadRegistrations,
                 row -> controller.cancelRegistration(row.eventId(), row.version()));
-        browseContent.disableProperty().bind(controller.busyProperty());
-        registrations.disableProperty().bind(controller.busyProperty());
+        inbox = new InboxView(inboxActions, count -> notificationsNav.setText(
+                count < 0 ? "Notifications (?)" : "Notifications (" + count + " unread)"));
+        browseContent.disableProperty().bind(controller.busyProperty().or(inbox.busyProperty()));
+        registrations.disableProperty().bind(controller.busyProperty().or(inbox.busyProperty()));
         Objects.requireNonNull(onHome);
         setStyle("-fx-background-color: #f7f9fc;");
         setLeft(sidebar(() -> { close(); onHome.run(); }));
@@ -70,6 +75,7 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
         commandFeedback.setPadding(new Insets(12, 24, 12, 24));
         setBottom(commandFeedback);
         refresh();
+        inbox.refresh();
     }
 
     private VBox sidebar(Runnable onHome) {
@@ -81,17 +87,26 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
         browse.setStyle("-fx-background-color: #2563eb; -fx-text-fill: white; -fx-padding: 12;");
         browse.setId("attendee-browse-nav");
         browse.setOnAction(ignored -> {
-            selectNavigation(false); commandFeedback.setText(""); setCenter(browseContent); refresh();
+            selectNavigation(browse); commandFeedback.setText(""); setCenter(browseContent); refresh();
         });
-        browse.disableProperty().bind(controller.busyProperty());
+        browse.disableProperty().bind(controller.busyProperty().or(inbox.busyProperty()));
         Button mine = registrationsNav;
         mine.setId("attendee-registrations-nav");
         mine.setMaxWidth(Double.MAX_VALUE);
         mine.setAlignment(Pos.CENTER_LEFT);
         mine.setStyle("-fx-background-color: #24334c; -fx-text-fill: #dce4f2; -fx-padding: 12;");
-        mine.disableProperty().bind(controller.busyProperty());
+        mine.disableProperty().bind(controller.busyProperty().or(inbox.busyProperty()));
         mine.setOnAction(ignored -> {
-            selectNavigation(true); commandFeedback.setText(""); setCenter(registrations); controller.loadRegistrations();
+            selectNavigation(mine); commandFeedback.setText(""); setCenter(registrations); controller.loadRegistrations();
+        });
+        notificationsNav.setId("attendee-notifications-nav");
+        notificationsNav.setMaxWidth(Double.MAX_VALUE);
+        notificationsNav.setAlignment(Pos.CENTER_LEFT);
+        notificationsNav.setWrapText(true);
+        notificationsNav.setStyle("-fx-background-color: #24334c; -fx-text-fill: #dce4f2; -fx-padding: 12;");
+        notificationsNav.disableProperty().bind(controller.busyProperty().or(inbox.busyProperty()));
+        notificationsNav.setOnAction(ignored -> {
+            selectNavigation(notificationsNav); commandFeedback.setText(""); setCenter(inbox); inbox.refresh();
         });
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
@@ -100,8 +115,8 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
         home.setId("attendee-home");
         home.setMaxWidth(Double.MAX_VALUE);
         home.setOnAction(ignored -> onHome.run());
-        home.disableProperty().bind(controller.busyProperty());
-        VBox sidebar = new VBox(16, brand, role, browse, mine, spacer, mode, home);
+        home.disableProperty().bind(controller.busyProperty().or(inbox.busyProperty()));
+        VBox sidebar = new VBox(16, brand, role, browse, mine, notificationsNav, spacer, mode, home);
         sidebar.setPadding(new Insets(24, 16, 24, 16));
         sidebar.setMinWidth(200);
         sidebar.setPrefWidth(220);
@@ -109,11 +124,12 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
         return sidebar;
     }
 
-    private void selectNavigation(boolean mine) {
+    private void selectNavigation(Button selected) {
         String active = "-fx-background-color: #2563eb; -fx-text-fill: white; -fx-padding: 12;";
         String inactive = "-fx-background-color: #24334c; -fx-text-fill: #dce4f2; -fx-padding: 12;";
-        browseNav.setStyle(mine ? inactive : active);
-        registrationsNav.setStyle(mine ? active : inactive);
+        for (Button button : List.of(browseNav, registrationsNav, notificationsNav)) {
+            button.setStyle(button == selected ? active : inactive);
+        }
     }
 
     private VBox content() {
@@ -319,5 +335,6 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
     @Override
     public void close() {
         controller.close();
+        inbox.close();
     }
 }

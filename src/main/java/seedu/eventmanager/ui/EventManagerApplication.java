@@ -21,6 +21,10 @@ import seedu.eventmanager.event.EventService;
 import seedu.eventmanager.attendee.EventCatalogueService;
 import seedu.eventmanager.attendee.AttendeeEventDetailsService;
 import seedu.eventmanager.attendee.MyRegistrationsService;
+import seedu.eventmanager.attendee.InboxDispatcher;
+import seedu.eventmanager.attendee.InboxNotificationDelivery;
+import seedu.eventmanager.attendee.InboxService;
+import seedu.eventmanager.notification.NotificationOutboxWorker;
 import seedu.eventmanager.event.JdbcEventRepository;
 import seedu.eventmanager.event.OrganizerVenueRequestService;
 import seedu.eventmanager.event.RegistrationOverviewService;
@@ -38,6 +42,10 @@ import seedu.eventmanager.storage.JdbcAttendeeEventDetailsRepository;
 import seedu.eventmanager.storage.JdbcRegistrationEventInfoRepository;
 import seedu.eventmanager.storage.JdbcEventRegistrations;
 import seedu.eventmanager.storage.JdbcNotificationService;
+import seedu.eventmanager.storage.InboxDatabaseMigration;
+import seedu.eventmanager.storage.JdbcInboxRepository;
+import seedu.eventmanager.storage.JdbcNotificationOutboxRepository;
+import seedu.eventmanager.storage.JdbcTransactionManager;
 import seedu.eventmanager.storage.RegistrationDatabaseMigration;
 import seedu.eventmanager.storage.JdbcVenueRepository;
 import seedu.eventmanager.storage.JdbcVenueRequestRepository;
@@ -51,6 +59,7 @@ import seedu.eventmanager.volunteer.VolunteerService;
 /** Desktop application shell that routes users to the available role workspaces. */
 public final class EventManagerApplication extends Application {
     private AttendeeBrowseView attendeeView;
+    private final InboxDispatcher inboxDispatcher = new InboxDispatcher();
 
     @Override
     public void start(Stage stage) {
@@ -162,7 +171,8 @@ public final class EventManagerApplication extends Application {
         root.setPadding(Insets.EMPTY);
         root.setTop(null);
         record AttendeeServices(EventCatalogueService catalogue, AttendeeEventDetailsService details,
-                RegistrationService commands, MyRegistrationsService registrations) { }
+                RegistrationService commands, MyRegistrationsService registrations,
+                InboxService inbox) { }
         // Lazy bootstrap runs only on background tasks; a failed initialization can be retried.
         var services = new java.util.function.Supplier<AttendeeServices>() {
             private AttendeeServices value;
@@ -170,19 +180,25 @@ public final class EventManagerApplication extends Application {
             @Override public synchronized AttendeeServices get() {
                 if (value == null) {
                     DatabaseConfiguration configuration = DatabaseBootstrap.configuration();
-                    RegistrationDatabaseMigration.migrate(configuration);
+                    InboxDatabaseMigration.migrate(configuration);
                     var dataSource = new DriverManagerDataSource(new DatabaseConfig(
                             configuration.url(), configuration.username(), configuration.password()));
                     var database = new JdbcDatabase(configuration);
                     var sessions = new JdbcLocalSessionService(database, new PasswordHasher());
                     var commands = RegistrationServiceFactory.create(configuration, Clock.systemUTC());
+                    var inbox = new JdbcInboxRepository(database);
                     value = new AttendeeServices(
                             new EventCatalogueService(new JdbcEventCatalogueRepository(dataSource), Clock.systemUTC()),
                             new AttendeeEventDetailsService(new JdbcAttendeeEventDetailsRepository(database),
                                     sessions::resolve, Clock.systemUTC()), commands,
                             new MyRegistrationsService(commands::myRegistrations,
                                     new JdbcRegistrationEventInfoRepository(database),
-                                    sessions::resolve, Clock.systemUTC()));
+                                    sessions::resolve, Clock.systemUTC()),
+                            new InboxService(inbox, sessions::resolve,
+                                    new JdbcTransactionManager(database), Clock.systemUTC()));
+                    inboxDispatcher.start(new NotificationOutboxWorker(
+                            new JdbcNotificationOutboxRepository(database, InboxNotificationDelivery.EVENT_TYPES),
+                            new InboxNotificationDelivery(inbox::deliver)));
                 }
                 return value;
             }
@@ -192,7 +208,10 @@ public final class EventManagerApplication extends Application {
                 new AttendeeRegistrationActions(
                         (id, version) -> services.get().commands().register(session.token(), id, version),
                         (id, version) -> services.get().commands().cancel(session.token(), id, version),
-                        () -> services.get().registrations().list(session.token())), () -> showHome(root));
+                        () -> services.get().registrations().list(session.token())),
+                new InboxActions(() -> services.get().inbox().list(session.token()),
+                        id -> services.get().inbox().markRead(session.token(), id),
+                        () -> services.get().inbox().markAllRead(session.token())), () -> showHome(root));
         root.setCenter(attendeeView);
     }
 
@@ -205,6 +224,7 @@ public final class EventManagerApplication extends Application {
 
     @Override
     public void stop() {
+        inboxDispatcher.close();
         closeAttendee();
     }
 

@@ -204,10 +204,10 @@ Remaining seats are clamped at zero for display. Eligibility is advisory and
 separate from own status; existing command locks, version checks, post-lock time
 validation and transactional audit/outbox remain authoritative.
 
-The Attendee route lazily runs existing `RegistrationDatabaseMigration` bootstrap
-in background tasks, independently of Organizer navigation. Successful service
-initialization is reused and failure can be retried. No new migration, fixture
-insertion or publication operation is added. `EventService` still cannot publish
+The Attendee route lazily runs `InboxDatabaseMigration`, which first delegates to
+the existing `RegistrationDatabaseMigration` bootstrap, in background tasks,
+independently of Organizer navigation. Successful service initialization is reused
+and failure can be retried. No fixture insertion or publication operation is added. `EventService` still cannot publish
 events, so new drafts do not appear. Register/cancel UI uses existing session-token commands.
 See the [Attendee User Guide](UserGuide.md#attendee-browse-and-search-events)
 for the implemented workflow and current limitations.
@@ -219,6 +219,7 @@ Focused verification:
 ./gradlew test --tests 'seedu.eventmanager.registration.*'
 ./gradlew attendeeUiSmoke
 ./gradlew attendeeRegistrationUiSmoke
+./gradlew attendeeInboxUiSmoke
 ```
 
 The PostgreSQL catalogue/detail/registration tests require `EVENT_MANAGER_TEST_DB_URL`,
@@ -237,6 +238,76 @@ refresh, full state, expired session, delayed stale responses, clearing on Home,
 search/empty/validation/error/retry behavior and saves snapshots under
 `build/attendee-smoke/`. This is real UI interaction with fixture data, not
 database-connected or cross-role E2E coverage. It is not run in headless CI.
+
+### Attendee persistent notifications inbox (#30)
+
+`InboxNotificationDelivery` adapts the existing `NotificationDelivery` contract to
+`JdbcInboxRepository`. It accepts only `REGISTRATION_CONFIRMED`,
+`REGISTRATION_CANCELLED` and `EVENT_ANNOUNCEMENT`; an explicitly routed unsupported
+type fails with `UNSUPPORTED_NOTIFICATION`. Payload/recipient failures use a safe
+`INVALID_NOTIFICATION` message, without exposing the payload or SQL exception.
+
+The Attendee-owned Flyway stream `db/attendee_inbox` uses
+`attendee_inbox_schema_history`. Its V1 creates `attendee_notification_inbox` and
+an owner/newest-first index; no applied migration is edited. `notification_id` is
+the primary key and references the outbox. Delivery uses `ON CONFLICT DO NOTHING`,
+so retrying after a lost `markSent` response cannot duplicate an entry or reset
+read status. Outbox cleanup must respect this FK; no cleanup job is added here.
+
+The adapter resolves IDs from the canonical outbox row and verifies the recipient
+has the ATTENDEE role. Registration references must belong to that recipient.
+Deactivated attendees can still receive durable entries, but cannot read/mark
+them until they have an active valid session again. The inbox stores IDs, original
+notification type/time and read time, not copied message bodies. Event and
+announcement IDs deliberately have no deletion-cascading FK. A single left-joined
+read resolves current titles/start times and announcement text; removed sources
+show neutral fallbacks. Registration notification kind remains historical even
+if the registration has since changed. This is a notification inbox, not an audit
+snapshot or proof of current registration status.
+
+`InboxService` derives the owner from the live token through the existing
+`AttendeeSessionGuard`, checks again after reads/before committing marks, and
+never accepts an attendee ID. Mark-one filters by owner and notification ID;
+unknown and other-owned IDs return the same safe error. Mark-all affects only
+that owner. Marking is transactional and repeatable without changing an existing
+read timestamp. `InboxSnapshot` derives the unread count from the same immutable
+message list, avoiding inconsistent count/list queries.
+
+The application starts one daemon `InboxDispatcher` after successful background
+Attendee initialization. It runs the existing outbox worker in batches of up to
+25 every two seconds, continues across Home navigation, and shuts down with the
+app. `JdbcNotificationOutboxRepository` has an optional event-type scope: this
+worker claims only the three supported attendee types. Its original constructor
+still claims all types. Venue notifications are left untouched for their own
+delivery route, not marked sent or silently discarded by the inbox adapter.
+The existing claim lease/retry behavior is unchanged: five-minute claim expiry
+also delays a failed attempt; the fifth failed attempt becomes FAILED.
+
+`InboxActions` binds the session once at composition; `InboxController` executes
+reads/marks off the FX thread, prevents duplicate marks and ignores stale/closed
+callbacks. `InboxView` lives in the existing sidebar shell. Badge refresh happens
+at initialization, opening Notifications, manual refresh and after marks—not via
+UI polling. Its All/Unread/Read filter operates only on the loaded owner snapshot,
+preserves newest-first order and remains selected through refresh/mark operations.
+The unread count and mark-all command always cover the whole owner inbox; filtering
+does not change service authorization or mark scope. Loading/failure discards the
+cached snapshot and disables filtering, so it cannot restore stale personal rows.
+Loading/failure displays an unknown count, rather than stale personal
+data or a false zero. No email, push delivery, check-in, producer rewrite or
+teammate business-rule changes are included. Announcement enqueue remains the
+existing best-effort operation outside its save transaction; this feature cannot
+recover announcements that were never queued.
+
+`InboxIntegrationTest` uses isolated PostgreSQL schemas and real sessions/outbox
+delivery to cover persistence, retry/concurrent idempotence, ownership, invalid
+sessions, source changes/deletion, payload rejection, type-scoped routing and
+transaction rollback. Its late-revocation case injects a session resolver; it is
+not proof of clock-driven expiry during a database transaction. Unit tests cover
+the service/adapter and dispatcher lifecycle. `attendeeInboxUiSmoke` opens actual
+JavaFX controls with synthetic callbacks, exercises read/unread, badge, duplicate
+guard, errors, expired sessions, stale reads and Home, and saves 1280/1000-wide
+snapshots under `build/attendee-smoke/`. It is opt-in on a graphical desktop, not
+a real-login/database-connected end-to-end test.
 
 ### Attendee registration commands and My Registrations (#29)
 
@@ -307,7 +378,7 @@ event are required for registration.
 | --- | --- |
 | Club Organizer (Joseph) | Events, volunteers/announcements (as scheduled), Organizer→venue submit |
 | Venue Administrator (Jordan) | Venues, availability, request decide, bookings, Admin UI |
-| Attendee (Johannsen) | Catalogue/details, registration backend and register/cancel/My Registrations UI; check-in remains planned |
+| Attendee (Johannsen) | Catalogue/details, registration backend, register/cancel/My Registrations and persistent Notifications UI; check-in remains planned |
 
 ---
 
@@ -395,8 +466,8 @@ See [Agentic SE](AgenticSE.md). Cursor project hooks (optional process guardrail
 
 * Organizer supersede/withdraw of open requests.
 * Club rename/delete and multi-organizer clubs.
-* Attendee notifications, check-in, and attendance history.
-* Notification delivery worker (outbox already stores some Admin decisions).
+* Attendee check-in and attendance history.
+* Delivery routes for non-attendee outbox events and email (attendee in-app delivery is implemented).
 * Broader Postgres integration tests for the Organizer submit path.
 
 ---
@@ -437,6 +508,6 @@ See [Agentic SE](AgenticSE.md). Cursor project hooks (optional process guardrail
 
 ## Appendix: Current implementation status
 
-**Implemented (selected):** shared role-based login; Attendee catalogue, registration backend, register/cancel and My Registrations; Organizer account-owned clubs, draft events, venue requests, volunteers, registration overview and announcements; Admin venues, user management and request approve/reject; Flyway + JDBC persistence; unit and PostgreSQL integration tests.
+**Implemented (selected):** shared role-based login; Attendee catalogue, registration backend, register/cancel, My Registrations and persistent Notifications inbox; Organizer account-owned clubs, draft events, venue requests, volunteers, registration overview and announcements; Admin venues, user management and request approve/reject; Flyway + JDBC persistence; unit and PostgreSQL integration tests.
 
-**Not yet implemented (selected):** Attendee notifications, check-in, and attendance history; club rename/delete; Organizer supersede/withdraw; email notification delivery; production deployment tooling.
+**Not yet implemented (selected):** Attendee check-in and attendance history; club rename/delete; Organizer supersede/withdraw; email notification delivery; production deployment tooling.

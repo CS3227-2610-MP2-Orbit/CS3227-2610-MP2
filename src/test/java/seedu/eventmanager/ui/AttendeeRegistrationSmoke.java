@@ -76,7 +76,7 @@ public final class AttendeeRegistrationSmoke {
                                 new MyRegistration(new UUID(0, 3), "Cancelled music booking", NOW.plusSeconds(86400), "Music room",
                                         Registration.Status.CANCELLED, 1, false, NOW.plusSeconds(90000),
                                         "music-club", "Cancelled booking description", "PUBLISHED"));
-                    }), () -> { });
+                    }), new InboxActions(() -> new InboxSnapshot(List.of()), id -> { }, () -> { }), () -> { });
             stage.setScene(new Scene(view, 1280, 800));
             stage.setTitle("Registration smoke — synthetic fixtures");
             stage.show();
@@ -139,7 +139,9 @@ public final class AttendeeRegistrationSmoke {
             await(() -> buttonExists("attendee-cancel") && !button("attendee-cancel").isDisabled());
             require(versions.equals(List.of(-1L, 0L, 1L)), "no record, cancellation and re-registration versions");
             fx(() -> button("attendee-registrations-nav").fire());
-            await(() -> list("attendee-registrations").getItems().size() == 3);
+            // SplitPane children enter CSS lookup only after its first skin/layout pulse.
+            await(() -> list("attendee-registrations") != null
+                    && list("attendee-registrations").getItems().size() == 3);
             fx(() -> require(view.lookup("#attendee-registration-split") instanceof SplitPane,
                     "bookings and details must share a side-by-side split pane"));
             fx(() -> {

@@ -105,7 +105,9 @@ public final class AttendeeBrowseSmoke {
                 }
                 return result;
             }, new AttendeeRegistrationActions((id, version) -> { throw new AssertionError("Unexpected register"); },
-                    (id, version) -> { throw new AssertionError("Unexpected cancel"); }, List::of), homes::incrementAndGet);
+                    (id, version) -> { throw new AssertionError("Unexpected cancel"); }, List::of),
+                    new InboxActions(() -> new seedu.eventmanager.attendee.InboxSnapshot(List.of()), id -> { }, () -> { }),
+                    homes::incrementAndGet);
             stage.setScene(new Scene(view, 1280, 800));
             stage.setTitle("Attendee smoke — synthetic fixtures");
             stage.show();
