@@ -48,8 +48,8 @@ public final class MyRegistrationsService {
                     row.status(), row.version(), row.status() == Registration.Status.CONFIRMED && now.isBefore(event.startsAt()),
                     event.endsAt(), event.clubId(), event.description(), event.eventStatus(),
                     CheckInPolicy.evaluate(new RegistrationEvent(row.eventId(), event.eventStatus(), 0,
-                            event.startsAt(), event.endsAt()), row.status(), event.confirmedActiveBooking(), now)
-                            == CheckInPolicy.Result.AVAILABLE, event.clubName());
+                            event.startsAt(), event.endsAt()), row.status(), event.confirmedActiveBooking(), now),
+                    event.clubName());
         }).toList();
     }
 }

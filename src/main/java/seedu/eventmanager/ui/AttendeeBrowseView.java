@@ -363,10 +363,14 @@ public final class AttendeeBrowseView extends BorderPane implements AutoCloseabl
             checkIn.setOnAction(ignored -> controller.checkIn(event.id(), value.ownRegistrationVersion()));
             actions.getChildren().add(checkIn);
         }
+        Label checkInExplanation = text(CheckInAvailabilityText.atDisplayTime(value.checkInAvailability(),
+                event.startsAt(), event.endsAt(), now), "#172033", 14);
+        checkInExplanation.setId("attendee-check-in-availability");
         details.getChildren().setAll(
                 text(event.title(), "#172033", 22), text("Club: " + event.clubName(), "#61708a", 13),
                 text("Starts: " + SingaporeDateTimes.display(event.startsAt()), "#172033", 14),
                 text("Ends: " + SingaporeDateTimes.display(event.endsAt()), "#172033", 14),
+                checkInExplanation,
                 text(event.description().isBlank() ? "No description provided." : event.description(), "#172033", 14),
                 text(value.venue().map(v -> "Venue: " + v.name() + " · " + v.location())
                         .orElse("Venue: no current booking"), "#172033", 14),

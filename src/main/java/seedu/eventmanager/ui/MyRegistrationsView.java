@@ -161,9 +161,13 @@ final class MyRegistrationsView extends VBox {
     private void showDetails(MyRegistration row) {
         Label title = label(row.title());
         title.setStyle("-fx-text-fill: #172033; -fx-font-size: 22px; -fx-font-weight: bold;");
+        Label checkInExplanation = label(CheckInAvailabilityText.atDisplayTime(row.checkInAvailability(),
+                row.startsAt(), row.endsAt(), clock.instant()));
+        checkInExplanation.setId("attendee-registration-check-in-availability");
         details.getChildren().setAll(title, label("Club: " + row.clubName()),
                 label("Starts: " + SingaporeDateTimes.display(row.startsAt())),
                 label("Ends: " + SingaporeDateTimes.display(row.endsAt())),
+                checkInExplanation,
                 label("Venue: " + (row.venue().isBlank() ? "No booking recorded" : row.venue())),
                 label("Event status: " + row.eventStatus()),
                 label("Your registration: " + row.status().name().replace('_', ' ')),
