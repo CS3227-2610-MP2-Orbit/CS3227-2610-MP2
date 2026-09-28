@@ -35,6 +35,16 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
+      # Temporary diagnostic: verify the exact checkout contains the exception
+      # source referenced by JdbcAuthorizationService before compilation.
+      - name: Verify source checkout
+        run: |
+          git rev-parse HEAD
+          git ls-files --stage src/main/java/seedu/eventmanager/common/ApplicationException.java
+          test -f src/main/java/seedu/eventmanager/common/ApplicationException.java
+          cat src/main/java/seedu/eventmanager/common/ApplicationException.java
+          sed -n '1,12p' src/main/java/seedu/eventmanager/storage/JdbcAuthorizationService.java
+
       - name: Set up Java 25
         uses: actions/setup-java@v4
         with:
