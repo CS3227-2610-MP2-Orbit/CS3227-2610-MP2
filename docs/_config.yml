@@ -29,4 +29,4 @@ exclude:
   - skill-validation
 
 # Set true only after a tested application release is published on GitHub.
-release_available: false
+release_available: true
