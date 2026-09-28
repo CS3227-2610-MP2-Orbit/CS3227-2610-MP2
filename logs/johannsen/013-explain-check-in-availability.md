@@ -359,6 +359,42 @@ Publication result:
   The PR body links #38 and discloses the earlier Inbox smoke failure.
 - PR #40 was attached to this chat. No merge was requested or performed.
 
+## Integration PR and main synchronization follow-up
+
+Original user requests:
+
+> create a pr for me please.
+
+> also pull main and merge into this before we create the pr
+
+PR #41 had already been created from attendee-club-filter to main, linked to
+issues #29–#32, #37 and #38 under Core Workflow MVP. The follow-up updates that
+same PR, not a duplicate. No merge of PR #41 into main is authorized here.
+
+Used `code-review-and-verification` to verify the synchronized branch. Commands:
+
+```sh
+git fetch origin
+git switch attendee-club-filter
+git merge --ff-only origin/attendee-club-filter
+git merge --no-edit origin/main
+git diff --exit-code origin/attendee-club-filter HEAD
+git merge-base --is-ancestor origin/main HEAD
+git diff --check origin/main...HEAD
+JAVA_TOOL_OPTIONS=-Duser.timezone=UTC DATABASE_URL=jdbc:postgresql://127.0.0.1:55448/mp2_inbox_verify_20260927 DATABASE_USER=mp2_demo_app DATABASE_PASSWORD='' DATABASE_INTEGRATION_TESTS=true EVENT_MANAGER_TEST_DB_URL=jdbc:postgresql://127.0.0.1:55448/mp2_inbox_verify_20260927 EVENT_MANAGER_TEST_DB_USER=mp2_demo_app EVENT_MANAGER_TEST_DB_PASSWORD='' ./gradlew build --rerun-tasks attendeeCheckInAvailabilityUiSmoke
+```
+
+All exited 0. Latest main was 11218b8; merge commit 60829c4 integrated it without
+conflicts or file-content changes. Full build and availability UI smoke passed;
+279 JUnit tests, zero failures/errors/skips. Unit/database evidence and synthetic
+real-control UI evidence remain distinct. The earlier Inbox smoke limitation is
+unchanged; that smoke was not rerun here. No security scan or cross-platform run.
+
+The unrelated tracked working diff was compared before/after and is identical;
+untracked evaluation work remains untouched. Only this log update is added after
+the merge. No new implementation, tests or policies were changed. Student review
+remains unfilled. The existing PR will receive the merge and this record.
+
 ## Student review
 
 - [ ] I confirmed that the original prompts are accurate.
