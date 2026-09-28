@@ -347,6 +347,18 @@ work and untracked log 011 are excluded. Only the 14 #38 implementation,
 verification, UserGuide and log files are selected. Remote CI is not yet verified.
 Student-review fields remain unfilled.
 
+Publication result:
+- `git diff --cached --check` exited 0; staged scope was exactly 14 files.
+- `git commit -m 'feat(attendee): explain check-in availability (#38)'`
+  exited 0, creating `3e1c00f`.
+- `git push -u origin attendee-check-in-availability` exited 0.
+- `gh pr create --base attendee-club-filter --head attendee-check-in-availability
+  --title 'feat(attendee): explain check-in availability'
+  --milestone 'Core Workflow MVP' --body <summary, dependencies, verification and limits>`
+  exited 0, creating [PR #40](https://github.com/CS3227-2610-MP2-Orbit/CS3227-2610-MP2/pull/40).
+  The PR body links #38 and discloses the earlier Inbox smoke failure.
+- PR #40 was attached to this chat. No merge was requested or performed.
+
 ## Student review
 
 - [ ] I confirmed that the original prompts are accurate.
